@@ -1,6 +1,6 @@
 import "./index.css";
 
-import MisAnalisis from "./MisAnalisis";
+import MisAnalisis from "./pages/MisAnalisis";
 
 export function App() {
   return (

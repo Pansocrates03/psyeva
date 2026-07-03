@@ -1,10 +1,10 @@
 import { useState } from "react";
-import Sidebar from "./components/Sidebar";
-import ActionButton from "./components/ActionButton";
-import Modal from "./components/Modal";
-import EstadoBadge from "./components/EstadoBadge";
-import StatCard from "./components/StatCard";
-import COLORS from "./utils/Colors";
+import Sidebar from "../components/Sidebar";
+import ActionButton from "../components/ActionButton";
+import Modal from "../components/Modal";
+import EstadoBadge from "../components/EstadoBadge";
+import StatCard from "../components/StatCard";
+import COLORS from "../utils/Colors";
 
 
 const ANALISIS_DATA = [
