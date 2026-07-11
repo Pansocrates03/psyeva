@@ -2,6 +2,7 @@ import { useMemo, useState, type FormEvent } from "react";
 import Sidebar from "../components/Sidebar";
 import ActionButton from "../components/ActionButton";
 import Modal from "../components/Modal";
+import Table from "../components/Table";
 import COLORS from "../utils/Colors";
 
 type EstadoColegio = "activo" | "en revisión" | "inactivo";
@@ -10,7 +11,6 @@ interface Colegio {
   id: number;
   nombre: string;
   ciudad: string;
-  director: string;
   estudiantes: number;
   estado: EstadoColegio;
   fecha: string;
@@ -19,16 +19,15 @@ interface Colegio {
 interface FormState {
   nombre: string;
   ciudad: string;
-  director: string;
   estudiantes: string;
   estado: EstadoColegio;
 }
 
 const INITIAL_COLEGIOS: Colegio[] = [
-  { id: 1, nombre: "Colegio Nuevo Continente", ciudad: "Bogotá", director: "Marta Sánchez", estudiantes: 820, estado: "activo", fecha: "14 nov 2026" },
-  { id: 2, nombre: "Instituto Irlanda", ciudad: "Medellín", director: "Carlos Ruiz", estudiantes: 640, estado: "activo", fecha: "2 dic 2026" },
-  { id: 3, nombre: "Liceo de la Esperanza", ciudad: "Cali", director: "Lucía Torres", estudiantes: 310, estado: "en revisión", fecha: "9 ene 2027" },
-  { id: 4, nombre: "Colegio San José", ciudad: "Barranquilla", director: "Andrés Paredes", estudiantes: 480, estado: "inactivo", fecha: "21 mar 2026" },
+  { id: 1, nombre: "Colegio Nuevo Continente", ciudad: "Bogotá", estudiantes: 820, estado: "activo", fecha: "14 nov 2026" },
+  { id: 2, nombre: "Instituto Irlanda", ciudad: "Medellín", estudiantes: 640, estado: "activo", fecha: "2 dic 2026" },
+  { id: 3, nombre: "Liceo de la Esperanza", ciudad: "Cali", estudiantes: 310, estado: "en revisión", fecha: "9 ene 2027" },
+  { id: 4, nombre: "Colegio San José", ciudad: "Barranquilla", estudiantes: 480, estado: "inactivo", fecha: "21 mar 2026" },
 ];
 
 const ESTADO_META: Record<EstadoColegio, { label: string; bg: string; color: string; border: string }> = {
@@ -40,7 +39,6 @@ const ESTADO_META: Record<EstadoColegio, { label: string; bg: string; color: str
 const emptyForm = (): FormState => ({
   nombre: "",
   ciudad: "",
-  director: "",
   estudiantes: "",
   estado: "activo",
 });
@@ -56,7 +54,7 @@ export default function Colegios() {
     const q = query.trim().toLowerCase();
     if (!q) return colegios;
     return colegios.filter(colegio =>
-      [colegio.nombre, colegio.ciudad, colegio.director].some(value => value.toLowerCase().includes(q))
+      [colegio.nombre, colegio.ciudad].some(value => value.toLowerCase().includes(q))
     );
   }, [colegios, query]);
 
@@ -74,7 +72,6 @@ export default function Colegios() {
     setForm({
       nombre: colegio.nombre,
       ciudad: colegio.ciudad,
-      director: colegio.director,
       estudiantes: String(colegio.estudiantes),
       estado: colegio.estado,
     });
@@ -84,7 +81,7 @@ export default function Colegios() {
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    if (!form.nombre.trim() || !form.ciudad.trim() || !form.director.trim()) {
+    if (!form.nombre.trim() || !form.ciudad.trim()) {
       return;
     }
 
@@ -92,7 +89,6 @@ export default function Colegios() {
       id: editingColegio?.id ?? Date.now(),
       nombre: form.nombre.trim(),
       ciudad: form.ciudad.trim(),
-      director: form.director.trim(),
       estudiantes: Number(form.estudiantes) || 0,
       estado: form.estado,
       fecha: editingColegio?.fecha ?? new Date().toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" }),
@@ -180,57 +176,60 @@ export default function Colegios() {
             </div>
           </div>
 
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead>
-              <tr style={{ background: COLORS.neutro50 }}>
-                {[
-                  { label: "Colegio", align: "left" },
-                  { label: "Ciudad", align: "left" },
-                  { label: "Director", align: "left" },
-                  { label: "Estudiantes", align: "left" },
-                  { label: "Estado", align: "left" },
-                  { label: "Acciones", align: "right" },
-                ].map(column => (
-                  <th key={column.label} style={{ padding: "10px 20px", textAlign: column.align as "left" | "right", fontSize: 12, fontWeight: 600, color: COLORS.neutro500, textTransform: "uppercase", letterSpacing: "0.05em", borderBottom: `1px solid ${COLORS.neutro100}` }}>
-                    {column.label}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {filteredColegios.map((colegio, index) => {
-                const meta = ESTADO_META[colegio.estado];
-                return (
-                  <tr key={colegio.id} style={{ borderBottom: index < filteredColegios.length - 1 ? `1px solid ${COLORS.neutro50}` : "none" }}>
-                    <td style={{ padding: "14px 20px", fontWeight: 600, color: COLORS.neutro900 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                        <div style={{ width: 32, height: 32, borderRadius: 8, background: COLORS.violeta50, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                          <i className="ti ti-school" style={{ fontSize: 16, color: COLORS.violeta400 }} aria-hidden="true" />
-                        </div>
-                        <div>
-                          <div>{colegio.nombre}</div>
-                          <div style={{ fontSize: 12, color: COLORS.neutro500 }}>Creado {colegio.fecha}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td style={{ padding: "14px 20px", color: COLORS.neutro700 }}>{colegio.ciudad}</td>
-                    <td style={{ padding: "14px 20px", color: COLORS.neutro700 }}>{colegio.director}</td>
-                    <td style={{ padding: "14px 20px", color: COLORS.neutro700 }}>{colegio.estudiantes}</td>
-                    <td style={{ padding: "14px 20px" }}>
-                      <span style={{ display: "inline-flex", padding: "4px 8px", borderRadius: 999, fontSize: 12, fontWeight: 600, background: meta.bg, color: meta.color, border: `1px solid ${meta.border}` }}>
-                        {meta.label}
-                      </span>
-                    </td>
-                    <td style={{ padding: "14px 20px" }}>
-                      <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
-                        <ActionButton label="Editar" onClick={() => openEditModal(colegio)} />
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+          <Table
+            columns={[
+              {
+                key: "nombre",
+                header: "Colegio",
+                render: colegio => (
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <div style={{ width: 32, height: 32, borderRadius: 8, background: COLORS.violeta50, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <i className="ti ti-school" style={{ fontSize: 16, color: COLORS.violeta400 }} aria-hidden="true" />
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: 600, color: COLORS.neutro900 }}>{colegio.nombre}</div>
+                      <div style={{ fontSize: 12, color: COLORS.neutro500 }}>Creado {colegio.fecha}</div>
+                    </div>
+                  </div>
+                ),
+              },
+              {
+                key: "ciudad",
+                header: "Ciudad",
+                render: colegio => <span style={{ color: COLORS.neutro700 }}>{colegio.ciudad}</span>,
+              },
+              {
+                key: "estudiantes",
+                header: "Estudiantes",
+                render: colegio => <span style={{ color: COLORS.neutro700 }}>{colegio.estudiantes}</span>,
+              },
+              {
+                key: "estado",
+                header: "Estado",
+                render: colegio => {
+                  const meta = ESTADO_META[colegio.estado];
+                  return (
+                    <span style={{ display: "inline-flex", padding: "4px 8px", borderRadius: 999, fontSize: 12, fontWeight: 600, background: meta.bg, color: meta.color, border: `1px solid ${meta.border}` }}>
+                      {meta.label}
+                    </span>
+                  );
+                },
+              },
+              {
+                key: "acciones",
+                header: "Acciones",
+                align: "right",
+                render: colegio => (
+                  <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+                    <ActionButton label="Editar" onClick={() => openEditModal(colegio)} />
+                  </div>
+                ),
+              },
+            ]}
+            data={filteredColegios}
+            getRowKey={colegio => colegio.id}
+            emptyState="No hay colegios para mostrar."
+          />
         </div>
       </main>
 
@@ -268,16 +267,6 @@ export default function Colegios() {
                   style={{ width: "100%", padding: "9px 12px", border: `1px solid ${COLORS.neutro100}`, borderRadius: 8, fontSize: 14, color: COLORS.neutro900, outline: "none", boxSizing: "border-box" }}
                 />
               </div>
-            </div>
-
-            <div>
-              <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: COLORS.neutro700, marginBottom: 6 }}>Director</label>
-              <input
-                value={form.director}
-                onChange={event => setForm(prev => ({ ...prev, director: event.target.value }))}
-                placeholder="Ej. Ana García"
-                style={{ width: "100%", padding: "9px 12px", border: `1px solid ${COLORS.neutro100}`, borderRadius: 8, fontSize: 14, color: COLORS.neutro900, outline: "none", boxSizing: "border-box" }}
-              />
             </div>
 
             <div>

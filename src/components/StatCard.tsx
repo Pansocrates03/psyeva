@@ -4,21 +4,32 @@ interface StatCardProps {
   label: string;
   value: number | string;
   accent?: boolean;
+  active?: boolean;
   sub?: string;
+  onClick?: () => void;
 }
 
-export default function StatCard({ label, value, accent = false, sub }: StatCardProps) {
+export default function StatCard({ label, value, accent = false, active = false, sub, onClick }: StatCardProps) {
+  const isActive = active || accent;
+
   return (
-    <div style={{
-      flex: 1,
-      background: accent ? COLORS.violeta50 : "#fff",
-      border: `1px solid ${accent ? COLORS.violeta100 : COLORS.neutro100}`,
-      borderRadius: 12,
-      padding: "14px 20px",
-    }}>
+    <div
+      onClick={onClick}
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      style={{
+        flex: 1,
+        background: isActive ? COLORS.violeta50 : "#fff",
+        border: `1px solid ${isActive ? COLORS.violeta100 : COLORS.neutro100}`,
+        borderRadius: 12,
+        padding: "14px 20px",
+        cursor: onClick ? "pointer" : "default",
+        boxShadow: isActive ? `0 0 0 1px ${COLORS.violeta100}` : "none",
+      }}
+    >
       <div style={{
         fontSize: 11,
-        color: accent ? COLORS.violeta600 : COLORS.neutro500,
+        color: isActive ? COLORS.violeta600 : COLORS.neutro500,
         marginBottom: 4,
         textTransform: "uppercase",
         letterSpacing: "0.05em",
@@ -29,7 +40,7 @@ export default function StatCard({ label, value, accent = false, sub }: StatCard
       <div style={{
         fontSize: 28,
         fontWeight: 500,
-        color: accent ? COLORS.violeta400 : COLORS.neutro900,
+        color: isActive ? COLORS.violeta400 : COLORS.neutro900,
         lineHeight: 1.1,
       }}>
         {value}

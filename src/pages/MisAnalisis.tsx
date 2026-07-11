@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, type ComponentProps } from "react";
 import Sidebar from "../components/Sidebar";
 import ActionButton from "../components/ActionButton";
 import Modal from "../components/Modal";
 import EstadoBadge from "../components/EstadoBadge";
 import StatCard from "../components/StatCard";
+import Table from "../components/Table";
 import COLORS from "../utils/Colors";
 
 
@@ -111,68 +112,54 @@ export default function MisAnalisis() {
             </div>
           </div>
 
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead>
-              <tr style={{ background: COLORS.neutro50 }}>
-                {["Colegio", "Estado", "Fecha", "Acciones"].map((h, i) => (
-                  <th key={h} style={{
-                    padding: "10px 20px",
-                    textAlign: i === 3 ? "right" : "left",
-                    fontSize: 12,
-                    fontWeight: 500,
-                    color: COLORS.neutro500,
-                    textTransform: "uppercase",
-                    letterSpacing: "0.05em",
-                    borderBottom: `1px solid ${COLORS.neutro100}`,
-                  }}>
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {filtrados.map((item, idx) => (
-                <tr
-                  key={item.id}
-                  style={{
-                    borderBottom: idx < filtrados.length - 1 ? `1px solid ${COLORS.neutro50}` : "none",
-                    transition: "background 0.1s",
-                  }}
-                  onMouseEnter={e => e.currentTarget.style.background = COLORS.neutro50}
-                  onMouseLeave={e => e.currentTarget.style.background = "transparent"}
-                >
-                  <td style={{ padding: "13px 20px", fontSize: 14, color: COLORS.neutro900, fontWeight: 500 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <div style={{
-                        width: 28, height: 28, borderRadius: 6,
-                        background: COLORS.violeta50,
-                        display: "flex", alignItems: "center", justifyContent: "center",
-                        flexShrink: 0,
-                      }}>
-                        <i className="ti ti-school" style={{ fontSize: 14, color: COLORS.violeta400 }} aria-hidden="true" />
-                      </div>
-                      {item.colegio}
+          <Table
+            columns={[
+              {
+                key: "colegio",
+                header: "Colegio",
+                render: item => (
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <div style={{
+                      width: 28, height: 28, borderRadius: 6,
+                      background: COLORS.violeta50,
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      flexShrink: 0,
+                    }}>
+                      <i className="ti ti-school" style={{ fontSize: 14, color: COLORS.violeta400 }} aria-hidden="true" />
                     </div>
-                  </td>
-                  <td style={{ padding: "13px 20px" }}>
-                    <EstadoBadge estado={item.estado} />
-                  </td>
-                  <td style={{ padding: "13px 20px", fontSize: 14, color: COLORS.neutro500 }}>
-                    {item.fecha}
-                  </td>
-                  <td style={{ padding: "13px 20px" }}>
-                    <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
-                      <ActionButton label="Editar" variant="default" />
-                      {item.estado === "activo"
-                        ? <ActionButton label="Archivar" variant="archive" />
-                        : <ActionButton label="Eliminar" variant="danger" />
-                      }
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                    {item.colegio}
+                  </div>
+                ),
+              },
+              {
+                key: "estado",
+                header: "Estado",
+                render: item => <EstadoBadge estado={item.estado as ComponentProps<typeof EstadoBadge>["estado"]} />,
+              },
+              {
+                key: "fecha",
+                header: "Fecha",
+                render: item => <span style={{ color: COLORS.neutro500 }}>{item.fecha}</span>,
+              },
+              {
+                key: "acciones",
+                header: "Acciones",
+                align: "right",
+                render: item => (
+                  <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
+                    <ActionButton label="Editar" variant="default" />
+                    {item.estado === "activo"
+                      ? <ActionButton label="Archivar" variant="archive" />
+                      : <ActionButton label="Eliminar" variant="danger" />
+                    }
+                  </div>
+                ),
+              },
+            ]}
+            data={filtrados}
+            getRowKey={item => item.id}
+            emptyState="No hay análisis para mostrar."
+          />
 
           <div style={{
             padding: "12px 20px",
@@ -201,7 +188,11 @@ export default function MisAnalisis() {
         </div>
       </main>
 
-      {showModal && <Modal onClose={() => setShowModal(false)} />}
+      {showModal && (
+        <Modal onClose={() => setShowModal(false)}>
+          <div style={{ fontSize: 14, color: COLORS.neutro700 }}>Contenido del modal temporal.</div>
+        </Modal>
+      )}
     </div>
   );
 }

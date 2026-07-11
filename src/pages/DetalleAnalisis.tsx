@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, type ChangeEvent, type FormEvent } from "react";
 import Sidebar from "../components/Sidebar";
 import StatCard from "../components/StatCard";
 import ActionButton from "../components/ActionButton";
-import Modal from "../components/Modal";
+import Drawer from "../components/Drawer";
+import Table from "../components/Table";
 import COLORS from "../utils/Colors";
 
 // ── Tipos ────────────────────────────────────────────────────
@@ -16,6 +17,13 @@ interface Formulario {
   asignado: boolean;
 }
 
+interface EstudianteGrupo {
+  id: number;
+  nombre: string;
+  curp: string;
+  reporte?: string;
+}
+
 interface Grupo {
   id: number;
   nombre: string;
@@ -27,6 +35,22 @@ interface Grupo {
   totalReportes: number;
   reporteGrupal: boolean;
   formularios: string[];
+  estudiantes?: EstudianteGrupo[];
+}
+
+interface AlumnoForm {
+  id: number;
+  nombre: string;
+  curp: string;
+}
+
+interface CrearGrupoFormState {
+  nombre: string;
+  grado: string;
+  encuestas: string[];
+  estadoReporte: "privado" | "publico";
+  reporteGrupal: string;
+  alumnos: AlumnoForm[];
 }
 
 // ── Datos de muestra ─────────────────────────────────────────
@@ -59,6 +83,17 @@ const PILL_COLORS: Record<string, { bg: string; color: string; dot: string }> = 
   Aprendizaje: { bg: COLORS.azul50,    color: COLORS.azul600,    dot: COLORS.azul400    },
   Autoestima:  { bg: COLORS.ambar50,   color: COLORS.ambar600,   dot: COLORS.ambar400   },
 };
+
+const createAlumno = (): AlumnoForm => ({ id: Date.now() + Math.random(), nombre: "", curp: "" });
+
+const emptyGrupoForm = (): CrearGrupoFormState => ({
+  nombre: "",
+  grado: "",
+  encuestas: [],
+  estadoReporte: "privado",
+  reporteGrupal: "",
+  alumnos: [createAlumno()],
+});
 
 // ── Subcomponentes ────────────────────────────────────────────
 function ProgressRow({ value, total, color }: { value: number; total: number; color: string }) {
@@ -221,15 +256,250 @@ function DrawerFormularios({ grupo, onClose }: { grupo: Grupo; onClose: () => vo
   );
 }
 
+function EstudiantesTable({
+  estudiantes,
+  onClose,
+  onUploadReporte,
+}: {
+  estudiantes: (EstudianteGrupo & { grupoNombre: string; grupoId: number })[];
+  onClose: () => void;
+  onUploadReporte: (grupoId: number, estudianteId: number, event: ChangeEvent<HTMLInputElement>) => void;
+}) {
+  return (
+    <div style={{ marginTop: 24, background: "#fff", border: `1px solid ${COLORS.neutro100}`, borderRadius: 14, overflow: "hidden" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 20px", borderBottom: `1px solid ${COLORS.neutro100}` }}>
+        <div>
+          <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: COLORS.neutro900 }}>Estudiantes del instituto</h3>
+          <div style={{ fontSize: 12, color: COLORS.neutro500, marginTop: 2 }}>{estudiantes.length} estudiantes registrados</div>
+        </div>
+        <button
+          onClick={onClose}
+          style={{ border: "none", background: "transparent", color: COLORS.neutro500, cursor: "pointer", fontSize: 14 }}
+        >
+          Ocultar
+        </button>
+      </div>
+
+      <div style={{ overflowX: "auto" }}>
+        <Table
+          columns={[
+            { key: "nombre", header: "Nombre", render: estudiante => <span style={{ color: COLORS.neutro900 }}>{estudiante.nombre}</span> },
+            { key: "curp", header: "CURP", render: estudiante => <span style={{ color: COLORS.neutro700 }}>{estudiante.curp}</span> },
+            { key: "grupoNombre", header: "Grupo", render: estudiante => <span style={{ color: COLORS.neutro700 }}>{estudiante.grupoNombre}</span> },
+            {
+              key: "reporte",
+              header: "Reporte",
+              render: estudiante => (
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  <span style={{ fontSize: 12, color: estudiante.reporte ? COLORS.verde600 : COLORS.neutro500 }}>
+                    {estudiante.reporte ? estudiante.reporte : "Sin reporte subido"}
+                  </span>
+                  <input
+                    type="file"
+                    onChange={event => onUploadReporte(estudiante.grupoId, estudiante.id, event)}
+                    style={{ fontSize: 12 }}
+                  />
+                </div>
+              ),
+            },
+          ]}
+          data={estudiantes}
+          getRowKey={estudiante => `${estudiante.grupoId}-${estudiante.id}`}
+          emptyState="No hay estudiantes registrados aún."
+          rowStyle={() => ({ borderTop: `1px solid ${COLORS.neutro50}` })}
+        />
+      </div>
+    </div>
+  );
+}
+
+function GruposCards({
+  grupos,
+  grupoSeleccionado,
+  onSelectGrupo,
+  onCreateGrupo,
+  onCloseDetalle,
+}: {
+  grupos: Grupo[];
+  grupoSeleccionado: Grupo | null;
+  onSelectGrupo: (grupo: Grupo) => void;
+  onCreateGrupo: () => void;
+  onCloseDetalle: () => void;
+}) {
+  return (
+    <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+          <h2 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: COLORS.neutro900 }}>Grupos</h2>
+          <button
+            onClick={onCreateGrupo}
+            style={{
+              display: "flex", alignItems: "center", gap: 6,
+              padding: "7px 14px", borderRadius: 8,
+              background: "#fff", border: `1px solid ${COLORS.neutro100}`,
+              color: COLORS.neutro700, fontSize: 13, fontWeight: 500, cursor: "pointer",
+            }}
+          >
+            <i className="ti ti-plus" style={{ fontSize: 14 }} aria-hidden="true" />
+            Crear Grupo
+          </button>
+        </div>
+
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: grupoSeleccionado ? "repeat(2, minmax(0,1fr))" : "repeat(3, minmax(0,1fr))",
+          gap: 12,
+          transition: "grid-template-columns 0.2s",
+        }}>
+          {grupos.map(grupo => (
+            <GrupoCard
+              key={grupo.id}
+              grupo={grupo}
+              onClick={() => onSelectGrupo(grupo)}
+            />
+          ))}
+
+          <div
+            onClick={onCreateGrupo}
+            style={{
+              border: `1.5px dashed ${COLORS.neutro100}`,
+              borderRadius: 12,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              minHeight: 180,
+              gap: 6,
+              cursor: "pointer",
+              color: COLORS.neutro400,
+              transition: "border-color 0.15s, color 0.15s",
+            }}
+            onMouseEnter={e => {
+              (e.currentTarget as HTMLDivElement).style.borderColor = COLORS.violeta400;
+              (e.currentTarget as HTMLDivElement).style.color = COLORS.violeta400;
+            }}
+            onMouseLeave={e => {
+              (e.currentTarget as HTMLDivElement).style.borderColor = COLORS.neutro100;
+              (e.currentTarget as HTMLDivElement).style.color = COLORS.neutro400;
+            }}
+          >
+            <i className="ti ti-plus" style={{ fontSize: 22 }} aria-hidden="true" />
+            <span style={{ fontSize: 13 }}>Agregar grupo</span>
+          </div>
+        </div>
+      </div>
+
+      {grupoSeleccionado && (
+        <DrawerFormularios
+          grupo={grupoSeleccionado}
+          onClose={onCloseDetalle}
+        />
+      )}
+    </div>
+  );
+}
+
+
 // ── Página principal ──────────────────────────────────────────
 export default function DetalleAnalisis() {
+  const [grupos, setGrupos] = useState<Grupo[]>(GRUPOS_DATA);
   const [grupoSeleccionado, setGrupoSeleccionado] = useState<Grupo | null>(null);
   const [showCrearGrupo, setShowCrearGrupo] = useState(false);
+  const [showEstudiantesTable, setShowEstudiantesTable] = useState(false);
+  const [grupoForm, setGrupoForm] = useState<CrearGrupoFormState>(emptyGrupoForm());
 
-  const totalAlumnos    = GRUPOS_DATA.reduce((s, g) => s + g.totalAlumnos, 0);
-  const totalReportes   = GRUPOS_DATA.reduce((s, g) => s + g.reportesPublicados, 0);
-  const pendientes      = GRUPOS_DATA.reduce((s, g) => s + (g.totalAlumnos - g.alumnosEncuestados), 0);
-  const gruposPendientes = GRUPOS_DATA.filter(g => g.estado !== "completo").length;
+  const totalAlumnos    = grupos.reduce((s, g) => s + g.totalAlumnos, 0);
+  const totalReportes   = grupos.reduce((s, g) => s + g.reportesPublicados, 0);
+  const pendientes      = grupos.reduce((s, g) => s + (g.totalAlumnos - g.alumnosEncuestados), 0);
+  const gruposPendientes = grupos.filter(g => g.estado !== "completo").length;
+  const estudiantesTabla = grupos.flatMap(grupo =>
+    (grupo.estudiantes ?? []).map(estudiante => ({
+      ...estudiante,
+      grupoNombre: grupo.nombre,
+      grupoId: grupo.id,
+    }))
+  );
+
+  const toggleEncuesta = (encuesta: string) => {
+    setGrupoForm(prev => ({
+      ...prev,
+      encuestas: prev.encuestas.includes(encuesta)
+        ? prev.encuestas.filter(item => item !== encuesta)
+        : [...prev.encuestas, encuesta],
+    }));
+  };
+
+  const updateAlumno = (index: number, field: "nombre" | "curp", value: string) => {
+    setGrupoForm(prev => ({
+      ...prev,
+      alumnos: prev.alumnos.map((alumno, alumnoIndex) => alumnoIndex === index ? { ...alumno, [field]: value } : alumno),
+    }));
+  };
+
+  const addAlumno = () => {
+    setGrupoForm(prev => ({ ...prev, alumnos: [...prev.alumnos, createAlumno()] }));
+  };
+
+  const removeAlumno = (index: number) => {
+    setGrupoForm(prev => ({
+      ...prev,
+      alumnos: prev.alumnos.filter((_, alumnoIndex) => alumnoIndex !== index),
+    }));
+  };
+
+  const handleReporteUpload = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setGrupoForm(prev => ({ ...prev, reporteGrupal: file.name }));
+  };
+
+  const handleCreateGrupo = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    if (!grupoForm.nombre.trim() || !grupoForm.grado.trim()) return;
+
+    const alumnosValidos = grupoForm.alumnos.filter(alumno => alumno.nombre.trim() || alumno.curp.trim());
+    const totalAlumnosGrupo = alumnosValidos.length;
+    const estudiantesParaGrupo = alumnosValidos.map((alumno, index) => ({
+      id: Date.now() + index,
+      nombre: alumno.nombre.trim(),
+      curp: alumno.curp.trim(),
+      reporte: "",
+    }));
+
+    const nuevoGrupo: Grupo = {
+      id: Date.now(),
+      nombre: grupoForm.nombre.trim(),
+      grado: grupoForm.grado.trim(),
+      estado: totalAlumnosGrupo > 0 ? "en_progreso" : "sin_iniciar",
+      alumnosEncuestados: 0,
+      totalAlumnos: totalAlumnosGrupo,
+      reportesPublicados: 0,
+      totalReportes: totalAlumnosGrupo,
+      reporteGrupal: Boolean(grupoForm.reporteGrupal),
+      formularios: grupoForm.encuestas,
+      estudiantes: estudiantesParaGrupo,
+    };
+
+    setGrupos(prev => [nuevoGrupo, ...prev]);
+    setShowCrearGrupo(false);
+    setGrupoForm(emptyGrupoForm());
+  };
+
+  const handleUploadReporteEstudiante = (grupoId: number, estudianteId: number, event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setGrupos(prev => prev.map(grupo => {
+      if (grupo.id !== grupoId) return grupo;
+
+      return {
+        ...grupo,
+        estudiantes: (grupo.estudiantes ?? []).map(estudiante => estudiante.id === estudianteId ? { ...estudiante, reporte: file.name } : estudiante),
+      };
+    }));
+  };
 
   return (
     <div style={{ display: "flex", minHeight: "100vh", background: COLORS.neutro50, fontFamily: "system-ui, -apple-system, sans-serif" }}>
@@ -251,147 +521,181 @@ export default function DetalleAnalisis() {
           </div>
           <div style={{ display: "flex", gap: 8 }}>
             <ActionButton label="Exportar Datos" icon="ti-download" />
-            <ActionButton label="Subir Reportes" icon="ti-file-upload" />
-            <ActionButton label="Ver Dashboard"  icon="ti-chart-bar" variant="primary" />
           </div>
         </div>
 
         {/* KPIs */}
         <div style={{ display: "flex", gap: 12, marginBottom: 28 }}>
-          <StatCard label="Grupos"     value={GRUPOS_DATA.length} accent />
-          <StatCard label="Estudiantes" value={totalAlumnos} />
-          <StatCard label="Reportes"   value={totalReportes} sub={`${Math.round((totalReportes / totalAlumnos) * 100)}% de alumnos tienen reporte`} />
-          <StatCard label="Pendientes" value={pendientes} sub={`en ${gruposPendientes} grupos`} />
+          <StatCard label="Grupos" value={grupos.length} active={!showEstudiantesTable} onClick={() => setShowEstudiantesTable(false)} />
+          <StatCard label="Estudiantes" value={totalAlumnos} active={showEstudiantesTable} onClick={() => setShowEstudiantesTable(prev => !prev)} />
+          <StatCard label="Datos" value={totalReportes + '%'} sub='de los alumnos han finalizado las encuestas' />
         </div>
 
         {/* Layout principal */}
-        <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
-          {/* Grid de grupos */}
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-              <h2 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: COLORS.neutro900 }}>Grupos</h2>
-              <button
-                onClick={() => setShowCrearGrupo(true)}
-                style={{
-                  display: "flex", alignItems: "center", gap: 6,
-                  padding: "7px 14px", borderRadius: 8,
-                  background: "#fff", border: `1px solid ${COLORS.neutro100}`,
-                  color: COLORS.neutro700, fontSize: 13, fontWeight: 500, cursor: "pointer",
-                }}
-              >
-                <i className="ti ti-plus" style={{ fontSize: 14 }} aria-hidden="true" />
-                Crear Grupo
-              </button>
-            </div>
-
-            <div style={{
-              display: "grid",
-              gridTemplateColumns: grupoSeleccionado ? "repeat(2, minmax(0,1fr))" : "repeat(3, minmax(0,1fr))",
-              gap: 12,
-              transition: "grid-template-columns 0.2s",
-            }}>
-              {GRUPOS_DATA.map(grupo => (
-                <GrupoCard
-                  key={grupo.id}
-                  grupo={grupo}
-                  onClick={() => setGrupoSeleccionado(g => g?.id === grupo.id ? null : grupo)}
-                />
-              ))}
-
-              {/* Tarjeta vacía */}
-              <div
-                onClick={() => setShowCrearGrupo(true)}
-                style={{
-                  border: `1.5px dashed ${COLORS.neutro100}`,
-                  borderRadius: 12,
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  minHeight: 180,
-                  gap: 6,
-                  cursor: "pointer",
-                  color: COLORS.neutro400,
-                  transition: "border-color 0.15s, color 0.15s",
-                }}
-                onMouseEnter={e => {
-                  (e.currentTarget as HTMLDivElement).style.borderColor = COLORS.violeta400;
-                  (e.currentTarget as HTMLDivElement).style.color = COLORS.violeta400;
-                }}
-                onMouseLeave={e => {
-                  (e.currentTarget as HTMLDivElement).style.borderColor = COLORS.neutro100;
-                  (e.currentTarget as HTMLDivElement).style.color = COLORS.neutro400;
-                }}
-              >
-                <i className="ti ti-plus" style={{ fontSize: 22 }} aria-hidden="true" />
-                <span style={{ fontSize: 13 }}>Agregar grupo</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Drawer lateral */}
-          {grupoSeleccionado && (
-            <DrawerFormularios
-              grupo={grupoSeleccionado}
-              onClose={() => setGrupoSeleccionado(null)}
-            />
-          )}
-        </div>
+        {showEstudiantesTable ? (
+          <EstudiantesTable
+            estudiantes={estudiantesTabla}
+            onClose={() => setShowEstudiantesTable(false)}
+            onUploadReporte={handleUploadReporteEstudiante}
+          />
+        ) : (
+          <GruposCards
+            grupos={grupos}
+            grupoSeleccionado={grupoSeleccionado}
+            onSelectGrupo={(grupo) => setGrupoSeleccionado(current => current?.id === grupo.id ? null : grupo)}
+            onCreateGrupo={() => setShowCrearGrupo(true)}
+            onCloseDetalle={() => setGrupoSeleccionado(null)}
+          />
+        )}
       </main>
 
-      {/* Modal Crear Grupo */}
-      {showCrearGrupo && (
-        <Modal title="Crear grupo" onClose={() => setShowCrearGrupo(false)}>
-          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            <div>
-              <label style={{ display: "block", fontSize: 13, fontWeight: 500, color: COLORS.neutro700, marginBottom: 6 }}>
-                Nombre del grupo
-              </label>
-              <input
-                type="text"
-                placeholder="Ej. 1ro A"
-                style={{
-                  width: "100%", padding: "9px 12px",
-                  border: `1px solid ${COLORS.neutro100}`, borderRadius: 8,
-                  fontSize: 14, color: COLORS.neutro900, outline: "none",
-                  boxSizing: "border-box",
-                }}
-              />
-            </div>
-            <div>
-              <label style={{ display: "block", fontSize: 13, fontWeight: 500, color: COLORS.neutro700, marginBottom: 6 }}>
-                Grado
-              </label>
-              <input
-                type="text"
-                placeholder="Ej. Primero de primaria"
-                style={{
-                  width: "100%", padding: "9px 12px",
-                  border: `1px solid ${COLORS.neutro100}`, borderRadius: 8,
-                  fontSize: 14, color: COLORS.neutro900, outline: "none",
-                  boxSizing: "border-box",
-                }}
-              />
-            </div>
-            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", paddingTop: 4 }}>
-              <button onClick={() => setShowCrearGrupo(false)} style={{
-                padding: "9px 18px", borderRadius: 8, fontSize: 14,
-                background: "none", border: `1px solid ${COLORS.neutro100}`,
-                color: COLORS.neutro700, cursor: "pointer",
-              }}>
-                Cancelar
-              </button>
-              <button onClick={() => setShowCrearGrupo(false)} style={{
-                padding: "9px 20px", borderRadius: 8, fontSize: 14,
-                background: COLORS.violeta400, border: "none",
-                color: "#fff", fontWeight: 500, cursor: "pointer",
-              }}>
-                Crear
-              </button>
+      <Drawer open={showCrearGrupo} onClose={() => setShowCrearGrupo(false)} title="Crear grupo">
+        <form onSubmit={handleCreateGrupo} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <div>
+            <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: COLORS.neutro700, marginBottom: 6 }}>
+              Nombre del grupo
+            </label>
+            <input
+              value={grupoForm.nombre}
+              onChange={event => setGrupoForm(prev => ({ ...prev, nombre: event.target.value }))}
+              type="text"
+              placeholder="Ej. 1ro A"
+              style={{
+                width: "100%", padding: "9px 12px",
+                border: `1px solid ${COLORS.neutro100}`, borderRadius: 8,
+                fontSize: 14, color: COLORS.neutro900, outline: "none",
+                boxSizing: "border-box",
+              }}
+            />
+          </div>
+
+          <div>
+            <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: COLORS.neutro700, marginBottom: 6 }}>
+              Grado
+            </label>
+            <input
+              value={grupoForm.grado}
+              onChange={event => setGrupoForm(prev => ({ ...prev, grado: event.target.value }))}
+              type="text"
+              placeholder="Ej. Primero de primaria"
+              style={{
+                width: "100%", padding: "9px 12px",
+                border: `1px solid ${COLORS.neutro100}`, borderRadius: 8,
+                fontSize: 14, color: COLORS.neutro900, outline: "none",
+                boxSizing: "border-box",
+              }}
+            />
+          </div>
+
+          <div>
+            <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: COLORS.neutro700, marginBottom: 6 }}>
+              Encuestas disponibles
+            </label>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {[
+                "Encuesta emociones",
+                "Encuesta bienestar emocional",
+                "Encuesta aprendizaje",
+              ].map(encuesta => {
+                const checked = grupoForm.encuestas.includes(encuesta);
+                return (
+                  <label key={encuesta} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, color: COLORS.neutro700, cursor: "pointer" }}>
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => toggleEncuesta(encuesta)}
+                      style={{ accentColor: COLORS.violeta400 }}
+                    />
+                    {encuesta}
+                  </label>
+                );
+              })}
             </div>
           </div>
-        </Modal>
-      )}
+
+          <div>
+            <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: COLORS.neutro700, marginBottom: 6 }}>
+              Estado de los reportes
+            </label>
+            <select
+              value={grupoForm.estadoReporte}
+              onChange={event => setGrupoForm(prev => ({ ...prev, estadoReporte: event.target.value as "privado" | "publico" }))}
+              style={{ width: "100%", padding: "9px 12px", border: `1px solid ${COLORS.neutro100}`, borderRadius: 8, fontSize: 14, color: COLORS.neutro900, outline: "none", boxSizing: "border-box" }}
+            >
+              <option value="privado">Privado</option>
+              <option value="publico">Público</option>
+            </select>
+          </div>
+
+          <div>
+            <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: COLORS.neutro700, marginBottom: 6 }}>
+              Reporte grupal
+            </label>
+            <input type="file" onChange={handleReporteUpload} style={{ width: "100%", fontSize: 13, color: COLORS.neutro700 }} />
+            {grupoForm.reporteGrupal && (
+              <div style={{ marginTop: 8, fontSize: 12, color: COLORS.verde600 }}>
+                Archivo seleccionado: {grupoForm.reporteGrupal}
+              </div>
+            )}
+          </div>
+
+          <div style={{ border: `1px solid ${COLORS.neutro100}`, borderRadius: 12, padding: 12, background: COLORS.neutro50 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: COLORS.neutro900 }}>Alumnos</div>
+                <div style={{ fontSize: 12, color: COLORS.neutro500 }}>Agrega nombre y CURP de cada alumno.</div>
+              </div>
+              <button type="button" onClick={addAlumno} style={{ padding: "8px 10px", borderRadius: 8, border: `1px solid ${COLORS.violeta100}`, background: COLORS.violeta50, color: COLORS.violeta600, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                + Añadir
+              </button>
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {grupoForm.alumnos.map((alumno, index) => (
+                <div key={alumno.id} style={{ display: "flex", flexDirection: "column", gap: 8, background: "#fff", border: `1px solid ${COLORS.neutro100}`, borderRadius: 10, padding: 10 }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: COLORS.neutro900 }}>Alumno {index + 1}</div>
+                    {grupoForm.alumnos.length > 1 && (
+                      <button type="button" onClick={() => removeAlumno(index)} style={{ border: "none", background: "transparent", color: COLORS.neutro500, cursor: "pointer", fontSize: 14 }} aria-label="Eliminar alumno">
+                        <i className="ti ti-trash" />
+                      </button>
+                    )}
+                  </div>
+                  <input
+                    value={alumno.nombre}
+                    onChange={event => updateAlumno(index, "nombre", event.target.value)}
+                    placeholder="Nombre completo"
+                    style={{ width: "100%", padding: "9px 12px", border: `1px solid ${COLORS.neutro100}`, borderRadius: 8, fontSize: 14, color: COLORS.neutro900, outline: "none", boxSizing: "border-box" }}
+                  />
+                  <input
+                    value={alumno.curp}
+                    onChange={event => updateAlumno(index, "curp", event.target.value)}
+                    placeholder="CURP"
+                    style={{ width: "100%", padding: "9px 12px", border: `1px solid ${COLORS.neutro100}`, borderRadius: 8, fontSize: 14, color: COLORS.neutro900, outline: "none", boxSizing: "border-box" }}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", paddingTop: 4 }}>
+            <button type="button" onClick={() => setShowCrearGrupo(false)} style={{
+              padding: "9px 18px", borderRadius: 8, fontSize: 14,
+              background: "none", border: `1px solid ${COLORS.neutro100}`,
+              color: COLORS.neutro700, cursor: "pointer",
+            }}>
+              Cancelar
+            </button>
+            <button type="submit" style={{
+              padding: "9px 20px", borderRadius: 8, fontSize: 14,
+              background: COLORS.violeta400, border: "none",
+              color: "#fff", fontWeight: 500, cursor: "pointer",
+            }}>
+              Crear
+            </button>
+          </div>
+        </form>
+      </Drawer>
     </div>
   );
 }

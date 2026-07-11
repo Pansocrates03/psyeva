@@ -4,6 +4,7 @@ import "./index.css";
 import MisAnalisis from "./pages/MisAnalisis";
 import DetalleAnalisis from "./pages/DetalleAnalisis";
 import Colegios from "./pages/Colegios";
+import EncuestasBase from "./pages/EncuestasBase";
 
 export function App() {
   return (
@@ -13,6 +14,7 @@ export function App() {
         <Route path="/analisis" element={<DetalleAnalisis />} />
         <Route path="/colegios" element={<Colegios />} />
         <Route path="/escuelas" element={<Colegios />} />
+        <Route path="/encuestas" element={<EncuestasBase />} />
       </Routes>
     </BrowserRouter>
   );
