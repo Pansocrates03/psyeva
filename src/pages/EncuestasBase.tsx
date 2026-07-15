@@ -204,6 +204,7 @@ export default function EncuestasBase() {
           </button>
         </div>
 
+{/* 
         <div style={{ display: "flex", gap: 12, marginBottom: 24 }}>
           <div style={{ flex: 1, background: "#fff", border: `1px solid ${COLORS.neutro100}`, borderRadius: 14, padding: "16px 18px" }}>
             <div style={{ fontSize: 12, color: COLORS.neutro500, marginBottom: 6 }}>Total de encuestas</div>
@@ -218,6 +219,7 @@ export default function EncuestasBase() {
             <div style={{ fontSize: 22, fontWeight: 700, color: COLORS.neutro900 }}>2</div>
           </div>
         </div>
+        */}
 
         <div style={{ background: "#fff", border: `1px solid ${COLORS.neutro100}`, borderRadius: 14, overflow: "hidden" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 20px", borderBottom: `1px solid ${COLORS.neutro100}` }}>
@@ -241,6 +243,7 @@ export default function EncuestasBase() {
               />
             </div>
           </div>
+
 
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>

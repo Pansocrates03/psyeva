@@ -6,6 +6,7 @@ const NAV_ITEMS = [
   { label: "Colegios",       icon: "ti-school",           path: "/colegios" },
   { label: "Encuestas base", icon: "ti-forms",            path: "/encuestas" },
   { label: "Configuración",  icon: "ti-settings",         path: "/configuracion" },
+  { label: "Links externos",  icon: "ti-external-link",     path: "/links" },
 ];
 
 export default function Sidebar() {

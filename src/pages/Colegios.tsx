@@ -10,24 +10,22 @@ type EstadoColegio = "activo" | "en revisión" | "inactivo";
 interface Colegio {
   id: number;
   nombre: string;
-  ciudad: string;
-  estudiantes: number;
+  analisis: number;
   estado: EstadoColegio;
   fecha: string;
 }
 
 interface FormState {
   nombre: string;
-  ciudad: string;
-  estudiantes: string;
+  analisis: string;
   estado: EstadoColegio;
 }
 
 const INITIAL_COLEGIOS: Colegio[] = [
-  { id: 1, nombre: "Colegio Nuevo Continente", ciudad: "Bogotá", estudiantes: 820, estado: "activo", fecha: "14 nov 2026" },
-  { id: 2, nombre: "Instituto Irlanda", ciudad: "Medellín", estudiantes: 640, estado: "activo", fecha: "2 dic 2026" },
-  { id: 3, nombre: "Liceo de la Esperanza", ciudad: "Cali", estudiantes: 310, estado: "en revisión", fecha: "9 ene 2027" },
-  { id: 4, nombre: "Colegio San José", ciudad: "Barranquilla", estudiantes: 480, estado: "inactivo", fecha: "21 mar 2026" },
+  { id: 1, nombre: "Colegio Nuevo Continente", analisis: 12, estado: "activo", fecha: "14 nov 2026" },
+  { id: 2, nombre: "Instituto Irlanda", analisis: 8, estado: "activo", fecha: "2 dic 2026" },
+  { id: 3, nombre: "Liceo de la Esperanza", analisis: 4, estado: "en revisión", fecha: "9 ene 2027" },
+  { id: 4, nombre: "Colegio San José", analisis: 2, estado: "inactivo", fecha: "21 mar 2026" },
 ];
 
 const ESTADO_META: Record<EstadoColegio, { label: string; bg: string; color: string; border: string }> = {
@@ -38,8 +36,7 @@ const ESTADO_META: Record<EstadoColegio, { label: string; bg: string; color: str
 
 const emptyForm = (): FormState => ({
   nombre: "",
-  ciudad: "",
-  estudiantes: "",
+  analisis: "",
   estado: "activo",
 });
 
@@ -50,15 +47,17 @@ export default function Colegios() {
   const [form, setForm] = useState<FormState>(emptyForm());
   const [query, setQuery] = useState("");
 
+  console.log("colegios", colegios);
+
   const filteredColegios = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return colegios;
     return colegios.filter(colegio =>
-      [colegio.nombre, colegio.ciudad].some(value => value.toLowerCase().includes(q))
+      [colegio.nombre].some(value => value.toLowerCase().includes(q))
     );
   }, [colegios, query]);
 
-  const totalEstudiantes = colegios.reduce((sum, colegio) => sum + colegio.estudiantes, 0);
+  const totalAnalisis = colegios.reduce((sum, colegio) => sum + colegio.analisis, 0);
   const activos = colegios.filter(colegio => colegio.estado === "activo").length;
 
   const openCreateModal = () => {
@@ -71,8 +70,7 @@ export default function Colegios() {
     setEditingColegio(colegio);
     setForm({
       nombre: colegio.nombre,
-      ciudad: colegio.ciudad,
-      estudiantes: String(colegio.estudiantes),
+      analisis: String(colegio.analisis),
       estado: colegio.estado,
     });
     setIsModalOpen(true);
@@ -81,15 +79,14 @@ export default function Colegios() {
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    if (!form.nombre.trim() || !form.ciudad.trim()) {
+    if (!form.nombre.trim()) {
       return;
     }
 
     const payload: Colegio = {
       id: editingColegio?.id ?? Date.now(),
       nombre: form.nombre.trim(),
-      ciudad: form.ciudad.trim(),
-      estudiantes: Number(form.estudiantes) || 0,
+      analisis: Number(form.analisis) || 0,
       estado: form.estado,
       fecha: editingColegio?.fecha ?? new Date().toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" }),
     };
@@ -144,8 +141,8 @@ export default function Colegios() {
             <div style={{ fontSize: 22, fontWeight: 700, color: COLORS.neutro900 }}>{colegios.length}</div>
           </div>
           <div style={{ flex: 1, background: "#fff", border: `1px solid ${COLORS.neutro100}`, borderRadius: 14, padding: "16px 18px" }}>
-            <div style={{ fontSize: 12, color: COLORS.neutro500, marginBottom: 6 }}>Estudiantes</div>
-            <div style={{ fontSize: 22, fontWeight: 700, color: COLORS.neutro900 }}>{totalEstudiantes}</div>
+            <div style={{ fontSize: 12, color: COLORS.neutro500, marginBottom: 6 }}>Análisis</div>
+            <div style={{ fontSize: 22, fontWeight: 700, color: COLORS.neutro900 }}>{totalAnalisis}</div>
           </div>
           <div style={{ flex: 1, background: "#fff", border: `1px solid ${COLORS.neutro100}`, borderRadius: 14, padding: "16px 18px" }}>
             <div style={{ fontSize: 12, color: COLORS.neutro500, marginBottom: 6 }}>Activos</div>
@@ -154,27 +151,6 @@ export default function Colegios() {
         </div>
 
         <div style={{ background: "#fff", border: `1px solid ${COLORS.neutro100}`, borderRadius: 14, overflow: "hidden" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 20px", borderBottom: `1px solid ${COLORS.neutro100}` }}>
-            <h2 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: COLORS.neutro900 }}>Listado de colegios</h2>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <i className="ti ti-search" style={{ fontSize: 15, color: COLORS.neutro400 }} aria-hidden="true" />
-              <input
-                type="text"
-                value={query}
-                onChange={event => setQuery(event.target.value)}
-                placeholder="Buscar colegio..."
-                style={{
-                  border: `1px solid ${COLORS.neutro100}`,
-                  borderRadius: 6,
-                  padding: "6px 10px",
-                  fontSize: 13,
-                  color: COLORS.neutro900,
-                  outline: "none",
-                  width: 200,
-                }}
-              />
-            </div>
-          </div>
 
           <Table
             columns={[
@@ -194,16 +170,6 @@ export default function Colegios() {
                 ),
               },
               {
-                key: "ciudad",
-                header: "Ciudad",
-                render: colegio => <span style={{ color: COLORS.neutro700 }}>{colegio.ciudad}</span>,
-              },
-              {
-                key: "estudiantes",
-                header: "Estudiantes",
-                render: colegio => <span style={{ color: COLORS.neutro700 }}>{colegio.estudiantes}</span>,
-              },
-              {
                 key: "estado",
                 header: "Estado",
                 render: colegio => {
@@ -216,12 +182,18 @@ export default function Colegios() {
                 },
               },
               {
+                key: "analisis",
+                header: "Análisis",
+                render: colegio => <span style={{ color: COLORS.neutro700 }}>{colegio.analisis}</span>,
+              },
+              {
                 key: "acciones",
                 header: "Acciones",
                 align: "right",
                 render: colegio => (
                   <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
                     <ActionButton label="Editar" onClick={() => openEditModal(colegio)} />
+                    <ActionButton label="Crear análisis" variant="primary" />
                   </div>
                 ),
               },
@@ -244,29 +216,6 @@ export default function Colegios() {
                 placeholder="Ej. Colegio San Martín"
                 style={{ width: "100%", padding: "9px 12px", border: `1px solid ${COLORS.neutro100}`, borderRadius: 8, fontSize: 14, color: COLORS.neutro900, outline: "none", boxSizing: "border-box" }}
               />
-            </div>
-
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-              <div>
-                <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: COLORS.neutro700, marginBottom: 6 }}>Ciudad</label>
-                <input
-                  value={form.ciudad}
-                  onChange={event => setForm(prev => ({ ...prev, ciudad: event.target.value }))}
-                  placeholder="Ej. Bogotá"
-                  style={{ width: "100%", padding: "9px 12px", border: `1px solid ${COLORS.neutro100}`, borderRadius: 8, fontSize: 14, color: COLORS.neutro900, outline: "none", boxSizing: "border-box" }}
-                />
-              </div>
-              <div>
-                <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: COLORS.neutro700, marginBottom: 6 }}>Estudiantes</label>
-                <input
-                  type="number"
-                  min="0"
-                  value={form.estudiantes}
-                  onChange={event => setForm(prev => ({ ...prev, estudiantes: event.target.value }))}
-                  placeholder="0"
-                  style={{ width: "100%", padding: "9px 12px", border: `1px solid ${COLORS.neutro100}`, borderRadius: 8, fontSize: 14, color: COLORS.neutro900, outline: "none", boxSizing: "border-box" }}
-                />
-              </div>
             </div>
 
             <div>

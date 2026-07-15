@@ -18,6 +18,7 @@ interface TableProps<T> {
   emptyState?: ReactNode;
   rowStyle?: (row: T, index: number) => CSSProperties;
   hoverable?: boolean;
+  onRowClick?: (row: T, index: number) => void;
 }
 
 export default function Table<T>({
@@ -27,6 +28,7 @@ export default function Table<T>({
   emptyState,
   rowStyle,
   hoverable = true,
+  onRowClick,
 }: TableProps<T>) {
   return (
     <table style={{ width: "100%", borderCollapse: "collapse" }}>
@@ -59,7 +61,15 @@ export default function Table<T>({
             style={{
               borderBottom: index < data.length - 1 ? `1px solid ${COLORS.neutro50}` : "none",
               transition: "background 0.1s",
+              cursor: onRowClick ? "pointer" : undefined,
               ...(rowStyle?.(row, index) ?? {}),
+            }}
+            onClick={event => {
+              const target = event.target as HTMLElement | null;
+              if (target?.closest("button, a, input, select, textarea, [data-no-row-click]")) {
+                return;
+              }
+              onRowClick?.(row, index);
             }}
             onMouseEnter={hoverable ? event => {
               event.currentTarget.style.background = COLORS.neutro50;

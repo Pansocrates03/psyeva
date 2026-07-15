@@ -1,4 +1,5 @@
 import { useState, type ComponentProps } from "react";
+import { useNavigate } from "react-router-dom";
 import Sidebar from "../components/Sidebar";
 import ActionButton from "../components/ActionButton";
 import Modal from "../components/Modal";
@@ -24,6 +25,7 @@ const ANALISIS_DATA = [
 export default function MisAnalisis() {
   const [showModal, setShowModal] = useState(false);
   const [filtro, setFiltro] = useState("todos");
+  const navigate = useNavigate();
 
   const activos   = ANALISIS_DATA.filter(a => a.estado === "activo");
   const archivados = ANALISIS_DATA.filter(a => a.estado === "archivado");
@@ -54,9 +56,9 @@ export default function MisAnalisis() {
         </div>
 
         <div style={{ display: "flex", gap: 12, marginBottom: 28 }}>
-          <StatCard label="Todos"      value={ANALISIS_DATA.length} accent />
-          <StatCard label="Activos"    value={activos.length} />
-          <StatCard label="Archivados" value={archivados.length} />
+          <StatCard label="Todos"      value={ANALISIS_DATA.length} onClick={() => setFiltro("todos")} accent={filtro === "todos"} />
+          <StatCard label="Activos"    value={activos.length} onClick={() => setFiltro("activos")} accent={filtro === "activos"} />
+          <StatCard label="Archivados" value={archivados.length} onClick={() => setFiltro("archivados")} accent={filtro === "archivados"} />
         </div>
 
         <div style={{
@@ -65,52 +67,6 @@ export default function MisAnalisis() {
           borderRadius: 14,
           overflow: "hidden",
         }}>
-          <div style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            padding: "14px 20px",
-            borderBottom: `1px solid ${COLORS.neutro100}`,
-          }}>
-            <div style={{ display: "flex", gap: 4 }}>
-              {[
-                { key: "todos",      label: "Todos" },
-                { key: "activos",    label: "Activos" },
-                { key: "archivados", label: "Archivados" },
-              ].map(f => (
-                <button
-                  key={f.key}
-                  onClick={() => setFiltro(f.key)}
-                  style={{
-                    padding: "5px 14px", borderRadius: 6, fontSize: 13,
-                    fontWeight: filtro === f.key ? 500 : 400,
-                    background: filtro === f.key ? COLORS.violeta50 : "transparent",
-                    color: filtro === f.key ? COLORS.violeta600 : COLORS.neutro500,
-                    border: filtro === f.key ? `1px solid ${COLORS.violeta100}` : "1px solid transparent",
-                    cursor: "pointer",
-                  }}
-                >
-                  {f.label}
-                </button>
-              ))}
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <i className="ti ti-search" style={{ fontSize: 16, color: COLORS.neutro400 }} aria-hidden="true" />
-              <input
-                type="text"
-                placeholder="Buscar colegio..."
-                style={{
-                  border: `1px solid ${COLORS.neutro100}`,
-                  borderRadius: 6,
-                  padding: "5px 10px",
-                  fontSize: 13,
-                  color: COLORS.neutro900,
-                  outline: "none",
-                  width: 180,
-                }}
-              />
-            </div>
-          </div>
 
           <Table
             columns={[
@@ -146,7 +102,7 @@ export default function MisAnalisis() {
                 header: "Acciones",
                 align: "right",
                 render: item => (
-                  <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
+                  <div data-no-row-click="true" style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
                     <ActionButton label="Editar" variant="default" />
                     {item.estado === "activo"
                       ? <ActionButton label="Archivar" variant="archive" />
@@ -158,6 +114,7 @@ export default function MisAnalisis() {
             ]}
             data={filtrados}
             getRowKey={item => item.id}
+            onRowClick={item => navigate(`/analisis/${item.id}`)}
             emptyState="No hay análisis para mostrar."
           />
 

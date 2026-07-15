@@ -5,13 +5,15 @@ import MisAnalisis from "./pages/MisAnalisis";
 import DetalleAnalisis from "./pages/DetalleAnalisis";
 import Colegios from "./pages/Colegios";
 import EncuestasBase from "./pages/EncuestasBase";
+import WIP from "./pages/WIP";
 
 export function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<MisAnalisis />} />
-        <Route path="/analisis" element={<DetalleAnalisis />} />
+        <Route path="/" element={<WIP />} />
+        <Route path="/analisis" element={<MisAnalisis />} />
+        <Route path="/analisis/:id" element={<DetalleAnalisis />} />
         <Route path="/colegios" element={<Colegios />} />
         <Route path="/escuelas" element={<Colegios />} />
         <Route path="/encuestas" element={<EncuestasBase />} />
