@@ -1,6 +1,7 @@
 import { type ChangeEvent } from "react";
 import Table from "../../components/Table";
 import COLORS from "../../utils/Colors";
+import ActionButton from "../ActionButton";
 
 // ── Tipos ────────────────────────────────────────────────────
 interface EstudianteGrupo {
@@ -33,12 +34,10 @@ export default function DetalleAnalisisEstudiantes({
           <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: COLORS.neutro900 }}>Estudiantes del instituto</h3>
           <div style={{ fontSize: 12, color: COLORS.neutro500, marginTop: 2 }}>{estudiantes.length} estudiantes registrados</div>
         </div>
-        <button
+        <ActionButton
           onClick={onClose}
-          style={{ border: "none", background: "transparent", color: COLORS.neutro500, cursor: "pointer", fontSize: 14 }}
-        >
-          Ocultar
-        </button>
+          label="Subir reportes"
+        />
       </div>
 
       <div style={{ overflowX: "auto" }}>

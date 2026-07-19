@@ -10,7 +10,7 @@ import DetalleAnalisisDatos from "@/components/layouts/DetalleAnalisisDatos";
 
 // ── Tipos ────────────────────────────────────────────────────
 type EstadoGrupo = "completo" | "en_progreso" | "sin_iniciar";
-type FaseAnalisis = "configuracion" | "publicacion" | "recoleccion" | "archivo";
+type FaseAnalisis = "configuracion" | "encuestas" | "recoleccion" | "archivo";
 
 interface Formulario {
   id: number;
@@ -193,7 +193,7 @@ const buildEstudiantesTabla = (gruposData: Grupo[]): EstudianteTablaRow[] =>
 
 const FASES: Array<{ key: FaseAnalisis; label: string; description: string }> = [
   { key: "configuracion", label: "Configuración", description: "Configuración inicial" },
-  { key: "publicacion", label: "Publicación", description: "Publicación" },
+  { key: "encuestas", label: "Encuestas", description: "Encuestas" },
   { key: "recoleccion", label: "Recopilación", description: "Recopilación" },
   { key: "archivo", label: "Archivo", description: "Archivo" },
 ];
@@ -383,6 +383,7 @@ export default function DetalleAnalisis() {
               12 de febrero de 2026
             </p>
           </div>
+          <div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
             {FASES.map(fase => {
               const active = faseActual === fase.key;
@@ -405,6 +406,10 @@ export default function DetalleAnalisis() {
                 </button>
               );
             })}
+          </div>
+          <div className="fase-descripcion" style={{ marginTop: 4, fontSize: 12, color: COLORS.neutro500 }}>
+            Esta es la descripción de la fase actual: <strong>{FASES.find(fase => fase.key === faseActual)?.description}</strong>
+          </div>
           </div>
         </div>
 

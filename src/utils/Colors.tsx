@@ -4,6 +4,7 @@ const COLORS = {
   violeta200: "#B899FF",
   violeta400: "#8D54FF",
   violeta600: "#6A2FE0",
+  violeta700: "#5A1FAF",
   violeta800: "#4A1BAA",
   violeta900: "#2C0C6B",
 
