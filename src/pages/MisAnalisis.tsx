@@ -103,7 +103,6 @@ export default function MisAnalisis() {
                 align: "right",
                 render: item => (
                   <div data-no-row-click="true" style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
-                    <ActionButton label="Editar" variant="default" />
                     {item.estado === "activo"
                       ? <ActionButton label="Archivar" variant="archive" />
                       : <ActionButton label="Eliminar" variant="danger" />

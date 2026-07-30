@@ -55,9 +55,7 @@ interface EstudianteTablaRow extends EstudianteGrupo {
 
 interface CrearGrupoFormState {
   nombre: string;
-  grado: string;
   encuestas: string[];
-  estadoReporte: "privado" | "publico";
   reporteGrupal: string;
   encuestaEmociones: string;
   encuestaBienestar: string;
@@ -171,9 +169,7 @@ const createAlumno = (): AlumnoForm => ({ id: Date.now() + Math.random(), nombre
 
 const emptyGrupoForm = (): CrearGrupoFormState => ({
   nombre: "",
-  grado: "",
   encuestas: [],
-  estadoReporte: "privado",
   reporteGrupal: "",
   encuestaEmociones: "",
   encuestaBienestar: "",
@@ -192,10 +188,10 @@ const buildEstudiantesTabla = (gruposData: Grupo[]): EstudianteTablaRow[] =>
   );
 
 const FASES: Array<{ key: FaseAnalisis; label: string; description: string }> = [
-  { key: "configuracion", label: "Configuración", description: "Configuración inicial" },
-  { key: "encuestas", label: "Encuestas", description: "Encuestas" },
-  { key: "recoleccion", label: "Recopilación", description: "Recopilación" },
-  { key: "archivo", label: "Archivo", description: "Archivo" },
+  { key: "configuracion", label: "Configuración", description: "Durante la configuración inicial puedes configurar los grupos, seleccionar las encuestas a aplicar y gestionar los estudiantes" },
+  { key: "encuestas", label: "Encuestas", description: "Se publican las encuestas para que los estudiantes las respondan." },
+  { key: "recoleccion", label: "Recopilación", description: "Con los datos recopilados se realiza el análisis y se suben los reportes individuales y grupales." },
+  { key: "archivo", label: "Archivo", description: "Se archivan los resultados del análisis, todos los reportes son públicos." },
 ];
 
 // ── Página principal ──────────────────────────────────────────
@@ -268,14 +264,12 @@ export default function DetalleAnalisis() {
     setGrupoEditandoId(grupo.id);
     setGrupoForm({
       nombre: grupo.nombre,
-      grado: grupo.grado,
       encuestas: grupo.formularios.map(formulario => {
         if (formulario === "Emociones") return "Encuesta emociones";
         if (formulario === "Bienestar") return "Encuesta bienestar emocional";
         if (formulario === "Aprendizaje") return "Encuesta aprendizaje";
         return formulario;
       }),
-      estadoReporte: grupo.reporteGrupal ? "publico" : "privado",
       reporteGrupal: grupo.reporteGrupal ? "Reporte grupal actual" : "",
       encuestaEmociones: "",
       encuestaBienestar: "",
@@ -288,7 +282,7 @@ export default function DetalleAnalisis() {
   const handleCreateGrupo = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    if (!grupoForm.nombre.trim() || !grupoForm.grado.trim()) return;
+    if (!grupoForm.nombre.trim()) return;
 
     const alumnosValidos = grupoForm.alumnos.filter(alumno => alumno.nombre.trim() || alumno.curp.trim());
     const totalAlumnosGrupo = alumnosValidos.length;
@@ -304,7 +298,6 @@ export default function DetalleAnalisis() {
         ? {
             ...grupo,
             nombre: grupoForm.nombre.trim(),
-            grado: grupoForm.grado.trim(),
             reporteGrupal: Boolean(grupoForm.reporteGrupal),
             formularios: grupoForm.encuestas,
             estudiantes: estudiantesParaGrupo,
@@ -318,7 +311,6 @@ export default function DetalleAnalisis() {
       const nuevoGrupo: Grupo = {
         id: Date.now(),
         nombre: grupoForm.nombre.trim(),
-        grado: grupoForm.grado.trim(),
         estado: totalAlumnosGrupo > 0 ? "en_progreso" : "sin_iniciar",
         alumnosEncuestados: 0,
         totalAlumnos: totalAlumnosGrupo,
@@ -408,7 +400,7 @@ export default function DetalleAnalisis() {
             })}
           </div>
           <div className="fase-descripcion" style={{ marginTop: 4, fontSize: 12, color: COLORS.neutro500 }}>
-            Esta es la descripción de la fase actual: <strong>{FASES.find(fase => fase.key === faseActual)?.description}</strong>
+            {FASES.find(fase => fase.key === faseActual)?.description}
           </div>
           </div>
         </div>
@@ -497,24 +489,6 @@ export default function DetalleAnalisis() {
             />
           </div>
 
-          <div>
-            <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: COLORS.neutro700, marginBottom: 6 }}>
-              Grado
-            </label>
-            <input
-              value={grupoForm.grado}
-              onChange={event => setGrupoForm(prev => ({ ...prev, grado: event.target.value }))}
-              type="text"
-              placeholder="Ej. Primero de primaria"
-              style={{
-                width: "100%", padding: "9px 12px",
-                border: `1px solid ${COLORS.neutro100}`, borderRadius: 8,
-                fontSize: 14, color: COLORS.neutro900, outline: "none",
-                boxSizing: "border-box",
-              }}
-            />
-          </div>
-
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: COLORS.neutro700, marginBottom: 6 }}>
               Encuestas disponibles
@@ -567,20 +541,6 @@ export default function DetalleAnalisis() {
               ))}
             </select>
             
-          </div>
-
-          <div>
-            <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: COLORS.neutro700, marginBottom: 6 }}>
-              Estado de los reportes
-            </label>
-            <select
-              value={grupoForm.estadoReporte}
-              onChange={event => setGrupoForm(prev => ({ ...prev, estadoReporte: event.target.value as "privado" | "publico" }))}
-              style={{ width: "100%", padding: "9px 12px", border: `1px solid ${COLORS.neutro100}`, borderRadius: 8, fontSize: 14, color: COLORS.neutro900, outline: "none", boxSizing: "border-box" }}
-            >
-              <option value="privado">Privado</option>
-              <option value="publico">Público</option>
-            </select>
           </div>
 
           <div>

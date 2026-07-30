@@ -3,6 +3,7 @@ import Sidebar from "../components/Sidebar";
 import ActionButton from "../components/ActionButton";
 import Drawer from "../components/Drawer";
 import COLORS from "../utils/Colors";
+import StatCard from "@/components/StatCard";
 
 type CategoriaEncuesta = "Emociones" | "Bienestar Psicológico" | "Aprendizaje";
 
@@ -63,15 +64,16 @@ export default function EncuestasBase() {
   const [form, setForm] = useState<FormState>(emptyForm());
   const [query, setQuery] = useState("");
   const [expandedIncisos, setExpandedIncisos] = useState<Record<number, boolean>>({});
+  const [filter, setFilter] = useState<CategoriaEncuesta | "Todas">("Todas");
 
   const filteredEncuestas = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return encuestas;
-
-    return encuestas.filter(encuesta =>
-      [encuesta.nombre, encuesta.categoria, encuesta.descripcion].some(value => value.toLowerCase().includes(q))
-    );
-  }, [encuestas, query]);
+    return encuestas.filter(encuesta => {
+      const matchesFilter = filter === "Todas" || encuesta.categoria === filter;
+      const matchesQuery = !q || [encuesta.nombre, encuesta.categoria, encuesta.descripcion].some(value => value.toLowerCase().includes(q));
+      return matchesFilter && matchesQuery;
+    });
+  }, [encuestas, query, filter]);
 
   const totalPreguntas = encuestas.reduce((sum, encuesta) => sum + encuesta.preguntas, 0);
 
@@ -204,45 +206,18 @@ export default function EncuestasBase() {
           </button>
         </div>
 
-{/* 
+
         <div style={{ display: "flex", gap: 12, marginBottom: 24 }}>
-          <div style={{ flex: 1, background: "#fff", border: `1px solid ${COLORS.neutro100}`, borderRadius: 14, padding: "16px 18px" }}>
-            <div style={{ fontSize: 12, color: COLORS.neutro500, marginBottom: 6 }}>Total de encuestas</div>
-            <div style={{ fontSize: 22, fontWeight: 700, color: COLORS.neutro900 }}>{encuestas.length}</div>
-          </div>
-          <div style={{ flex: 1, background: "#fff", border: `1px solid ${COLORS.neutro100}`, borderRadius: 14, padding: "16px 18px" }}>
-            <div style={{ fontSize: 12, color: COLORS.neutro500, marginBottom: 6 }}>Preguntas</div>
-            <div style={{ fontSize: 22, fontWeight: 700, color: COLORS.neutro900 }}>{totalPreguntas}</div>
-          </div>
-          <div style={{ flex: 1, background: "#fff", border: `1px solid ${COLORS.neutro100}`, borderRadius: 14, padding: "16px 18px" }}>
-            <div style={{ fontSize: 12, color: COLORS.neutro500, marginBottom: 6 }}>Activas</div>
-            <div style={{ fontSize: 22, fontWeight: 700, color: COLORS.neutro900 }}>2</div>
-          </div>
+          <StatCard label="Total de encuestas" accent={filter === "Todas"} onClick={() => setFilter('Todas')} value={encuestas.length} />
+          <StatCard label="Encuestas de aprendizaje" accent={filter === "Aprendizaje"} onClick={() => setFilter('Aprendizaje')} value={encuestas.filter(e => e.categoria === "Aprendizaje").length} />
+          <StatCard label="Encuestas de bienestar" accent={filter === "Bienestar Psicológico"} onClick={() => setFilter('Bienestar Psicológico')} value={encuestas.filter(e => e.categoria === "Bienestar Psicológico").length} />
+          <StatCard label="Encuestas de emociones" accent={filter === "Emociones"} onClick={() => setFilter('Emociones')} value={encuestas.filter(e => e.categoria === "Emociones").length} />
         </div>
-        */}
+
+
+   
 
         <div style={{ background: "#fff", border: `1px solid ${COLORS.neutro100}`, borderRadius: 14, overflow: "hidden" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 20px", borderBottom: `1px solid ${COLORS.neutro100}` }}>
-            <h2 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: COLORS.neutro900 }}>Listado de encuestas base</h2>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <i className="ti ti-search" style={{ fontSize: 15, color: COLORS.neutro400 }} aria-hidden="true" />
-              <input
-                type="text"
-                value={query}
-                onChange={event => setQuery(event.target.value)}
-                placeholder="Buscar encuesta..."
-                style={{
-                  border: `1px solid ${COLORS.neutro100}`,
-                  borderRadius: 6,
-                  padding: "6px 10px",
-                  fontSize: 13,
-                  color: COLORS.neutro900,
-                  outline: "none",
-                  width: 220,
-                }}
-              />
-            </div>
-          </div>
 
 
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
