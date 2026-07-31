@@ -1,31 +1,31 @@
-type EstadoColegio = "activo" | "en revisión" | "inactivo";
 export interface Colegio {
-  id: number;
+  id: string;
+  created_at: string;
+}
+
+export interface Analisis {
+  id: string;
+  colegio_id: string;
   nombre: string;
-  ciudad: string;
-  estudiantes: number;
-  estado: EstadoColegio;
   fecha: string;
+  created_at: string;
 }
 
-export interface EstudianteGrupo {
-  id: number;
-  nombre: string;
-  curp: string;
-  reporte?: string;
+type Categoria = "aprendizaje" | "bienestar_psicologico" | "emociones";
+export interface Formulario {
+  id: string;
+  titulo: string;
+  descripcion: string;
+  categoria: Categoria;
+  activo: boolean;
+  created_at: string;
 }
 
-type EstadoGrupo = "completo" | "en_progreso" | "sin_iniciar";
-export interface Grupo {
-  id: number;
-  nombre: string;
-  grado: string;
-  estado: EstadoGrupo;
-  alumnosEncuestados: number;
-  totalAlumnos: number;
-  reportesPublicados: number;
-  totalReportes: number;
-  reporteGrupal: boolean;
-  formularios: string[];
-  estudiantes?: EstudianteGrupo[];
+export interface Pregunta {
+  id: string;
+  formulario_id: string;
+  texto: string;
+  imagen_url: string | null;
+  opciones_respuesta: string[];
+  
 }
