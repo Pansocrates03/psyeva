@@ -10,22 +10,22 @@ type EstadoColegio = "activo" | "en revisión" | "inactivo";
 interface Colegio {
   id: number;
   nombre: string;
-  analisis: number;
+  evaluaciones: number;
   estado: EstadoColegio;
   fecha: string;
 }
 
 interface FormState {
   nombre: string;
-  analisis: string;
+  evaluaciones: string;
   estado: EstadoColegio;
 }
 
 const INITIAL_COLEGIOS: Colegio[] = [
-  { id: 1, nombre: "Colegio Nuevo Continente", analisis: 12, estado: "activo", fecha: "14 nov 2026" },
-  { id: 2, nombre: "Instituto Irlanda", analisis: 8, estado: "activo", fecha: "2 dic 2026" },
-  { id: 3, nombre: "Liceo de la Esperanza", analisis: 4, estado: "en revisión", fecha: "9 ene 2027" },
-  { id: 4, nombre: "Colegio San José", analisis: 2, estado: "inactivo", fecha: "21 mar 2026" },
+  { id: 1, nombre: "Colegio Nuevo Continente", evaluaciones: 12, estado: "activo", fecha: "14 nov 2026" },
+  { id: 2, nombre: "Instituto Irlanda", evaluaciones: 8, estado: "activo", fecha: "2 dic 2026" },
+  { id: 3, nombre: "Liceo de la Esperanza", evaluaciones: 4, estado: "en revisión", fecha: "9 ene 2027" },
+  { id: 4, nombre: "Colegio San José", evaluaciones: 2, estado: "inactivo", fecha: "21 mar 2026" },
 ];
 
 const ESTADO_META: Record<EstadoColegio, { label: string; bg: string; color: string; border: string }> = {
@@ -36,9 +36,18 @@ const ESTADO_META: Record<EstadoColegio, { label: string; bg: string; color: str
 
 const emptyForm = (): FormState => ({
   nombre: "",
-  analisis: "",
+  evaluaciones: "",
   estado: "activo",
 });
+
+const toNumber = (value: unknown): number => {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
 
 export default function Colegios() {
   const [colegios, setColegios] = useState<Colegio[]>(INITIAL_COLEGIOS);
@@ -57,7 +66,7 @@ export default function Colegios() {
     );
   }, [colegios, query]);
 
-  const totalAnalisis = colegios.reduce((sum, colegio) => sum + colegio.analisis, 0);
+  const totalEvaluaciones = useMemo(() => colegios.reduce((sum, colegio) => sum + toNumber(colegio.evaluaciones), 0), [colegios]);
   const activos = colegios.filter(colegio => colegio.estado === "activo").length;
 
   const openCreateModal = () => {
@@ -70,7 +79,7 @@ export default function Colegios() {
     setEditingColegio(colegio);
     setForm({
       nombre: colegio.nombre,
-      analisis: String(colegio.analisis),
+      evaluaciones: String(colegio.evaluaciones),
       estado: colegio.estado,
     });
     setIsModalOpen(true);
@@ -86,7 +95,7 @@ export default function Colegios() {
     const payload: Colegio = {
       id: editingColegio?.id ?? Date.now(),
       nombre: form.nombre.trim(),
-      analisis: Number(form.analisis) || 0,
+      evaluaciones: toNumber(form.evaluaciones),
       estado: form.estado,
       fecha: editingColegio?.fecha ?? new Date().toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" }),
     };
@@ -141,8 +150,8 @@ export default function Colegios() {
             <div style={{ fontSize: 22, fontWeight: 700, color: COLORS.neutro900 }}>{colegios.length}</div>
           </div>
           <div style={{ flex: 1, background: "#fff", border: `1px solid ${COLORS.neutro100}`, borderRadius: 14, padding: "16px 18px" }}>
-            <div style={{ fontSize: 12, color: COLORS.neutro500, marginBottom: 6 }}>Análisis</div>
-            <div style={{ fontSize: 22, fontWeight: 700, color: COLORS.neutro900 }}>{totalAnalisis}</div>
+            <div style={{ fontSize: 12, color: COLORS.neutro500, marginBottom: 6 }}>Evaluaciones</div>
+            <div style={{ fontSize: 22, fontWeight: 700, color: COLORS.neutro900 }}>{totalEvaluaciones}</div>
           </div>
           <div style={{ flex: 1, background: "#fff", border: `1px solid ${COLORS.neutro100}`, borderRadius: 14, padding: "16px 18px" }}>
             <div style={{ fontSize: 12, color: COLORS.neutro500, marginBottom: 6 }}>Activos</div>
@@ -182,9 +191,9 @@ export default function Colegios() {
                 },
               },
               {
-                key: "analisis",
-                header: "Análisis",
-                render: colegio => <span style={{ color: COLORS.neutro700 }}>{colegio.analisis}</span>,
+                key: "evaluaciones",
+                header: "Evaluaciones",
+                render: colegio => <span style={{ color: COLORS.neutro700 }}>{colegio.evaluaciones}</span>,
               },
               {
                 key: "acciones",
@@ -193,7 +202,7 @@ export default function Colegios() {
                 render: colegio => (
                   <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
                     <ActionButton label="Editar" onClick={() => openEditModal(colegio)} />
-                    <ActionButton label="Crear análisis" variant="primary" />
+                    <ActionButton label="Crear evaluación" variant="primary" />
                   </div>
                 ),
               },

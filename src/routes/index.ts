@@ -1,14 +1,14 @@
 // ── Admin ─────────────────────────────────────────────────────
-export { analisisRoutes }         from "./admin/analisis";
-export { analisisIdRoutes }       from "./admin/analisisId";
-//export { analisisExportarRoutes } from "./admin/analisisExportar";
-//export { gruposIdRoutes }         from "./admin/gruposId";
-//export { reportesRoutes }         from "./admin/reportes";
-//export { reportesPublicarRoutes } from "./admin/reportesPublicar";
+export { evaluacionRoutes }         from "./admin/evaluacion";
+export { evaluacionIdRoutes }       from "./admin/evaluacionId";
+export { evaluacionExportarRoutes } from "./admin/evaluacionExportar";
+export { evaluacionEstadoRoutes }   from "./admin/evaluacionEstado";
+export { gruposIdRoutes }           from "./admin/gruposId";
+export { reportesRoutes }           from "./admin/reportes";
 
 // ── Facilitador ───────────────────────────────────────────────
-//export { verificarRoutes }        from "./facilitador/verificar";
-//export { facilitadorGruposRoutes} from "./facilitador/grupos";
-//export { estudiantesRoutes }      from "./facilitador/estudiantes";
-//export { sesionesRoutes }         from "./facilitador/sesiones";
-//export { facilitadorReportesRoutes } from "./facilitador/reportes";
+export { verificarRoutes }              from "./facilitador/verificar";
+export { facilitadorGruposRoutes }      from "./facilitador/grupos";
+export { estudiantesRoutes }            from "./facilitador/estudiantes";
+export { sesionesRoutes }               from "./facilitador/sesiones";
+export { facilitadorReportesRoutes }    from "./facilitador/reportes";

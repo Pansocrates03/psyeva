@@ -3,18 +3,18 @@ import index from "./index.html";
 
 import {
   // Admin
-  analisisRoutes,
-  analisisIdRoutes,
-  //analisisExportarRoutes,
-  //gruposIdRoutes,
-  //reportesRoutes,
-  //reportesPublicarRoutes,
+  evaluacionRoutes,
+  evaluacionIdRoutes,
+  evaluacionExportarRoutes,
+  evaluacionEstadoRoutes,
+  gruposIdRoutes,
+  reportesRoutes,
   // Facilitador
-  //verificarRoutes,
-  //facilitadorGruposRoutes,
-  //estudiantesRoutes,
-  //sesionesRoutes,
-  //facilitadorReportesRoutes,
+  verificarRoutes,
+  facilitadorGruposRoutes,
+  estudiantesRoutes,
+  sesionesRoutes,
+  facilitadorReportesRoutes,
 } from "./routes";
 
 const server = serve({
@@ -22,19 +22,21 @@ const server = serve({
     "/*": index,
 
     // ── Admin ───────────────────────────────────────────────
-    "/api/admin/analisis":              analisisRoutes,
-    "/api/admin/analisis/:id":          analisisIdRoutes,
-    //"/api/admin/analisis/:id/exportar": analisisExportarRoutes,
-    //"/api/admin/grupos/:id":            gruposIdRoutes,
-    //"/api/admin/reportes":              reportesRoutes,
-    //"/api/admin/reportes/:id/publicar": reportesPublicarRoutes,
+    "/api/admin/evaluaciones":                  evaluacionRoutes,
+    "/api/admin/evaluaciones/:id":              evaluacionIdRoutes,
+    "/api/admin/evaluaciones/:id/exportar":     evaluacionExportarRoutes,
+    "/api/admin/evaluaciones/:id/estado":       evaluacionEstadoRoutes,
+    "/api/admin/grupos/:id":                    gruposIdRoutes,
+    "/api/admin/reportes":                      reportesRoutes,
 
     // ── Facilitador ─────────────────────────────────────────
-    //"/api/facilitador/verificar":            verificarRoutes,
-    //"/api/facilitador/grupos":               facilitadorGruposRoutes,
-    //"/api/facilitador/estudiantes/:grupoId": estudiantesRoutes,
-    //"/api/facilitador/sesiones":             sesionesRoutes,
-    //"/api/facilitador/reportes":             facilitadorReportesRoutes,
+    "/api/facilitador/verificar":                    verificarRoutes,
+    "/api/facilitador/grupos":                       facilitadorGruposRoutes,
+    "/api/facilitador/estudiantes/:grupoId":         estudiantesRoutes,
+    "/api/facilitador/sesiones":                     sesionesRoutes,
+    "/api/facilitador/sesiones/respuesta":           sesionesRoutes,
+    "/api/facilitador/sesiones/completar":           sesionesRoutes,
+    "/api/facilitador/reportes":                     facilitadorReportesRoutes,
   },
 
   development: process.env.NODE_ENV !== "production" && {

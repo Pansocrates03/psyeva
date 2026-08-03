@@ -1,7 +1,7 @@
 import COLORS from "../utils/Colors";
 
 const NAV_ITEMS = [
-  { label: "Mis análisis",   icon: "ti-clipboard-list",   path: "/analisis" },
+  { label: "Evaluaciones",   icon: "ti-clipboard-list",   path: "/analisis" },
   { label: "Colegios",       icon: "ti-school",           path: "/colegios" },
   { label: "Encuestas base", icon: "ti-forms",            path: "/encuestas" },
   { label: "Configuración",  icon: "ti-settings",         path: "/configuracion" },

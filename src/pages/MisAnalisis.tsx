@@ -40,7 +40,7 @@ export default function MisAnalisis() {
 
       <main style={{ flex: 1, padding: "32px 40px", minWidth: 0 }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
-          <h1 style={{ margin: 0, fontSize: 24, fontWeight: 500, color: COLORS.neutro900 }}>Mis análisis</h1>
+          <h1 style={{ margin: 0, fontSize: 24, fontWeight: 500, color: COLORS.neutro900 }}>Evaluaciones</h1>
           <button
             onClick={() => setShowModal(true)}
             style={{
@@ -51,7 +51,7 @@ export default function MisAnalisis() {
             }}
           >
             <i className="ti ti-plus" style={{ fontSize: 16 }} aria-hidden="true" />
-            Crear análisis
+            Crear evaluación
           </button>
         </div>
 
