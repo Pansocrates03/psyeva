@@ -1,11 +1,11 @@
 import COLORS from "../utils/Colors";
 
 const NAV_ITEMS = [
-  { label: "Evaluaciones",   icon: "ti-clipboard-list",   path: "/analisis" },
-  { label: "Colegios",       icon: "ti-school",           path: "/colegios" },
-  { label: "Encuestas base", icon: "ti-forms",            path: "/encuestas" },
-  { label: "Configuración",  icon: "ti-settings",         path: "/configuracion" },
-  { label: "Links externos",  icon: "ti-external-link",     path: "/test-encuesta" },
+  { label: "Evaluaciones",   icon: "ti-clipboard-list",   path: "/admin/evaluaciones" },
+  { label: "Colegios",       icon: "ti-school",           path: "/admin/colegios" },
+  { label: "Encuestas base", icon: "ti-forms",            path: "/admin/encuestas" },
+  { label: "Configuración",  icon: "ti-settings",         path: "/admin/configuracion" },
+  { label: "Links externos",  icon: "ti-external-link",     path: "/admin/test-encuesta" },
 ];
 
 export default function Sidebar() {

@@ -113,7 +113,7 @@ export default function MisAnalisis() {
             ]}
             data={filtrados}
             getRowKey={item => item.id}
-            onRowClick={item => navigate(`/analisis/${item.id}`)}
+            onRowClick={item => navigate(`/evaluaciones/${item.id}`)}
             emptyState="No hay análisis para mostrar."
           />
 
