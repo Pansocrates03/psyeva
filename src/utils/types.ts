@@ -1,20 +1,24 @@
-type CategoriaFormulario = "aprendizaje" | "bienestar_psicologico" | "emociones";
+export type CategoriaFormulario = "aprendizaje" | "bienestar_psicologico" | "emociones";
+export type EstadoSesion = "pendiente" | "en_progreso" | "completada";
+export type TipoReporte = "individual" | "grupal" | "general";
+
+// ── Filas de tabla (tal como las devuelve la API, camelCase) ───
 
 export interface Colegio {
   id: string;
   nombre: string;
-  clave_acceso: string;
-  created_at: string;
+  claveAcceso: string;
+  createdAt: string;
 }
 
 export interface Evaluacion {
   id: string;
-  colegio_id: string;
+  colegioId: string;
   nombre: string;
-  acepta_respuestas: boolean;
-  reportes_publicados: boolean;
+  aceptaRespuestas: boolean;
+  reportesPublicados: boolean;
   fecha: string;
-  created_at: string;
+  createdAt: string;
 }
 
 export interface Formulario {
@@ -22,59 +26,117 @@ export interface Formulario {
   titulo: string;
   descripcion: string;
   categoria: CategoriaFormulario;
-  created_at: string;
-}
-
-export interface Grupo {
-  id: string;
-  evaluacion_id: string;
-  form_emociones_id: string | null;
-  form_bienpsic_id: string | null;
-  form_aprendizaje_id: string | null;
-  nombre: string;
-  created_at: string;
+  createdAt: string;
 }
 
 export interface Pregunta {
   id: string;
-  formulario_id: string;
+  formularioId: string;
   texto: string;
-  imagen_url: string | null;
-  opciones_respuesta: string[]; 
+  imagenUrl: string | null;
+  opcionesRespuesta: Array<{ valor: number; texto: string }>;
+  // Presentes solo cuando la pregunta viene junto al estado de una sesión
+  textoLibre?: string | null;
+  respondidaAt?: string | null;
+}
+
+export interface Grupo {
+  id: string;
+  evaluacionId: string;
+  formEmocionesId: string | null;
+  formBienpsicId: string | null;
+  formAprendizajeId: string | null;
+  nombre: string;
+  createdAt: string;
 }
 
 export interface Estudiante {
   id: string;
-  grupo_id: string;
-  nombre_completo: string;
-  curp: string;
-  created_at: string;
+  grupoId: string;
+  nombreCompleto: string;
+  curp: string | null;
+  createdAt: string;
 }
 
 export interface Sesion {
   id: string;
-  estudiante_id: string;
-  formulario_id: string;
-  evaluacion_id: string;
-  estado: "iniciada" | "completada";
-  iniciada_at: string | null;
-  completada_at: string | null;
+  estudianteId: string;
+  formularioId: string;
+  evaluacionId: string;
+  estado: EstadoSesion;
+  iniciadaAt: string | null;
+  completadaAt: string | null;
 }
 
 export interface Reporte {
   id: string;
-  tipo: "individual" | "grupal" | "general";
-  evaluacion_id: string;
-  grupo_id: string | null;
-  estudiante_id: string | null;
-  archivo_url: string;
-  created_at: string;
+  tipo: TipoReporte;
+  evaluacionId: string;
+  grupoId: string | null;
+  estudianteId: string | null;
+  archivoUrl: string;
+  createdAt: string;
 }
 
 export interface Respuesta {
   id: string;
-  sesion_id: string;
-  pregunta_id: string;
-  texto_libre: string | null;
-  respondida_at: string | null;
+  sesionId: string;
+  preguntaId: string;
+  textoLibre: string | null;
+  respondidaAt: string | null;
+}
+
+// ── Vistas / agregados (KPIs calculados en Postgres) ────────────
+// Los conteos vienen de COUNT(*) en Postgres, que postgres.js
+// devuelve como string (bigint no cabe siempre en un number de JS).
+
+export interface EvaluacionConProgreso {
+  evaluacionId: string;
+  nombre: string;
+  fecha: string;
+  aceptaRespuestas: boolean;
+  reportesPublicados: boolean;
+  colegioId: string;
+  colegioNombre: string;
+  totalGrupos: string;
+  totalAlumnos: string;
+  sesionesCompletadas: string;
+  sesionesPendientes: string;
+  totalReportes: string;
+}
+
+export interface GrupoConProgreso {
+  grupoId: string;
+  grupoNombre: string;
+  evaluacionId: string;
+  formEmocionesId: string | null;
+  formBienpsicId: string | null;
+  formAprendizajeId: string | null;
+  totalAlumnos: string;
+  sesionesCompletadas: string;
+  sesionesEnProgreso: string;
+  sesionesPendientes: string;
+  estadoGrupo: "sin_alumnos" | "completo" | "en_progreso" | "pendiente";
+  reportesIndividuales: string;
+  reporteGrupal: string;
+  // Presentes en /api/admin/grupos/:id y /api/facilitador/grupos
+  formEmocionesTitulo?: string | null;
+  formBienpsicTitulo?: string | null;
+  formAprendizajeTitulo?: string | null;
+}
+
+export interface ColegioConTotalEvaluaciones extends Colegio {
+  totalEvaluaciones: string;
+}
+
+export interface EstudianteConEstado {
+  estudianteId: string;
+  nombreCompleto: string;
+  curp: string | null;
+  grupoId: string;
+  evaluacionId: string;
+  estadoEmociones: EstadoSesion;
+  estadoBienestar: EstadoSesion;
+  estadoAprendizaje: EstadoSesion;
+  todoCompletado: boolean;
 }
