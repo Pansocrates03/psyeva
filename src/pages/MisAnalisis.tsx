@@ -1,4 +1,4 @@
-import { useState, type ComponentProps } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Sidebar from "../components/Sidebar";
 import ActionButton from "../components/ActionButton";
@@ -7,32 +7,108 @@ import EstadoBadge from "../components/EstadoBadge";
 import StatCard from "../components/StatCard";
 import Table from "../components/Table";
 import COLORS from "../utils/Colors";
+import { databaseService, ApiError } from "../services/databaseService";
+import type { ColegioConTotalEvaluaciones, EvaluacionConProgreso } from "../utils/types";
 
+type Filtro = "todos" | "aceptando" | "publicadas";
 
-const ANALISIS_DATA = [
-  { id: 1, colegio: "Colegio Nuevo Continente", estado: "activo",    fecha: "14 de noviembre de 2026" },
-  { id: 2, colegio: "Instituto Irlanda",         estado: "activo",    fecha: "2 de diciembre de 2026" },
-  { id: 3, colegio: "Tec de Monterrey",          estado: "activo",    fecha: "14 de noviembre de 2026" },
-  { id: 4, colegio: "Campamento Kikiwaka",       estado: "activo",    fecha: "2 de diciembre de 2026" },
-  { id: 5, colegio: "Colegio Nuevo Continente",  estado: "archivado", fecha: "14 de noviembre de 2026" },
-  { id: 6, colegio: "Instituto Irlanda",          estado: "archivado", fecha: "2 de diciembre de 2026" },
-  { id: 7, colegio: "Tec de Monterrey",           estado: "archivado", fecha: "14 de noviembre de 2026" },
-  { id: 8, colegio: "Instituto Irlanda",          estado: "archivado", fecha: "2 de diciembre de 2026" },
-  { id: 9, colegio: "Campamento Kikiwaka",        estado: "archivado", fecha: "14 de noviembre de 2026" },
-  { id: 10, colegio: "Colegio Nuevo Continente", estado: "archivado", fecha: "2 de diciembre de 2026" },
-];
+function estadoDe(evaluacion: EvaluacionConProgreso) {
+  if (evaluacion.aceptaRespuestas) return "activo" as const;
+  if (evaluacion.reportesPublicados) return "archivado" as const;
+  return "sin_iniciar" as const;
+}
+
+function formatFecha(fecha: string) {
+  return new Date(`${fecha}T00:00:00`).toLocaleDateString("es-ES", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
 
 export default function MisAnalisis() {
-  const [showModal, setShowModal] = useState(false);
-  const [filtro, setFiltro] = useState("todos");
   const navigate = useNavigate();
 
-  const activos   = ANALISIS_DATA.filter(a => a.estado === "activo");
-  const archivados = ANALISIS_DATA.filter(a => a.estado === "archivado");
+  const [evaluaciones, setEvaluaciones] = useState<EvaluacionConProgreso[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [filtro, setFiltro] = useState<Filtro>("todos");
 
-  const filtrados = filtro === "activos"    ? activos
-                  : filtro === "archivados" ? archivados
-                  : ANALISIS_DATA;
+  const [showModal, setShowModal] = useState(false);
+  const [colegios, setColegios] = useState<ColegioConTotalEvaluaciones[]>([]);
+  const [form, setForm] = useState({ colegioId: "", nombre: "", fecha: "" });
+  const [formError, setFormError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  const cargarEvaluaciones = () => {
+    setLoading(true);
+    setError(null);
+    databaseService.admin.listarEvaluaciones()
+      .then(setEvaluaciones)
+      .catch(err => setError(err instanceof ApiError ? err.message : "No se pudieron cargar las evaluaciones"))
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(cargarEvaluaciones, []);
+
+  const aceptando = evaluaciones.filter(e => e.aceptaRespuestas);
+  const publicadas = evaluaciones.filter(e => e.reportesPublicados);
+
+  const filtradas = filtro === "aceptando" ? aceptando
+                   : filtro === "publicadas" ? publicadas
+                   : evaluaciones;
+
+  const abrirCrearModal = () => {
+    setForm({ colegioId: "", nombre: "", fecha: "" });
+    setFormError(null);
+    setShowModal(true);
+    databaseService.admin.listarColegios()
+      .then(setColegios)
+      .catch(err => setFormError(err instanceof ApiError ? err.message : "No se pudieron cargar los colegios"));
+  };
+
+  const handleCrear = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!form.colegioId || !form.nombre.trim() || !form.fecha) {
+      setFormError("Completa colegio, nombre y fecha.");
+      return;
+    }
+
+    setSaving(true);
+    setFormError(null);
+    try {
+      await databaseService.admin.crearEvaluacion({
+        colegioId: form.colegioId,
+        nombre: form.nombre.trim(),
+        fecha: form.fecha,
+      });
+      setShowModal(false);
+      cargarEvaluaciones();
+    } catch (err) {
+      setFormError(err instanceof ApiError ? err.message : "No se pudo crear la evaluación");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const cerrarEvaluacion = async (id: string) => {
+    try {
+      await databaseService.admin.cambiarEstadoEvaluacion(id, "aceptaRespuestas", false);
+      cargarEvaluaciones();
+    } catch (err) {
+      alert(err instanceof ApiError ? err.message : "No se pudo cerrar la evaluación");
+    }
+  };
+
+  const eliminarEvaluacion = async (id: string) => {
+    if (!confirm("¿Eliminar esta evaluación? Esta acción no se puede deshacer.")) return;
+    try {
+      await databaseService.admin.eliminarEvaluacion(id);
+      cargarEvaluaciones();
+    } catch (err) {
+      alert(err instanceof ApiError ? err.message : "No se pudo eliminar la evaluación");
+    }
+  };
 
   return (
     <div style={{ display: "flex", minHeight: "100vh", background: COLORS.neutro50, fontFamily: "system-ui, -apple-system, sans-serif" }}>
@@ -42,7 +118,7 @@ export default function MisAnalisis() {
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
           <h1 style={{ margin: 0, fontSize: 24, fontWeight: 500, color: COLORS.neutro900 }}>Evaluaciones</h1>
           <button
-            onClick={() => setShowModal(true)}
+            onClick={abrirCrearModal}
             style={{
               display: "flex", alignItems: "center", gap: 7,
               padding: "9px 18px", borderRadius: 8,
@@ -56,9 +132,9 @@ export default function MisAnalisis() {
         </div>
 
         <div style={{ display: "flex", gap: 12, marginBottom: 28 }}>
-          <StatCard label="Todos"      value={ANALISIS_DATA.length} onClick={() => setFiltro("todos")} accent={filtro === "todos"} />
-          <StatCard label="Activos"    value={activos.length} onClick={() => setFiltro("activos")} accent={filtro === "activos"} />
-          <StatCard label="Archivados" value={archivados.length} onClick={() => setFiltro("archivados")} accent={filtro === "archivados"} />
+          <StatCard label="Todas" value={evaluaciones.length} onClick={() => setFiltro("todos")} accent={filtro === "todos"} />
+          <StatCard label="Aceptando respuestas" value={aceptando.length} onClick={() => setFiltro("aceptando")} accent={filtro === "aceptando"} />
+          <StatCard label="Reportes publicados" value={publicadas.length} onClick={() => setFiltro("publicadas")} accent={filtro === "publicadas"} />
         </div>
 
         <div style={{
@@ -67,86 +143,134 @@ export default function MisAnalisis() {
           borderRadius: 14,
           overflow: "hidden",
         }}>
-
-          <Table
-            columns={[
-              {
-                key: "colegio",
-                header: "Colegio",
-                render: item => (
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <div style={{
-                      width: 28, height: 28, borderRadius: 6,
-                      background: COLORS.violeta50,
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                      flexShrink: 0,
-                    }}>
-                      <i className="ti ti-school" style={{ fontSize: 14, color: COLORS.violeta400 }} aria-hidden="true" />
+          {error ? (
+            <div style={{ padding: "32px 20px", textAlign: "center", color: COLORS.rojo600 }}>
+              {error}
+            </div>
+          ) : (
+            <Table
+              columns={[
+                {
+                  key: "colegio",
+                  header: "Colegio",
+                  render: item => (
+                    <div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <div style={{
+                          width: 28, height: 28, borderRadius: 6,
+                          background: COLORS.violeta50,
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                          flexShrink: 0,
+                        }}>
+                          <i className="ti ti-school" style={{ fontSize: 14, color: COLORS.violeta400 }} aria-hidden="true" />
+                        </div>
+                        <div>
+                          <div style={{ fontWeight: 600, color: COLORS.neutro900 }}>{item.nombre}</div>
+                          <div style={{ fontSize: 12, color: COLORS.neutro500 }}>{item.colegioNombre}</div>
+                        </div>
+                      </div>
                     </div>
-                    {item.colegio}
-                  </div>
-                ),
-              },
-              {
-                key: "estado",
-                header: "Estado",
-                render: item => <EstadoBadge estado={item.estado as ComponentProps<typeof EstadoBadge>["estado"]} />,
-              },
-              {
-                key: "fecha",
-                header: "Fecha",
-                render: item => <span style={{ color: COLORS.neutro500 }}>{item.fecha}</span>,
-              },
-              {
-                key: "acciones",
-                header: "Acciones",
-                align: "right",
-                render: item => (
-                  <div data-no-row-click="true" style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
-                    {item.estado === "activo"
-                      ? <ActionButton label="Archivar" variant="archive" />
-                      : <ActionButton label="Eliminar" variant="danger" />
-                    }
-                  </div>
-                ),
-              },
-            ]}
-            data={filtrados}
-            getRowKey={item => item.id}
-            onRowClick={item => navigate(`/evaluaciones/${item.id}`)}
-            emptyState="No hay análisis para mostrar."
-          />
+                  ),
+                },
+                {
+                  key: "estado",
+                  header: "Estado",
+                  render: item => <EstadoBadge estado={estadoDe(item)} />,
+                },
+                {
+                  key: "progreso",
+                  header: "Progreso",
+                  render: item => (
+                    <span style={{ color: COLORS.neutro700 }}>
+                      {item.sesionesCompletadas} / {Number(item.sesionesCompletadas) + Number(item.sesionesPendientes)} sesiones · {item.totalAlumnos} alumnos
+                    </span>
+                  ),
+                },
+                {
+                  key: "fecha",
+                  header: "Fecha",
+                  render: item => <span style={{ color: COLORS.neutro500 }}>{formatFecha(item.fecha)}</span>,
+                },
+                {
+                  key: "acciones",
+                  header: "Acciones",
+                  align: "right",
+                  render: item => (
+                    <div data-no-row-click="true" style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
+                      {item.aceptaRespuestas
+                        ? <ActionButton label="Cerrar" variant="archive" onClick={() => cerrarEvaluacion(item.evaluacionId)} />
+                        : <ActionButton label="Eliminar" variant="danger" onClick={() => eliminarEvaluacion(item.evaluacionId)} />
+                      }
+                    </div>
+                  ),
+                },
+              ]}
+              data={filtradas}
+              getRowKey={item => item.evaluacionId}
+              onRowClick={item => navigate(`/admin/evaluaciones/${item.evaluacionId}`)}
+              emptyState={loading ? "Cargando evaluaciones..." : "No hay evaluaciones para mostrar."}
+            />
+          )}
 
           <div style={{
             padding: "12px 20px",
             borderTop: `1px solid ${COLORS.neutro100}`,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
+            fontSize: 13,
+            color: COLORS.neutro500,
           }}>
-            <span style={{ fontSize: 13, color: COLORS.neutro500 }}>
-              Mostrando {filtrados.length} de {ANALISIS_DATA.length} análisis
-            </span>
-            <div style={{ display: "flex", gap: 4 }}>
-              {[1, 2].map(p => (
-                <button key={p} style={{
-                  width: 30, height: 30, borderRadius: 6, fontSize: 13,
-                  background: p === 1 ? COLORS.violeta400 : "transparent",
-                  color: p === 1 ? "#fff" : COLORS.neutro500,
-                  border: p === 1 ? "none" : `1px solid ${COLORS.neutro100}`,
-                  cursor: "pointer",
-                }}>
-                  {p}
-                </button>
-              ))}
-            </div>
+            {!loading && !error && `Mostrando ${filtradas.length} de ${evaluaciones.length} evaluaciones`}
           </div>
         </div>
       </main>
 
       {showModal && (
-        <Modal onClose={() => setShowModal(false)}>
-          <div style={{ fontSize: 14, color: COLORS.neutro700 }}>Contenido del modal temporal.</div>
+        <Modal title="Crear evaluación" onClose={() => setShowModal(false)}>
+          <form onSubmit={handleCrear} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <div>
+              <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: COLORS.neutro700, marginBottom: 6 }}>Colegio</label>
+              <select
+                value={form.colegioId}
+                onChange={event => setForm(prev => ({ ...prev, colegioId: event.target.value }))}
+                style={{ width: "100%", padding: "9px 12px", border: `1px solid ${COLORS.neutro100}`, borderRadius: 8, fontSize: 14, color: COLORS.neutro900, outline: "none", boxSizing: "border-box" }}
+              >
+                <option value="">Selecciona un colegio...</option>
+                {colegios.map(colegio => (
+                  <option key={colegio.id} value={colegio.id}>{colegio.nombre}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: COLORS.neutro700, marginBottom: 6 }}>Nombre de la evaluación</label>
+              <input
+                value={form.nombre}
+                onChange={event => setForm(prev => ({ ...prev, nombre: event.target.value }))}
+                placeholder="Ej. Evaluación primer semestre 2026"
+                style={{ width: "100%", padding: "9px 12px", border: `1px solid ${COLORS.neutro100}`, borderRadius: 8, fontSize: 14, color: COLORS.neutro900, outline: "none", boxSizing: "border-box" }}
+              />
+            </div>
+
+            <div>
+              <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: COLORS.neutro700, marginBottom: 6 }}>Fecha</label>
+              <input
+                type="date"
+                value={form.fecha}
+                onChange={event => setForm(prev => ({ ...prev, fecha: event.target.value }))}
+                style={{ width: "100%", padding: "9px 12px", border: `1px solid ${COLORS.neutro100}`, borderRadius: 8, fontSize: 14, color: COLORS.neutro900, outline: "none", boxSizing: "border-box" }}
+              />
+            </div>
+
+            {formError && <p style={{ margin: 0, fontSize: 13, color: COLORS.rojo600 }}>{formError}</p>}
+
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, paddingTop: 6 }}>
+              <button type="button" onClick={() => setShowModal(false)} style={{ padding: "9px 16px", borderRadius: 8, background: "none", border: `1px solid ${COLORS.neutro100}`, color: COLORS.neutro700, fontSize: 14, cursor: "pointer" }}>
+                Cancelar
+              </button>
+              <button type="submit" disabled={saving} style={{ padding: "9px 16px", borderRadius: 8, background: COLORS.violeta400, border: "none", color: "#fff", fontSize: 14, fontWeight: 600, cursor: saving ? "not-allowed" : "pointer", opacity: saving ? 0.6 : 1 }}>
+                {saving ? "Creando..." : "Crear evaluación"}
+              </button>
+            </div>
+          </form>
         </Modal>
       )}
     </div>

@@ -3,6 +3,7 @@ import index from "./index.html";
 
 import {
   // Admin
+  colegiosRoutes,
   evaluacionRoutes,
   evaluacionIdRoutes,
   evaluacionExportarRoutes,
@@ -22,6 +23,7 @@ const server = serve({
     "/*": index,
 
     // ── Admin ───────────────────────────────────────────────
+    "/api/admin/colegios":                      colegiosRoutes,
     "/api/admin/evaluaciones":                  evaluacionRoutes,
     "/api/admin/evaluaciones/:id":              evaluacionIdRoutes,
     "/api/admin/evaluaciones/:id/exportar":     evaluacionExportarRoutes,

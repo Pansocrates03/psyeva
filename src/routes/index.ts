@@ -1,4 +1,5 @@
 // ── Admin ─────────────────────────────────────────────────────
+export { colegiosRoutes }           from "./admin/colegios";
 export { evaluacionRoutes }         from "./admin/evaluacion";
 export { evaluacionIdRoutes }       from "./admin/evaluacionId";
 export { evaluacionExportarRoutes } from "./admin/evaluacionExportar";

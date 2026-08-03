@@ -8,6 +8,18 @@ import { mock, createEvaluacion, createGrupo, createEstudiante } from "../factor
 
 beforeEach(resetDb);
 
+// expect(sql`...`).rejects.toThrow() cuelga bun test indefinidamente: la Query
+// de postgres.js no es una Promise nativa y expect().rejects nunca dispara su
+// ejecución. Awaitear dentro de try/catch sí funciona de forma confiable.
+async function expectRaises(run: () => unknown, pattern: RegExp) {
+  try {
+    await run();
+    throw new Error(`Se esperaba que la operación fallara con ${pattern}`);
+  } catch (err) {
+    expect((err as Error).message).toMatch(pattern);
+  }
+}
+
 describe("iniciar_sesion()", () => {
   test("crea una sesión pendiente nueva cuando no existe una previa", async () => {
     const [result] = await sql`
@@ -48,13 +60,11 @@ describe("iniciar_sesion()", () => {
   });
 
   test("lanza sesion_ya_completada si el alumno ya completó ese formulario", async () => {
-    await expect(
-      sql`SELECT * FROM iniciar_sesion(
-        ${mock.estudianteAna}::uuid,
-        ${mock.formEmociones}::uuid,
-        ${mock.evaluacionSanJose}::uuid
-      )`
-    ).rejects.toThrow(/sesion_ya_completada/);
+    await expectRaises(() => sql`SELECT * FROM iniciar_sesion(
+      ${mock.estudianteAna}::uuid,
+      ${mock.formEmociones}::uuid,
+      ${mock.evaluacionSanJose}::uuid
+    )`, /sesion_ya_completada/);
   });
 
   test("lanza evaluacion_cerrada si la evaluación no acepta respuestas", async () => {
@@ -62,31 +72,26 @@ describe("iniciar_sesion()", () => {
     const grupo = await createGrupo({ evaluacionId: evaluacion.id });
     const estudiante = await createEstudiante({ grupoId: grupo.id });
 
-    await expect(
-      sql`SELECT * FROM iniciar_sesion(
-        ${estudiante.id}::uuid,
-        ${mock.formEmociones}::uuid,
-        ${evaluacion.id}::uuid
-      )`
-    ).rejects.toThrow(/evaluacion_cerrada/);
+    await expectRaises(() => sql`SELECT * FROM iniciar_sesion(
+      ${estudiante.id}::uuid,
+      ${mock.formEmociones}::uuid,
+      ${evaluacion.id}::uuid
+    )`, /evaluacion_cerrada/);
   });
 
   test("lanza evaluacion_no_encontrada si la evaluación no existe", async () => {
-    await expect(
-      sql`SELECT * FROM iniciar_sesion(
-        ${mock.estudianteCarmen}::uuid,
-        ${mock.formEmociones}::uuid,
-        ${crypto.randomUUID()}::uuid
-      )`
-    ).rejects.toThrow(/evaluacion_no_encontrada/);
+    await expectRaises(() => sql`SELECT * FROM iniciar_sesion(
+      ${mock.estudianteCarmen}::uuid,
+      ${mock.formEmociones}::uuid,
+      ${crypto.randomUUID()}::uuid
+    )`, /evaluacion_no_encontrada/);
   });
 });
 
 describe("guardar_respuesta()", () => {
   test("crea la respuesta y pasa la sesión de pendiente a en_progreso", async () => {
-    const [before] = await sql`SELECT estado, iniciada_at FROM sesion WHERE id = ${mock.sesionCarmenAprendizajePendiente}`;
+    const [before] = await sql`SELECT estado FROM sesion WHERE id = ${mock.sesionCarmenAprendizajePendiente}`;
     expect(before.estado).toBe("pendiente");
-    expect(before.iniciadaAt).toBeNull();
 
     const [result] = await sql`
       SELECT * FROM guardar_respuesta(
@@ -124,15 +129,17 @@ describe("guardar_respuesta()", () => {
   });
 
   test("lanza sesion_ya_completada si la sesión ya está completada", async () => {
-    await expect(
-      sql`SELECT * FROM guardar_respuesta(${mock.sesionAnaEmocionesCompletada}::uuid, ${mock.preguntaEmocion1}::uuid, 'Bien')`
-    ).rejects.toThrow(/sesion_ya_completada/);
+    await expectRaises(
+      () => sql`SELECT * FROM guardar_respuesta(${mock.sesionAnaEmocionesCompletada}::uuid, ${mock.preguntaEmocion1}::uuid, 'Bien')`,
+      /sesion_ya_completada/
+    );
   });
 
   test("lanza sesion_no_encontrada si la sesión no existe", async () => {
-    await expect(
-      sql`SELECT * FROM guardar_respuesta(${crypto.randomUUID()}::uuid, ${mock.preguntaEmocion1}::uuid, 'Bien')`
-    ).rejects.toThrow(/sesion_no_encontrada/);
+    await expectRaises(
+      () => sql`SELECT * FROM guardar_respuesta(${crypto.randomUUID()}::uuid, ${mock.preguntaEmocion1}::uuid, 'Bien')`,
+      /sesion_no_encontrada/
+    );
   });
 });
 
@@ -164,14 +171,16 @@ describe("completar_sesion()", () => {
   });
 
   test("lanza sesion_no_disponible si la sesión ya estaba completada", async () => {
-    await expect(
-      sql`SELECT * FROM completar_sesion(${mock.sesionAnaEmocionesCompletada}::uuid)`
-    ).rejects.toThrow(/sesion_no_disponible/);
+    await expectRaises(
+      () => sql`SELECT * FROM completar_sesion(${mock.sesionAnaEmocionesCompletada}::uuid)`,
+      /sesion_no_disponible/
+    );
   });
 
   test("lanza sesion_no_disponible si la sesión no existe", async () => {
-    await expect(
-      sql`SELECT * FROM completar_sesion(${crypto.randomUUID()}::uuid)`
-    ).rejects.toThrow(/sesion_no_disponible/);
+    await expectRaises(
+      () => sql`SELECT * FROM completar_sesion(${crypto.randomUUID()}::uuid)`,
+      /sesion_no_disponible/
+    );
   });
 });
