@@ -2,26 +2,16 @@ import COLORS from "../../utils/Colors";
 
 type EstadoGrupo = "completo" | "en_progreso" | "sin_iniciar";
 
-interface EstudianteGrupo {
-  id: number;
+export interface Grupo {
+  id: string;
   nombre: string;
-  curp: string;
-  reporte?: string;
-  respuestas?: string[];
-}
-
-interface Grupo {
-  id: number;
-  nombre: string;
-  grado: string;
   estado: EstadoGrupo;
-  alumnosEncuestados: number;
-  totalAlumnos: number;
+  sesionesCompletadas: number;
+  sesionesPosibles: number;
   reportesPublicados: number;
   totalReportes: number;
   reporteGrupal: boolean;
   formularios: string[];
-  estudiantes?: EstudianteGrupo[];
 }
 
 // ── Colores de badge por estado ───────────────────────────────
@@ -32,10 +22,9 @@ const ESTADO_CONFIG: Record<EstadoGrupo, { label: string; bg: string; color: str
 };
 
 const PILL_COLORS: Record<string, { bg: string; color: string; dot: string }> = {
-  Emociones:   { bg: COLORS.violeta50, color: COLORS.violeta600, dot: COLORS.violeta400 },
-  Bienestar:   { bg: COLORS.verde50,   color: COLORS.verde600,   dot: COLORS.verde400   },
-  Aprendizaje: { bg: COLORS.azul50,    color: COLORS.azul600,    dot: COLORS.azul400    },
-  Autoestima:  { bg: COLORS.ambar50,   color: COLORS.ambar600,   dot: COLORS.ambar400   },
+  "Emociones":              { bg: COLORS.violeta50, color: COLORS.violeta600, dot: COLORS.violeta400 },
+  "Bienestar Psicológico":  { bg: COLORS.verde50,   color: COLORS.verde600,   dot: COLORS.verde400   },
+  "Aprendizaje":            { bg: COLORS.azul50,    color: COLORS.azul600,   dot: COLORS.azul400    },
 };
 
 // ── Subcomponentes ────────────────────────────────────────────
@@ -88,8 +77,8 @@ function GrupoCard({ grupo, onClick }: { grupo: Grupo; onClick: () => void }) {
 
       {/* Métricas */}
       <div style={{ marginBottom: 8 }}>
-        <div style={{ fontSize: 11, color: COLORS.neutro500, marginBottom: 4 }}>Alumnos encuestados</div>
-        <ProgressRow value={grupo.alumnosEncuestados} total={grupo.totalAlumnos} color={COLORS.violeta400} />
+        <div style={{ fontSize: 11, color: COLORS.neutro500, marginBottom: 4 }}>Sesiones completadas</div>
+        <ProgressRow value={grupo.sesionesCompletadas} total={grupo.sesionesPosibles} color={COLORS.violeta400} />
       </div>
       <div style={{ marginBottom: 8 }}>
         <div style={{ fontSize: 11, color: COLORS.neutro500, marginBottom: 4 }}>Reportes publicados</div>

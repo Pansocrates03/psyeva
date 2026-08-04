@@ -129,6 +129,40 @@ export interface ColegioConTotalEvaluaciones extends Colegio {
   totalEvaluaciones: string;
 }
 
+export interface FormularioConTotalPreguntas extends Formulario {
+  totalPreguntas: string;
+}
+
+export interface FormularioConPreguntas extends Formulario {
+  preguntas: Pregunta[];
+}
+
+// Forma que espera el backend al crear/reemplazar preguntas de un formulario
+export interface PreguntaInput {
+  texto: string;
+  imagenUrl?: string | null;
+  opcionesRespuesta: Array<{ valor: number; texto: string }>;
+}
+
+export interface PreguntaConFormulario {
+  id: string;
+  texto: string;
+  formularioId: string;
+  formularioTitulo: string;
+  categoria: CategoriaFormulario;
+}
+
+export interface GrupoRespuestas {
+  preguntas: PreguntaConFormulario[];
+  estudiantes: Array<{
+    estudianteId: string;
+    nombreCompleto: string;
+    curp: string | null;
+    // clave = preguntaId, valor = texto de la respuesta o null si no respondió
+    respuestas: Record<string, string | null>;
+  }>;
+}
+
 export interface EstudianteConEstado {
   estudianteId: string;
   nombreCompleto: string;

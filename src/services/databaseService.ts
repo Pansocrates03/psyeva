@@ -1,11 +1,17 @@
 import type {
   Colegio,
   ColegioConTotalEvaluaciones,
+  Estudiante,
   EstudianteConEstado,
   Evaluacion,
   EvaluacionConProgreso,
+  Formulario,
+  FormularioConPreguntas,
+  FormularioConTotalPreguntas,
+  PreguntaInput,
   Grupo,
   GrupoConProgreso,
+  GrupoRespuestas,
   Pregunta,
   Reporte,
   Sesion,
@@ -145,6 +151,55 @@ class DatabaseService {
       return data;
     },
 
+    actualizarColegio: async (id: string, cambios: Partial<{ nombre: string; claveAcceso: string }>): Promise<Colegio> => {
+      const { data } = await this.patch<ApiEnvelope<Colegio>>(`/api/admin/colegios/${id}`, cambios, { conColegio: false });
+      return data;
+    },
+
+    listarFormularios: async (): Promise<FormularioConTotalPreguntas[]> => {
+      const { data } = await this.get<ApiEnvelope<FormularioConTotalPreguntas[]>>(
+        "/api/admin/formularios",
+        { conColegio: false }
+      );
+      return data;
+    },
+
+    crearFormulario: async (input: {
+      titulo: string;
+      descripcion?: string;
+      categoria: CategoriaFormulario;
+      preguntas: PreguntaInput[];
+    }): Promise<Formulario> => {
+      const { data } = await this.post<ApiEnvelope<Formulario>>("/api/admin/formularios", input, { conColegio: false });
+      return data;
+    },
+
+    obtenerFormulario: async (id: string): Promise<FormularioConPreguntas> => {
+      const { data } = await this.get<ApiEnvelope<FormularioConPreguntas>>(
+        `/api/admin/formularios/${id}`,
+        { conColegio: false }
+      );
+      return data;
+    },
+
+    // Si se envía `preguntas`, reemplaza el set completo (409 si alguna
+    // pregunta actual ya tiene respuestas registradas).
+    actualizarFormulario: async (
+      id: string,
+      cambios: Partial<{ titulo: string; descripcion: string; categoria: CategoriaFormulario; preguntas: PreguntaInput[] }>
+    ): Promise<Formulario> => {
+      const { data } = await this.patch<ApiEnvelope<Formulario>>(`/api/admin/formularios/${id}`, cambios, { conColegio: false });
+      return data;
+    },
+
+    eliminarFormulario: async (id: string): Promise<{ id: string; eliminado: boolean }> => {
+      const { data } = await this.del<ApiEnvelope<{ id: string; eliminado: boolean }>>(
+        `/api/admin/formularios/${id}`,
+        { conColegio: false }
+      );
+      return data;
+    },
+
     listarEvaluaciones: async (): Promise<EvaluacionConProgreso[]> => {
       const { data } = await this.get<ApiEnvelope<EvaluacionConProgreso[]>>(
         "/api/admin/evaluaciones",
@@ -215,6 +270,50 @@ class DatabaseService {
       const disposition = res.headers.get("Content-Disposition") ?? "";
       const filename = /filename="([^"]+)"/.exec(disposition)?.[1] ?? `evaluacion-${id}.xlsx`;
       return { blob: await res.blob(), filename };
+    },
+
+    crearGrupo: async (input: {
+      evaluacionId: string;
+      nombre: string;
+      formEmocionesId?: string;
+      formBienpsicId?: string;
+      formAprendizajeId?: string;
+      estudiantes?: Array<{ nombreCompleto: string; curp?: string }>;
+    }): Promise<Grupo & { estudiantes: Estudiante[] }> => {
+      const { data } = await this.post<ApiEnvelope<Grupo & { estudiantes: Estudiante[] }>>(
+        "/api/admin/grupos",
+        input,
+        { conColegio: false }
+      );
+      return data;
+    },
+
+    agregarEstudiante: async (
+      grupoId: string,
+      input: { nombreCompleto: string; curp?: string }
+    ): Promise<Estudiante> => {
+      const { data } = await this.post<ApiEnvelope<Estudiante>>(
+        `/api/admin/grupos/${grupoId}/estudiantes`,
+        input,
+        { conColegio: false }
+      );
+      return data;
+    },
+
+    eliminarEstudiante: async (id: string): Promise<{ id: string; eliminado: boolean }> => {
+      const { data } = await this.del<ApiEnvelope<{ id: string; eliminado: boolean }>>(
+        `/api/admin/estudiantes/${id}`,
+        { conColegio: false }
+      );
+      return data;
+    },
+
+    obtenerRespuestasGrupo: async (grupoId: string): Promise<GrupoRespuestas> => {
+      const { data } = await this.get<ApiEnvelope<GrupoRespuestas>>(
+        `/api/admin/grupos/${grupoId}/respuestas`,
+        { conColegio: false }
+      );
+      return data;
     },
 
     obtenerGrupo: async (id: string): Promise<GrupoConProgreso & { estudiantes: EstudianteConEstado[] }> => {

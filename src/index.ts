@@ -4,11 +4,18 @@ import index from "./index.html";
 import {
   // Admin
   colegiosRoutes,
+  colegiosIdRoutes,
+  formulariosRoutes,
+  formulariosIdRoutes,
   evaluacionRoutes,
   evaluacionIdRoutes,
   evaluacionExportarRoutes,
   evaluacionEstadoRoutes,
+  gruposRoutes,
   gruposIdRoutes,
+  gruposEstudiantesRoutes,
+  gruposRespuestasRoutes,
+  estudiantesIdRoutes,
   reportesRoutes,
   // Facilitador
   verificarRoutes,
@@ -24,11 +31,18 @@ const server = serve({
 
     // ── Admin ───────────────────────────────────────────────
     "/api/admin/colegios":                      colegiosRoutes,
+    "/api/admin/colegios/:id":                  colegiosIdRoutes,
+    "/api/admin/formularios":                   formulariosRoutes,
+    "/api/admin/formularios/:id":                formulariosIdRoutes,
     "/api/admin/evaluaciones":                  evaluacionRoutes,
     "/api/admin/evaluaciones/:id":              evaluacionIdRoutes,
     "/api/admin/evaluaciones/:id/exportar":     evaluacionExportarRoutes,
     "/api/admin/evaluaciones/:id/estado":       evaluacionEstadoRoutes,
+    "/api/admin/grupos":                        gruposRoutes,
     "/api/admin/grupos/:id":                    gruposIdRoutes,
+    "/api/admin/grupos/:id/estudiantes":         gruposEstudiantesRoutes,
+    "/api/admin/grupos/:id/respuestas":          gruposRespuestasRoutes,
+    "/api/admin/estudiantes/:id":                estudiantesIdRoutes,
     "/api/admin/reportes":                      reportesRoutes,
 
     // ── Facilitador ─────────────────────────────────────────

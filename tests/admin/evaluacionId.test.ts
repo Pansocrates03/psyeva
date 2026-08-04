@@ -26,6 +26,9 @@ describe("GET /api/admin/evaluaciones/:id", () => {
     expect(body.data.grupos).toHaveLength(2);
     expect(body.data.grupos.map((g: { grupoId: string }) => g.grupoId).sort())
       .toEqual([mock.grupoA, mock.grupoB].sort());
+
+    const grupoA = body.data.grupos.find((g: { grupoId: string }) => g.grupoId === mock.grupoA);
+    expect(grupoA.formEmocionesTitulo).toBe("Bienestar emocional");
   });
 });
 

@@ -1,125 +1,192 @@
-import { useMemo, useState, type ChangeEvent, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import Sidebar from "../components/Sidebar";
 import ActionButton from "../components/ActionButton";
 import Drawer from "../components/Drawer";
 import COLORS from "../utils/Colors";
 import StatCard from "@/components/StatCard";
-
-type CategoriaEncuesta = "Emociones" | "Bienestar Psicológico" | "Aprendizaje";
-
-interface EncuestaBase {
-  id: number;
-  nombre: string;
-  categoria: CategoriaEncuesta;
-  preguntas: number;
-  descripcion: string;
-  fecha: string;
-}
+import { databaseService, ApiError } from "../services/databaseService";
+import { CATEGORIA_LABELS, CATEGORIAS } from "../utils/categorias";
+import type { CategoriaFormulario, FormularioConTotalPreguntas } from "../utils/types";
 
 interface IncisoForm {
   id: number;
   pregunta: string;
-  imagen: string;
-  respuestas: [string, string, string, string];
+  respuestas: string[];
 }
 
 interface FormState {
-  nombre: string;
-  categoria: CategoriaEncuesta;
+  titulo: string;
+  categoria: CategoriaFormulario;
   descripcion: string;
   incisos: IncisoForm[];
 }
 
-const INITIAL_ENCUESTAS: EncuestaBase[] = [
-  { id: 1, nombre: "Bienestar emocional", categoria: "Emociones", preguntas: 12, descripcion: "Evalúa el estado emocional general del estudiante.", fecha: "14 nov 2026" },
-  { id: 2, nombre: "Hábitos de estudio", categoria: "Aprendizaje", preguntas: 15, descripcion: "Identifica rutinas y estrategias de estudio.", fecha: "2 dic 2026" },
-  { id: 3, nombre: "Clima escolar", categoria: "Bienestar Psicológico", preguntas: 10, descripcion: "Mide la percepción del ambiente escolar.", fecha: "9 ene 2027" },
-  { id: 4, nombre: "Autoestima inicial", categoria: "Aprendizaje", preguntas: 8, descripcion: "Encuesta previa utilizada en el ciclo anterior.", fecha: "21 mar 2026" },
-];
-
-const CATEGORIA_META: Record<CategoriaEncuesta, { label: string; bg: string; color: string; border: string }> = {
-  "Emociones": { label: "Emociones", bg: COLORS.violeta50, color: COLORS.violeta600, border: COLORS.violeta100 },
-  "Bienestar Psicológico": { label: "Bienestar Psicológico", bg: COLORS.verde50, color: COLORS.verde600, border: COLORS.verde100 },
-  "Aprendizaje": { label: "Aprendizaje", bg: COLORS.azul50, color: COLORS.azul600, border: COLORS.azul100 },
+const CATEGORIA_META: Record<CategoriaFormulario, { bg: string; color: string; border: string }> = {
+  emociones: { bg: COLORS.violeta50, color: COLORS.violeta600, border: COLORS.violeta100 },
+  bienestar_psicologico: { bg: COLORS.verde50, color: COLORS.verde600, border: COLORS.verde100 },
+  aprendizaje: { bg: COLORS.azul50, color: COLORS.azul600, border: COLORS.azul100 },
 };
 
 const createInciso = (): IncisoForm => ({
   id: Date.now() + Math.random(),
   pregunta: "",
-  imagen: "",
   respuestas: ["", "", "", ""],
 });
 
 const emptyForm = (): FormState => ({
-  nombre: "",
-  categoria: "Emociones",
+  titulo: "",
+  categoria: "emociones",
   descripcion: "",
   incisos: [createInciso()],
 });
 
 export default function EncuestasBase() {
-  const [encuestas, setEncuestas] = useState<EncuestaBase[]>(INITIAL_ENCUESTAS);
+  const [encuestas, setEncuestas] = useState<FormularioConTotalPreguntas[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [editingEncuesta, setEditingEncuesta] = useState<EncuestaBase | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [loadingDetalle, setLoadingDetalle] = useState(false);
   const [form, setForm] = useState<FormState>(emptyForm());
+  const [formError, setFormError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
   const [query, setQuery] = useState("");
   const [expandedIncisos, setExpandedIncisos] = useState<Record<number, boolean>>({});
-  const [filter, setFilter] = useState<CategoriaEncuesta | "Todas">("Todas");
+  const [filter, setFilter] = useState<CategoriaFormulario | "Todas">("Todas");
+
+  const cargarEncuestas = () => {
+    setLoading(true);
+    setError(null);
+    databaseService.admin.listarFormularios()
+      .then(setEncuestas)
+      .catch(err => setError(err instanceof ApiError ? err.message : "No se pudieron cargar las encuestas"))
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(cargarEncuestas, []);
 
   const filteredEncuestas = useMemo(() => {
     const q = query.trim().toLowerCase();
     return encuestas.filter(encuesta => {
       const matchesFilter = filter === "Todas" || encuesta.categoria === filter;
-      const matchesQuery = !q || [encuesta.nombre, encuesta.categoria, encuesta.descripcion].some(value => value.toLowerCase().includes(q));
+      const matchesQuery = !q || [encuesta.titulo, encuesta.descripcion ?? ""].some(value => value.toLowerCase().includes(q));
       return matchesFilter && matchesQuery;
     });
   }, [encuestas, query, filter]);
 
-  const totalPreguntas = encuestas.reduce((sum, encuesta) => sum + encuesta.preguntas, 0);
-
+  const contarPorCategoria = (categoria: CategoriaFormulario) =>
+    encuestas.filter(e => e.categoria === categoria).length;
 
   const openCreateDrawer = () => {
-    setEditingEncuesta(null);
+    setEditingId(null);
     setForm(emptyForm());
+    setFormError(null);
+    setExpandedIncisos({});
     setIsDrawerOpen(true);
   };
 
-  const openEditDrawer = (encuesta: EncuestaBase) => {
-    setEditingEncuesta(encuesta);
-    setForm({
-      nombre: encuesta.nombre,
-      categoria: encuesta.categoria,
-      descripcion: encuesta.descripcion,
-      incisos: Array.from({ length: Math.max(encuesta.preguntas, 1) }, () => createInciso()),
-    });
+  const openEditDrawer = async (encuesta: FormularioConTotalPreguntas) => {
+    setEditingId(encuesta.id);
+    setFormError(null);
+    setExpandedIncisos({});
     setIsDrawerOpen(true);
+    setLoadingDetalle(true);
+    try {
+      const detalle = await databaseService.admin.obtenerFormulario(encuesta.id);
+      setForm({
+        titulo: detalle.titulo,
+        categoria: detalle.categoria,
+        descripcion: detalle.descripcion ?? "",
+        incisos: detalle.preguntas.map(p => ({
+          id: Date.now() + Math.random(),
+          pregunta: p.texto,
+          respuestas: p.opcionesRespuesta.map(o => o.texto),
+        })),
+      });
+    } catch (err) {
+      setFormError(err instanceof ApiError ? err.message : "No se pudo cargar el detalle de la encuesta");
+    } finally {
+      setLoadingDetalle(false);
+    }
   };
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    if (!form.nombre.trim() || !form.categoria.trim()) {
+    if (!form.titulo.trim()) {
+      setFormError("El nombre de la encuesta es requerido.");
       return;
     }
 
-    const payload: EncuestaBase = {
-      id: editingEncuesta?.id ?? Date.now(),
-      nombre: form.nombre.trim(),
-      categoria: form.categoria,
-      preguntas: form.incisos.length,
-      descripcion: form.descripcion.trim(),
-      fecha: editingEncuesta?.fecha ?? new Date().toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" }),
-    };
+    const preguntas = form.incisos.map(inciso => ({
+      texto: inciso.pregunta.trim(),
+      opcionesRespuesta: inciso.respuestas
+        .map(texto => texto.trim())
+        .filter(texto => texto.length > 0)
+        .map((texto, index) => ({ valor: index + 1, texto })),
+    }));
 
-    if (editingEncuesta) {
-      setEncuestas(prev => prev.map(encuesta => encuesta.id === editingEncuesta.id ? payload : encuesta));
-    } else {
-      setEncuestas(prev => [payload, ...prev]);
+    if (preguntas.some(p => !p.texto || p.opcionesRespuesta.length < 2)) {
+      setFormError("Cada inciso necesita una pregunta y al menos 2 respuestas.");
+      return;
     }
 
-    setIsDrawerOpen(false);
-    setEditingEncuesta(null);
-    setForm(emptyForm());
+    setSaving(true);
+    setFormError(null);
+    try {
+      if (editingId) {
+        try {
+          await databaseService.admin.actualizarFormulario(editingId, {
+            titulo: form.titulo.trim(),
+            descripcion: form.descripcion.trim(),
+            categoria: form.categoria,
+            preguntas,
+          });
+        } catch (err) {
+          if (err instanceof ApiError && err.status === 409) {
+            // Ya hay respuestas registradas para las preguntas actuales:
+            // guarda al menos los metadatos y avisa que las preguntas no cambiaron.
+            await databaseService.admin.actualizarFormulario(editingId, {
+              titulo: form.titulo.trim(),
+              descripcion: form.descripcion.trim(),
+              categoria: form.categoria,
+            });
+            setFormError(null);
+            alert("Ya hay alumnos que respondieron esta encuesta, así que las preguntas no se modificaron. Sí se guardaron el nombre, categoría y descripción.");
+          } else {
+            throw err;
+          }
+        }
+      } else {
+        await databaseService.admin.crearFormulario({
+          titulo: form.titulo.trim(),
+          descripcion: form.descripcion.trim(),
+          categoria: form.categoria,
+          preguntas,
+        });
+      }
+
+      setIsDrawerOpen(false);
+      setEditingId(null);
+      setForm(emptyForm());
+      cargarEncuestas();
+    } catch (err) {
+      setFormError(err instanceof ApiError ? err.message : "No se pudo guardar la encuesta");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const eliminarEncuesta = async (id: string) => {
+    if (!confirm("¿Eliminar esta encuesta? Esta acción no se puede deshacer.")) return;
+    try {
+      await databaseService.admin.eliminarFormulario(id);
+      cargarEncuestas();
+    } catch (err) {
+      alert(err instanceof ApiError ? err.message : "No se pudo eliminar la encuesta");
+    }
   };
 
   const updateIncisoPregunta = (index: number, value: string) => {
@@ -134,22 +201,27 @@ export default function EncuestasBase() {
       ...prev,
       incisos: prev.incisos.map((inciso, currentIndex) => {
         if (currentIndex !== incisoIndex) return inciso;
-
-        const respuestas = [...inciso.respuestas] as [string, string, string, string];
+        const respuestas = [...inciso.respuestas];
         respuestas[respuestaIndex] = value;
         return { ...inciso, respuestas };
       }),
     }));
   };
 
-  const handleImageUpload = (index: number, event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    const previewUrl = URL.createObjectURL(file);
+  const addRespuesta = (incisoIndex: number) => {
     setForm(prev => ({
       ...prev,
-      incisos: prev.incisos.map((inciso, incisoIndex) => incisoIndex === index ? { ...inciso, imagen: previewUrl } : inciso),
+      incisos: prev.incisos.map((inciso, i) => i === incisoIndex ? { ...inciso, respuestas: [...inciso.respuestas, ""] } : inciso),
+    }));
+  };
+
+  const removeRespuesta = (incisoIndex: number, respuestaIndex: number) => {
+    setForm(prev => ({
+      ...prev,
+      incisos: prev.incisos.map((inciso, i) => {
+        if (i !== incisoIndex || inciso.respuestas.length <= 2) return inciso;
+        return { ...inciso, respuestas: inciso.respuestas.filter((_, r) => r !== respuestaIndex) };
+      }),
     }));
   };
 
@@ -185,102 +257,113 @@ export default function EncuestasBase() {
             </p>
             <h1 style={{ margin: 0, fontSize: 24, fontWeight: 600, color: COLORS.neutro900 }}>Encuestas base</h1>
           </div>
-          <button
-            onClick={openCreateDrawer}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 7,
-              padding: "9px 16px",
-              borderRadius: 8,
-              background: COLORS.violeta400,
-              border: "none",
-              color: "#fff",
-              fontSize: 14,
-              fontWeight: 500,
-              cursor: "pointer",
-            }}
-          >
-            <i className="ti ti-plus" style={{ fontSize: 15 }} aria-hidden="true" />
-            Nueva encuesta
-          </button>
+          <div style={{ display: "flex", gap: 10 }}>
+            <input
+              value={query}
+              onChange={event => setQuery(event.target.value)}
+              placeholder="Buscar encuesta..."
+              style={{ padding: "9px 14px", borderRadius: 8, border: `1px solid ${COLORS.neutro100}`, fontSize: 14, outline: "none", width: 200 }}
+            />
+            <button
+              onClick={openCreateDrawer}
+              style={{
+                display: "flex", alignItems: "center", gap: 7,
+                padding: "9px 16px", borderRadius: 8,
+                background: COLORS.violeta400, border: "none",
+                color: "#fff", fontSize: 14, fontWeight: 500, cursor: "pointer",
+              }}
+            >
+              <i className="ti ti-plus" style={{ fontSize: 15 }} aria-hidden="true" />
+              Nueva encuesta
+            </button>
+          </div>
         </div>
-
 
         <div style={{ display: "flex", gap: 12, marginBottom: 24 }}>
-          <StatCard label="Total de encuestas" accent={filter === "Todas"} onClick={() => setFilter('Todas')} value={encuestas.length} />
-          <StatCard label="Encuestas de aprendizaje" accent={filter === "Aprendizaje"} onClick={() => setFilter('Aprendizaje')} value={encuestas.filter(e => e.categoria === "Aprendizaje").length} />
-          <StatCard label="Encuestas de bienestar" accent={filter === "Bienestar Psicológico"} onClick={() => setFilter('Bienestar Psicológico')} value={encuestas.filter(e => e.categoria === "Bienestar Psicológico").length} />
-          <StatCard label="Encuestas de emociones" accent={filter === "Emociones"} onClick={() => setFilter('Emociones')} value={encuestas.filter(e => e.categoria === "Emociones").length} />
+          <StatCard label="Total de encuestas" accent={filter === "Todas"} onClick={() => setFilter("Todas")} value={encuestas.length} />
+          {CATEGORIAS.map(categoria => (
+            <StatCard
+              key={categoria}
+              label={CATEGORIA_LABELS[categoria]}
+              accent={filter === categoria}
+              onClick={() => setFilter(categoria)}
+              value={contarPorCategoria(categoria)}
+            />
+          ))}
         </div>
 
-
-   
-
         <div style={{ background: "#fff", border: `1px solid ${COLORS.neutro100}`, borderRadius: 14, overflow: "hidden" }}>
-
-
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead>
-              <tr style={{ background: COLORS.neutro50 }}>
-                {[
-                  { label: "Encuesta", align: "left" },
-                  { label: "Categoría", align: "left" },
-                  { label: "Preguntas", align: "left" },
-                  { label: "Acciones", align: "right" },
-                ].map(column => (
-                  <th key={column.label} style={{ padding: "10px 20px", textAlign: column.align as "left" | "right", fontSize: 12, fontWeight: 600, color: COLORS.neutro500, textTransform: "uppercase", letterSpacing: "0.05em", borderBottom: `1px solid ${COLORS.neutro100}` }}>
-                    {column.label}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {filteredEncuestas.map((encuesta, index) => {
-                const meta = CATEGORIA_META[encuesta.categoria];
-                return (
-                  <tr key={encuesta.id} style={{ borderBottom: index < filteredEncuestas.length - 1 ? `1px solid ${COLORS.neutro50}` : "none" }}>
-                    <td style={{ padding: "14px 20px", fontWeight: 600, color: COLORS.neutro900 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                        <div style={{ width: 32, height: 32, borderRadius: 8, background: COLORS.violeta50, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                          <i className="ti ti-clipboard-list" style={{ fontSize: 16, color: COLORS.violeta400 }} aria-hidden="true" />
-                        </div>
-                        <div>
-                          <div>{encuesta.nombre}</div>
-                          <div style={{ fontSize: 12, color: COLORS.neutro500 }}>{encuesta.descripcion}</div>
-                        </div>
-                      </div>
-                    </td>
-                    {/* Estado */}
-                    <td style={{ padding: "14px 20px" }}>
-                      <span style={{ display: "inline-flex", padding: "4px 8px", borderRadius: 999, fontSize: 12, fontWeight: 600, background: meta.bg, color: meta.color, border: `1px solid ${meta.border}` }}>
-                        {meta.label}
-                      </span>
-                    </td>
-                    {/* Preguntas */}
-                    <td style={{ padding: "14px 20px", color: COLORS.neutro700 }}>{encuesta.preguntas}</td>
-                    
-                    {/* Acciones */}
-                    <td style={{ padding: "14px 20px" }}>
-                      <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
-                        <ActionButton label="Editar" onClick={() => openEditDrawer(encuesta)} />
-                      </div>
+          {error ? (
+            <div style={{ padding: "32px 20px", textAlign: "center", color: COLORS.rojo600 }}>{error}</div>
+          ) : (
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead>
+                <tr style={{ background: COLORS.neutro50 }}>
+                  {[
+                    { label: "Encuesta", align: "left" },
+                    { label: "Categoría", align: "left" },
+                    { label: "Preguntas", align: "left" },
+                    { label: "Acciones", align: "right" },
+                  ].map(column => (
+                    <th key={column.label} style={{ padding: "10px 20px", textAlign: column.align as "left" | "right", fontSize: 12, fontWeight: 600, color: COLORS.neutro500, textTransform: "uppercase", letterSpacing: "0.05em", borderBottom: `1px solid ${COLORS.neutro100}` }}>
+                      {column.label}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {filteredEncuestas.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} style={{ padding: "16px 20px", textAlign: "center", color: COLORS.neutro500 }}>
+                      {loading ? "Cargando encuestas..." : "No hay encuestas para mostrar."}
                     </td>
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                ) : filteredEncuestas.map((encuesta, index) => {
+                  const meta = CATEGORIA_META[encuesta.categoria];
+                  return (
+                    <tr key={encuesta.id} style={{ borderBottom: index < filteredEncuestas.length - 1 ? `1px solid ${COLORS.neutro50}` : "none" }}>
+                      <td style={{ padding: "14px 20px", fontWeight: 600, color: COLORS.neutro900 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                          <div style={{ width: 32, height: 32, borderRadius: 8, background: COLORS.violeta50, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                            <i className="ti ti-clipboard-list" style={{ fontSize: 16, color: COLORS.violeta400 }} aria-hidden="true" />
+                          </div>
+                          <div>
+                            <div>{encuesta.titulo}</div>
+                            <div style={{ fontSize: 12, color: COLORS.neutro500 }}>{encuesta.descripcion}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td style={{ padding: "14px 20px" }}>
+                        <span style={{ display: "inline-flex", padding: "4px 8px", borderRadius: 999, fontSize: 12, fontWeight: 600, background: meta.bg, color: meta.color, border: `1px solid ${meta.border}` }}>
+                          {CATEGORIA_LABELS[encuesta.categoria]}
+                        </span>
+                      </td>
+                      <td style={{ padding: "14px 20px", color: COLORS.neutro700 }}>{encuesta.totalPreguntas}</td>
+                      <td style={{ padding: "14px 20px" }}>
+                        <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+                          <ActionButton label="Editar" onClick={() => openEditDrawer(encuesta)} />
+                          <ActionButton label="Eliminar" variant="danger" onClick={() => eliminarEncuesta(encuesta.id)} />
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
         </div>
       </main>
 
-      <Drawer open={isDrawerOpen} onClose={() => setIsDrawerOpen(false)} title={editingEncuesta ? "Editar encuesta" : "Crear encuesta"}>
+      <Drawer open={isDrawerOpen} onClose={() => setIsDrawerOpen(false)} title={editingId ? "Editar encuesta" : "Crear encuesta"}>
+        {loadingDetalle ? (
+          <p style={{ fontSize: 14, color: COLORS.neutro500 }}>Cargando encuesta...</p>
+        ) : (
         <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           <div>
             <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: COLORS.neutro700, marginBottom: 6 }}>Nombre de la encuesta</label>
             <input
-              value={form.nombre}
-              onChange={event => setForm(prev => ({ ...prev, nombre: event.target.value }))}
+              value={form.titulo}
+              onChange={event => setForm(prev => ({ ...prev, titulo: event.target.value }))}
               placeholder="Ej. Bienestar emocional"
               style={{ width: "100%", padding: "9px 12px", border: `1px solid ${COLORS.neutro100}`, borderRadius: 8, fontSize: 14, color: COLORS.neutro900, outline: "none", boxSizing: "border-box" }}
             />
@@ -290,12 +373,12 @@ export default function EncuestasBase() {
             <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: COLORS.neutro700, marginBottom: 6 }}>Categoría</label>
             <select
               value={form.categoria}
-              onChange={event => setForm(prev => ({ ...prev, categoria: event.target.value as CategoriaEncuesta }))}
+              onChange={event => setForm(prev => ({ ...prev, categoria: event.target.value as CategoriaFormulario }))}
               style={{ width: "100%", padding: "9px 12px", border: `1px solid ${COLORS.neutro100}`, borderRadius: 8, fontSize: 14, color: COLORS.neutro900, outline: "none", boxSizing: "border-box" }}
             >
-              <option value="Emociones">Emociones</option>
-              <option value="Bienestar Psicológico">Bienestar Psicológico</option>
-              <option value="Aprendizaje">Aprendizaje</option>
+              {CATEGORIAS.map(categoria => (
+                <option key={categoria} value={categoria}>{CATEGORIA_LABELS[categoria]}</option>
+              ))}
             </select>
           </div>
 
@@ -314,7 +397,7 @@ export default function EncuestasBase() {
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
               <div>
                 <div style={{ fontSize: 13, fontWeight: 700, color: COLORS.neutro900 }}>Incisos</div>
-                <div style={{ fontSize: 12, color: COLORS.neutro500 }}>Cada inciso puede incluir una pregunta, una imagen y cuatro respuestas.</div>
+                <div style={{ fontSize: 12, color: COLORS.neutro500 }}>Cada inciso tiene una pregunta y sus opciones de respuesta.</div>
               </div>
             </div>
 
@@ -363,31 +446,27 @@ export default function EncuestasBase() {
                         </div>
 
                         <div>
-                          <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: COLORS.neutro700, marginBottom: 6 }}>Imagen de apoyo</label>
-                          <input
-                            type="file"
-                            accept="image/*"
-                            onChange={event => handleImageUpload(index, event)}
-                            style={{ width: "100%", fontSize: 13, color: COLORS.neutro700 }}
-                          />
-                          {inciso.imagen && (
-                            <img src={inciso.imagen} alt={`Previsualización inciso ${index + 1}`} style={{ width: "100%", maxHeight: 180, objectFit: "cover", borderRadius: 8, marginTop: 8, border: `1px solid ${COLORS.neutro100}` }} />
-                          )}
-                        </div>
-
-                        <div>
                           <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: COLORS.neutro700, marginBottom: 6 }}>Respuestas posibles</label>
                           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                             {inciso.respuestas.map((respuesta, respuestaIndex) => (
-                              <input
-                                key={`${inciso.id}-${respuestaIndex}`}
-                                value={respuesta}
-                                onChange={event => updateIncisoRespuesta(index, respuestaIndex, event.target.value)}
-                                placeholder={`Opción ${respuestaIndex + 1}`}
-                                style={{ width: "100%", padding: "9px 12px", border: `1px solid ${COLORS.neutro100}`, borderRadius: 8, fontSize: 14, color: COLORS.neutro900, outline: "none", boxSizing: "border-box" }}
-                              />
+                              <div key={respuestaIndex} style={{ display: "flex", gap: 6 }}>
+                                <input
+                                  value={respuesta}
+                                  onChange={event => updateIncisoRespuesta(index, respuestaIndex, event.target.value)}
+                                  placeholder={`Opción ${respuestaIndex + 1}`}
+                                  style={{ flex: 1, padding: "9px 12px", border: `1px solid ${COLORS.neutro100}`, borderRadius: 8, fontSize: 14, color: COLORS.neutro900, outline: "none", boxSizing: "border-box" }}
+                                />
+                                {inciso.respuestas.length > 2 && (
+                                  <button type="button" onClick={() => removeRespuesta(index, respuestaIndex)} style={{ border: "none", background: "transparent", color: COLORS.neutro400, cursor: "pointer" }} aria-label="Eliminar opción">
+                                    <i className="ti ti-x" />
+                                  </button>
+                                )}
+                              </div>
                             ))}
                           </div>
+                          <button type="button" onClick={() => addRespuesta(index)} style={{ marginTop: 8, border: "none", background: "transparent", color: COLORS.violeta600, cursor: "pointer", fontSize: 12, fontWeight: 600, padding: 0 }}>
+                            + Añadir opción
+                          </button>
                         </div>
                       </div>
                     )}
@@ -396,22 +475,25 @@ export default function EncuestasBase() {
               })}
             </div>
 
-            <div style={{background: COLORS.neutro50 }}>
+            <div style={{ background: COLORS.neutro50 }}>
               <button type="button" onClick={addInciso} style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: `1px dashed ${COLORS.violeta200}`, background: COLORS.violeta50, color: COLORS.violeta600, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
                 + Añadir inciso
               </button>
             </div>
           </div>
 
+          {formError && <p style={{ margin: 0, fontSize: 13, color: COLORS.rojo600 }}>{formError}</p>}
+
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, paddingTop: 6 }}>
             <button type="button" onClick={() => setIsDrawerOpen(false)} style={{ padding: "9px 16px", borderRadius: 8, background: "none", border: `1px solid ${COLORS.neutro100}`, color: COLORS.neutro700, fontSize: 14, cursor: "pointer" }}>
               Cancelar
             </button>
-            <button type="submit" style={{ padding: "9px 16px", borderRadius: 8, background: COLORS.violeta400, border: "none", color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
-              {editingEncuesta ? "Guardar cambios" : "Crear encuesta"}
+            <button type="submit" disabled={saving} style={{ padding: "9px 16px", borderRadius: 8, background: COLORS.violeta400, border: "none", color: "#fff", fontSize: 14, fontWeight: 600, cursor: saving ? "not-allowed" : "pointer", opacity: saving ? 0.6 : 1 }}>
+              {saving ? "Guardando..." : editingId ? "Guardar cambios" : "Crear encuesta"}
             </button>
           </div>
         </form>
+        )}
       </Drawer>
     </div>
   );

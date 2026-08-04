@@ -1,5 +1,12 @@
 // ── Admin ─────────────────────────────────────────────────────
 export { colegiosRoutes }           from "./admin/colegios";
+export { colegiosIdRoutes }         from "./admin/colegiosId";
+export { formulariosRoutes }        from "./admin/formularios";
+export { formulariosIdRoutes }      from "./admin/formulariosId";
+export { gruposRoutes }             from "./admin/grupos";
+export { gruposEstudiantesRoutes }  from "./admin/gruposEstudiantes";
+export { gruposRespuestasRoutes }   from "./admin/gruposRespuestas";
+export { estudiantesIdRoutes }      from "./admin/estudiantesId";
 export { evaluacionRoutes }         from "./admin/evaluacion";
 export { evaluacionIdRoutes }       from "./admin/evaluacionId";
 export { evaluacionExportarRoutes } from "./admin/evaluacionExportar";

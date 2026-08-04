@@ -20,12 +20,20 @@ export const evaluacionIdRoutes = {
         return Response.json({ error: "Evaluación no encontrada" }, { status: 404 });
       }
 
-      // Grupos con su progreso usando la view
+      // Grupos con su progreso usando la view, más los títulos de los
+      // formularios asignados (igual que /api/admin/grupos/:id)
       const grupos = await sql`
-        SELECT *
-        FROM vista_progreso_grupo
-        WHERE evaluacion_id = ${id}
-        ORDER BY grupo_nombre
+        SELECT
+          vpg.*,
+          fe.titulo AS form_emociones_titulo,
+          fb.titulo AS form_bienpsic_titulo,
+          fa.titulo AS form_aprendizaje_titulo
+        FROM vista_progreso_grupo vpg
+        LEFT JOIN formulario fe ON fe.id = vpg.form_emociones_id
+        LEFT JOIN formulario fb ON fb.id = vpg.form_bienpsic_id
+        LEFT JOIN formulario fa ON fa.id = vpg.form_aprendizaje_id
+        WHERE vpg.evaluacion_id = ${id}
+        ORDER BY vpg.grupo_nombre
       `;
 
       return Response.json({ data: { ...evaluacion, grupos } });

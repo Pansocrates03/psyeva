@@ -19,10 +19,15 @@ function estadoDe(evaluacion: EvaluacionConProgreso) {
 }
 
 function formatFecha(fecha: string) {
-  return new Date(`${fecha}T00:00:00`).toLocaleDateString("es-ES", {
+  // Postgres serializa DATE como ISO datetime completo en UTC medianoche
+  // (...T00:00:00.000Z). Hay que formatear en UTC también, si no el
+  // navegador la corre un día para atrás en timezones negativos.
+  const iso = fecha.includes("T") ? fecha : `${fecha}T00:00:00Z`;
+  return new Date(iso).toLocaleDateString("es-ES", {
     day: "numeric",
     month: "long",
     year: "numeric",
+    timeZone: "UTC",
   });
 }
 
