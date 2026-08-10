@@ -1,6 +1,15 @@
 import React, { useState } from "react";
 import COLORS from "@/utils/Colors";
-import { useNavigate } from "react-router-dom";
+import Reactivo from "./Reactivo";
+import { databaseService, ApiError } from "@/services/databaseService";
+import { CATEGORIA_LABELS } from "@/utils/categorias";
+import type {
+  CategoriaFormulario,
+  EstudianteConEstado,
+  EvaluacionConProgreso,
+  GrupoConProgreso,
+  Pregunta,
+} from "@/utils/types";
 
 // ─────────────────────────────────────────────
 // Tipos
@@ -8,51 +17,22 @@ import { useNavigate } from "react-router-dom";
 type Seccion =
   | "verificacion"
   | "seleccionarGrupo"
-  | "seleccionarEvaluacion"
+  | "seleccionarFormulario"
   | "seleccionarAlumno"
-  | "encuesta";
+  | "confirmacion"
+  | "respondiendo"
+  | "completado";
 
-interface Alumno {
-  id: number;
-  nombre: string;
-  completado: boolean;
+interface FormularioDisponible {
+  categoria: CategoriaFormulario;
+  formularioId: string;
+  titulo: string;
 }
 
-interface TipoEvaluacion {
-  id: number;
-  label: string;
-  color: string;
-  colorText: string;
+interface SesionActiva {
+  sesionId: string;
+  preguntas: Pregunta[];
 }
-
-// ─────────────────────────────────────────────
-// Datos de muestra
-// ─────────────────────────────────────────────
-const GRUPOS = ["1ro A", "1ro B", "1ro C", "2do A", "2do B", "3ro A", "3ro B", "4to A"];
-
-const TIPOS_EVALUACION: TipoEvaluacion[] = [
-  { id: 1, label: "Emociones",   color: COLORS.violeta50,  colorText: COLORS.violeta600 },
-  { id: 2, label: "Bienestar",   color: COLORS.verde50,    colorText: COLORS.verde600   },
-  { id: 3, label: "Aprendizaje", color: COLORS.azul50,     colorText: COLORS.azul600    },
-];
-
-const ALUMNOS: Alumno[] = [
-  { id: 1,  nombre: "Sofía Aldana Torres",      completado: true  },
-  { id: 2,  nombre: "Mateo Bernal Ríos",        completado: true  },
-  { id: 3,  nombre: "Emilia Castillo Vega",     completado: false },
-  { id: 4,  nombre: "Santiago Díaz Mora",       completado: false },
-  { id: 5,  nombre: "Valentina Esquivel Luna",  completado: true  },
-  { id: 6,  nombre: "Andrés Fuentes Paz",       completado: false },
-  { id: 7,  nombre: "Isabella González Ruiz",   completado: false },
-  { id: 8,  nombre: "Emilio Hernández Lima",    completado: true  },
-  { id: 9,  nombre: "Camila Ibáñez Soto",       completado: false },
-  { id: 10, nombre: "Rodrigo Jiménez Cruz",     completado: false },
-  { id: 11, nombre: "Daniela Kuri Medina",      completado: false },
-  { id: 12, nombre: "Fernando López Vidal",     completado: true  },
-  { id: 13, nombre: "Renata Morales Serna",     completado: false },
-  { id: 14, nombre: "Pablo Navarro Ríos",       completado: false },
-  { id: 15, nombre: "Lucía Ortega Peña",        completado: false },
-];
 
 // ─────────────────────────────────────────────
 // Estilos compartidos
@@ -98,6 +78,29 @@ function inputStyle(focused: boolean): React.CSSProperties {
     boxShadow: focused ? `0 0 0 3px ${COLORS.violeta50}` : "none",
     transition: "border-color 0.15s, box-shadow 0.15s",
   };
+}
+
+const CATEGORIA_COLOR: Record<CategoriaFormulario, { color: string; colorText: string }> = {
+  emociones: { color: COLORS.violeta50, colorText: COLORS.violeta600 },
+  bienestar_psicologico: { color: COLORS.verde50, colorText: COLORS.verde600 },
+  aprendizaje: { color: COLORS.azul50, colorText: COLORS.azul600 },
+};
+
+function estadoPorCategoria(estudiante: EstudianteConEstado, categoria: CategoriaFormulario) {
+  if (categoria === "emociones") return estudiante.estadoEmociones;
+  if (categoria === "bienestar_psicologico") return estudiante.estadoBienestar;
+  return estudiante.estadoAprendizaje;
+}
+
+function formulariosDelGrupo(grupo: GrupoConProgreso): FormularioDisponible[] {
+  const posibles: Array<[CategoriaFormulario, string | null | undefined, string | null | undefined]> = [
+    ["emociones", grupo.formEmocionesId, grupo.formEmocionesTitulo],
+    ["bienestar_psicologico", grupo.formBienpsicId, grupo.formBienpsicTitulo],
+    ["aprendizaje", grupo.formAprendizajeId, grupo.formAprendizajeTitulo],
+  ];
+  return posibles
+    .filter((p): p is [CategoriaFormulario, string, string] => Boolean(p[1]))
+    .map(([categoria, formularioId, titulo]) => ({ categoria, formularioId, titulo }));
 }
 
 function BtnPrimario({ label, onClick, disabled = false }: {
@@ -152,14 +155,32 @@ function LogoHeader({ escuela, grupo }: { escuela?: string; grupo?: string }) {
 // ─────────────────────────────────────────────
 // Paso 1 — Verificación de código
 // ─────────────────────────────────────────────
-function VerificacionStep({ onContinue }: { onContinue: (escuela: string) => void }) {
+function VerificacionStep({ onContinue }: {
+  onContinue: (colegioNombre: string, evaluacion: EvaluacionConProgreso) => void;
+}) {
   const [codigo, setCodigo] = useState("");
   const [focused, setFocused] = useState(false);
   const [error, setError] = useState("");
+  const [verificando, setVerificando] = useState(false);
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     if (codigo.trim().length < 3) { setError("Ingresa un código válido."); return; }
-    onContinue("West Highs 2026");
+
+    setVerificando(true);
+    setError("");
+    try {
+      const { colegio, evaluaciones } = await databaseService.facilitador.verificar(codigo.trim());
+      const activa = evaluaciones.find(e => e.aceptaRespuestas);
+      if (!activa) {
+        setError("Esta escuela no tiene una evaluación abierta en este momento.");
+        return;
+      }
+      onContinue(colegio.nombre, activa);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "No se pudo verificar el código.");
+    } finally {
+      setVerificando(false);
+    }
   };
 
   return (
@@ -174,25 +195,25 @@ function VerificacionStep({ onContinue }: { onContinue: (escuela: string) => voi
         </p>
         <label style={labelStyle}>Código de acceso</label>
         <input
-          type="text" placeholder="Ej. WH-2026" value={codigo}
-          onChange={e => { setCodigo(e.target.value.toUpperCase()); setError(""); }}
+          type="text" placeholder="Ej. san-jose-2026" value={codigo}
+          onChange={e => { setCodigo(e.target.value); setError(""); }}
           onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
           onKeyDown={e => e.key === "Enter" && handleContinue()}
           style={{ ...inputStyle(focused), fontFamily: "monospace", letterSpacing: "0.06em", marginBottom: error ? 6 : 20 }}
           autoFocus
         />
         {error && <p style={{ margin: "0 0 14px", fontSize: 12, color: COLORS.rojo400 }}>{error}</p>}
-        <BtnPrimario label="Continuar" onClick={handleContinue} disabled={codigo.trim().length === 0} />
+        <BtnPrimario label={verificando ? "Verificando..." : "Continuar"} onClick={handleContinue} disabled={verificando || codigo.trim().length === 0} />
       </div>
     </div>
   );
 }
 
 // ─────────────────────────────────────────────
-// Paso 2 — Seleccionar grupo (botones grandes)
+// Paso 2 — Seleccionar grupo
 // ─────────────────────────────────────────────
-function SeleccionarGrupoStep({ escuela, onBack, onContinue }: {
-  escuela: string; onBack: () => void; onContinue: (grupo: string) => void;
+function SeleccionarGrupoStep({ escuela, grupos, onBack, onContinue }: {
+  escuela: string; grupos: GrupoConProgreso[]; onBack: () => void; onContinue: (grupo: GrupoConProgreso) => void;
 }) {
   return (
     <div style={{ ...cardStyle, width: 420 }}>
@@ -205,46 +226,51 @@ function SeleccionarGrupoStep({ escuela, onBack, onContinue }: {
           Toca el grupo que va a realizar la evaluación hoy.
         </p>
 
-        {/* Grid de grupos — un clic y avanza directamente */}
-        <div style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
-          gap: 10,
-          marginBottom: 20,
-        }}>
-          {GRUPOS.map(g => (
-            <button
-              key={g}
-              onClick={() => onContinue(g)}
-              style={{
-                padding: "18px 12px",
-                borderRadius: 12,
-                border: `1.5px solid ${COLORS.neutro100}`,
-                background: "#fff",
-                cursor: "pointer",
-                fontSize: 16,
-                fontWeight: 600,
-                color: COLORS.neutro900,
-                textAlign: "center" as const,
-                transition: "border-color 0.15s, background 0.15s, color 0.15s",
-              }}
-              onMouseEnter={e => {
-                const el = e.currentTarget;
-                el.style.borderColor = COLORS.violeta400;
-                el.style.background = COLORS.violeta50;
-                el.style.color = COLORS.violeta600;
-              }}
-              onMouseLeave={e => {
-                const el = e.currentTarget;
-                el.style.borderColor = COLORS.neutro100;
-                el.style.background = "#fff";
-                el.style.color = COLORS.neutro900;
-              }}
-            >
-              {g}
-            </button>
-          ))}
-        </div>
+        {grupos.length === 0 ? (
+          <p style={{ margin: "0 0 20px", fontSize: 13, color: COLORS.neutro400, textAlign: "center" }}>
+            Esta evaluación todavía no tiene grupos configurados.
+          </p>
+        ) : (
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+            gap: 10,
+            marginBottom: 20,
+          }}>
+            {grupos.map(g => (
+              <button
+                key={g.grupoId}
+                onClick={() => onContinue(g)}
+                style={{
+                  padding: "18px 12px",
+                  borderRadius: 12,
+                  border: `1.5px solid ${COLORS.neutro100}`,
+                  background: "#fff",
+                  cursor: "pointer",
+                  fontSize: 16,
+                  fontWeight: 600,
+                  color: COLORS.neutro900,
+                  textAlign: "center" as const,
+                  transition: "border-color 0.15s, background 0.15s, color 0.15s",
+                }}
+                onMouseEnter={e => {
+                  const el = e.currentTarget;
+                  el.style.borderColor = COLORS.violeta400;
+                  el.style.background = COLORS.violeta50;
+                  el.style.color = COLORS.violeta600;
+                }}
+                onMouseLeave={e => {
+                  const el = e.currentTarget;
+                  el.style.borderColor = COLORS.neutro100;
+                  el.style.background = "#fff";
+                  el.style.color = COLORS.neutro900;
+                }}
+              >
+                {g.grupoNombre}
+              </button>
+            ))}
+          </div>
+        )}
 
         <BtnSecundario label="Atrás" onClick={onBack} />
       </div>
@@ -253,14 +279,16 @@ function SeleccionarGrupoStep({ escuela, onBack, onContinue }: {
 }
 
 // ─────────────────────────────────────────────
-// Paso 3 — Tipo de evaluación
+// Paso 3 — Tipo de formulario
 // ─────────────────────────────────────────────
-function SeleccionarEvaluacionStep({ escuela, grupo, onBack, onContinue }: {
-  escuela: string; grupo: string; onBack: () => void; onContinue: (tipo: TipoEvaluacion) => void;
+function SeleccionarFormularioStep({ escuela, grupo, onBack, onContinue }: {
+  escuela: string; grupo: GrupoConProgreso; onBack: () => void; onContinue: (formulario: FormularioDisponible) => void;
 }) {
+  const disponibles = formulariosDelGrupo(grupo);
+
   return (
     <div style={cardStyle}>
-      <LogoHeader escuela={escuela} grupo={grupo} />
+      <LogoHeader escuela={escuela} grupo={grupo.grupoNombre} />
       <div style={cardBodyStyle}>
         <h2 style={{ margin: "0 0 4px", fontSize: 17, fontWeight: 600, color: COLORS.neutro900 }}>
           ¿Qué tipo de evaluación?
@@ -269,49 +297,60 @@ function SeleccionarEvaluacionStep({ escuela, grupo, onBack, onContinue }: {
           Toca el formulario que van a responder hoy.
         </p>
 
-        {/* Botones grandes — un clic y avanza */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 20 }}>
-          {TIPOS_EVALUACION.map(tipo => (
-            <button
-              key={tipo.id}
-              onClick={() => onContinue(tipo)}
-              style={{
-                width: "100%", padding: "18px 20px", borderRadius: 12,
-                border: `1.5px solid ${COLORS.neutro100}`,
-                background: "#fff", cursor: "pointer",
-                display: "flex", alignItems: "center", gap: 14,
-                textAlign: "left" as const,
-                transition: "border-color 0.15s, background 0.15s",
-              }}
-              onMouseEnter={e => {
-                const el = e.currentTarget;
-                el.style.borderColor = tipo.colorText;
-                el.style.background = tipo.color;
-              }}
-              onMouseLeave={e => {
-                const el = e.currentTarget;
-                el.style.borderColor = COLORS.neutro100;
-                el.style.background = "#fff";
-              }}
-            >
-              <div style={{
-                width: 36, height: 36, borderRadius: 10, flexShrink: 0,
-                background: tipo.color, border: `1.5px solid ${tipo.colorText}20`,
-                display: "flex", alignItems: "center", justifyContent: "center",
-              }}>
-                <div style={{ width: 14, height: 14, borderRadius: "50%", background: tipo.colorText, opacity: 0.7 }} />
-              </div>
-              <div>
-                <div style={{ fontSize: 16, fontWeight: 600, color: COLORS.neutro900 }}>{tipo.label}</div>
-              </div>
-              <div style={{ marginLeft: "auto" }}>
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                  <path d="M6 4L10 8L6 12" stroke={COLORS.neutro400} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </div>
-            </button>
-          ))}
-        </div>
+        {disponibles.length === 0 ? (
+          <p style={{ margin: "0 0 20px", fontSize: 13, color: COLORS.neutro400, textAlign: "center" }}>
+            Este grupo no tiene encuestas asignadas todavía.
+          </p>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 20 }}>
+            {disponibles.map(formulario => {
+              const meta = CATEGORIA_COLOR[formulario.categoria];
+              return (
+                <button
+                  key={formulario.formularioId}
+                  onClick={() => onContinue(formulario)}
+                  style={{
+                    width: "100%", padding: "18px 20px", borderRadius: 12,
+                    border: `1.5px solid ${COLORS.neutro100}`,
+                    background: "#fff", cursor: "pointer",
+                    display: "flex", alignItems: "center", gap: 14,
+                    textAlign: "left" as const,
+                    transition: "border-color 0.15s, background 0.15s",
+                  }}
+                  onMouseEnter={e => {
+                    const el = e.currentTarget;
+                    el.style.borderColor = meta.colorText;
+                    el.style.background = meta.color;
+                  }}
+                  onMouseLeave={e => {
+                    const el = e.currentTarget;
+                    el.style.borderColor = COLORS.neutro100;
+                    el.style.background = "#fff";
+                  }}
+                >
+                  <div style={{
+                    width: 36, height: 36, borderRadius: 10, flexShrink: 0,
+                    background: meta.color, border: `1.5px solid ${meta.colorText}20`,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                  }}>
+                    <div style={{ width: 14, height: 14, borderRadius: "50%", background: meta.colorText, opacity: 0.7 }} />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 12, color: COLORS.neutro500, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                      {CATEGORIA_LABELS[formulario.categoria]}
+                    </div>
+                    <div style={{ fontSize: 16, fontWeight: 600, color: COLORS.neutro900 }}>{formulario.titulo}</div>
+                  </div>
+                  <div style={{ marginLeft: "auto" }}>
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                      <path d="M6 4L10 8L6 12" stroke={COLORS.neutro400} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         <BtnSecundario label="Atrás" onClick={onBack} />
       </div>
@@ -320,18 +359,18 @@ function SeleccionarEvaluacionStep({ escuela, grupo, onBack, onContinue }: {
 }
 
 // ─────────────────────────────────────────────
-// Paso 4 — Seleccionar alumno (lista grande, sin buscar)
+// Paso 4 — Seleccionar alumno
 // ─────────────────────────────────────────────
-function SeleccionarAlumnoStep({ escuela, grupo, evaluacion, onBack, onContinue }: {
-  escuela: string; grupo: string; evaluacion: TipoEvaluacion;
-  onBack: () => void; onContinue: (alumno: Alumno) => void;
+function SeleccionarAlumnoStep({ escuela, grupo, formulario, estudiantes, onBack, onContinue }: {
+  escuela: string; grupo: GrupoConProgreso; formulario: FormularioDisponible; estudiantes: EstudianteConEstado[];
+  onBack: () => void; onContinue: (alumno: EstudianteConEstado) => void;
 }) {
-  const [alumnoSel, setAlumnoSel] = useState<Alumno | null>(null);
-  const pendientes = ALUMNOS.filter(a => !a.completado);
+  const [alumnoSel, setAlumnoSel] = useState<EstudianteConEstado | null>(null);
+  const pendientes = estudiantes.filter(e => estadoPorCategoria(e, formulario.categoria) !== "completada");
 
   return (
     <div style={{ ...cardStyle, width: 420 }}>
-      <LogoHeader escuela={escuela} grupo={`${grupo} · ${evaluacion.label}`} />
+      <LogoHeader escuela={escuela} grupo={`${grupo.grupoNombre} · ${CATEGORIA_LABELS[formulario.categoria]}`} />
       <div style={cardBodyStyle}>
         <h2 style={{ margin: "0 0 4px", fontSize: 17, fontWeight: 600, color: COLORS.neutro900 }}>
           ¿Quién va a responder?
@@ -340,22 +379,23 @@ function SeleccionarAlumnoStep({ escuela, grupo, evaluacion, onBack, onContinue 
           {pendientes.length} alumnos pendientes · toca un nombre para seleccionar.
         </p>
 
-        {/* Lista alta sin scroll forzado — todos visibles */}
         <div style={{
           border: `1px solid ${COLORS.neutro100}`,
           borderRadius: 12,
           overflow: "hidden",
           marginBottom: 18,
+          maxHeight: 340,
+          overflowY: "auto",
         }}>
           {pendientes.length === 0 ? (
             <div style={{ padding: "28px", textAlign: "center" as const, fontSize: 14, color: COLORS.neutro400 }}>
-              Todos los alumnos han completado la evaluación ✓
+              Todos los alumnos han completado esta encuesta ✓
             </div>
           ) : pendientes.map((a, idx) => {
-            const sel = alumnoSel?.id === a.id;
+            const sel = alumnoSel?.estudianteId === a.estudianteId;
             return (
               <div
-                key={a.id}
+                key={a.estudianteId}
                 onClick={() => setAlumnoSel(sel ? null : a)}
                 style={{
                   display: "flex", alignItems: "center", gap: 12,
@@ -368,7 +408,6 @@ function SeleccionarAlumnoStep({ escuela, grupo, evaluacion, onBack, onContinue 
                 onMouseEnter={e => { if (!sel) (e.currentTarget as HTMLDivElement).style.background = COLORS.neutro50; }}
                 onMouseLeave={e => { if (!sel) (e.currentTarget as HTMLDivElement).style.background = "#fff"; }}
               >
-                {/* Avatar con inicial */}
                 <div style={{
                   width: 34, height: 34, borderRadius: "50%", flexShrink: 0,
                   background: sel ? COLORS.violeta400 : COLORS.neutro100,
@@ -377,23 +416,21 @@ function SeleccionarAlumnoStep({ escuela, grupo, evaluacion, onBack, onContinue 
                   color: sel ? "#fff" : COLORS.neutro500,
                   transition: "all 0.15s",
                 }}>
-                  {a.nombre.charAt(0)}
+                  {a.nombreCompleto.charAt(0)}
                 </div>
 
-                {/* Nombre completo */}
                 <span style={{
                   fontSize: 14, flex: 1,
                   color: sel ? COLORS.violeta700 : COLORS.neutro900,
                   fontWeight: sel ? 600 : 400,
                 }}>
-                  {a.nombre}
+                  {a.nombreCompleto}
                 </span>
 
-                {/* Check si está seleccionado */}
                 {sel && (
                   <svg width="20" height="20" viewBox="0 0 20 20" fill="none" style={{ flexShrink: 0 }}>
-                    <circle cx="10" cy="10" r="10" fill={COLORS.violeta400}/>
-                    <path d="M5.5 10L8.5 13L14.5 7" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                    <circle cx="10" cy="10" r="10" fill={COLORS.violeta400} />
+                    <path d="M5.5 10L8.5 13L14.5 7" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                 )}
               </div>
@@ -417,24 +454,44 @@ function SeleccionarAlumnoStep({ escuela, grupo, evaluacion, onBack, onContinue 
 }
 
 // ─────────────────────────────────────────────
-// Pantalla de inicio de encuesta
+// Pantalla de confirmación antes de empezar
 // ─────────────────────────────────────────────
-function EncuestaActiva({ alumno, evaluacion, onTerminar }: {
-  alumno: Alumno; evaluacion: TipoEvaluacion; onTerminar: () => void;
+function ConfirmacionStep({ alumno, formulario, iniciando, onIniciar }: {
+  alumno: EstudianteConEstado; formulario: FormularioDisponible; iniciando: boolean; onIniciar: () => void;
 }) {
   return (
     <div style={{ ...cardStyle, width: 380 }}>
-      <LogoHeader escuela={evaluacion.label} />
+      <LogoHeader escuela={formulario.titulo} />
       <div style={{ ...cardBodyStyle, textAlign: "center" as const, padding: "36px 24px" }}>
         <div style={{ fontSize: 48, marginBottom: 12 }}>📋</div>
         <h2 style={{ margin: "0 0 6px", fontSize: 18, fontWeight: 600, color: COLORS.neutro900 }}>
-          ¡Listo, {alumno.nombre.split(" ")[0]}!
+          ¡Listo, {alumno.nombreCompleto.split(" ")[0]}!
         </h2>
         <p style={{ margin: "0 0 24px", fontSize: 14, color: COLORS.neutro500 }}>
-          Vas a responder la evaluación de <strong>{evaluacion.label}</strong>.<br/>
+          Vas a responder la evaluación de <strong>{CATEGORIA_LABELS[formulario.categoria]}</strong>.<br />
           Toca "Comenzar" cuando estés listo.
         </p>
-        <BtnPrimario label="Comenzar evaluación" onClick={onTerminar} />
+        <BtnPrimario label={iniciando ? "Cargando..." : "Comenzar evaluación"} onClick={onIniciar} disabled={iniciando} />
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// Pantalla final
+// ─────────────────────────────────────────────
+function CompletadoStep({ alumno, onSiguienteAlumno }: { alumno: EstudianteConEstado; onSiguienteAlumno: () => void }) {
+  return (
+    <div style={{ ...cardStyle, width: 380 }}>
+      <div style={{ ...cardBodyStyle, textAlign: "center" as const, padding: "40px 24px" }}>
+        <div style={{ fontSize: 48, marginBottom: 12 }}>✅</div>
+        <h2 style={{ margin: "0 0 6px", fontSize: 18, fontWeight: 600, color: COLORS.neutro900 }}>
+          ¡Gracias, {alumno.nombreCompleto.split(" ")[0]}!
+        </h2>
+        <p style={{ margin: "0 0 24px", fontSize: 14, color: COLORS.neutro500 }}>
+          Tus respuestas fueron guardadas correctamente.
+        </p>
+        <BtnPrimario label="Siguiente alumno" onClick={onSiguienteAlumno} />
       </div>
     </div>
   );
@@ -446,13 +503,138 @@ function EncuestaActiva({ alumno, evaluacion, onTerminar }: {
 export default function Encuesta() {
   const [seccion, setSeccion] = useState<Seccion>("verificacion");
   const [escuela, setEscuela] = useState("");
-  const [grupo, setGrupo] = useState("");
-  const [evaluacion, setEvaluacion] = useState<TipoEvaluacion | null>(null);
-  const [alumno, setAlumno] = useState<Alumno | null>(null);
+  const [evaluacionActiva, setEvaluacionActiva] = useState<EvaluacionConProgreso | null>(null);
+  const [grupos, setGrupos] = useState<GrupoConProgreso[]>([]);
+  const [grupo, setGrupo] = useState<GrupoConProgreso | null>(null);
+  const [formulario, setFormulario] = useState<FormularioDisponible | null>(null);
+  const [estudiantes, setEstudiantes] = useState<EstudianteConEstado[]>([]);
+  const [alumno, setAlumno] = useState<EstudianteConEstado | null>(null);
 
-  const PASOS: Seccion[] = ["verificacion", "seleccionarGrupo", "seleccionarEvaluacion", "seleccionarAlumno"];
+  const [sesion, setSesion] = useState<SesionActiva | null>(null);
+  const [indexActual, setIndexActual] = useState(0);
+  const [respuestasLocal, setRespuestasLocal] = useState<Record<string, number>>({});
+  const [iniciando, setIniciando] = useState(false);
+  const [enviando, setEnviando] = useState(false);
+  const [pasoError, setPasoError] = useState<string | null>(null);
+
+  const PASOS: Seccion[] = ["verificacion", "seleccionarGrupo", "seleccionarFormulario", "seleccionarAlumno"];
   const pasoActual = PASOS.indexOf(seccion);
-  const navigate = useNavigate();
+
+  const reiniciar = () => {
+    setSeccion("verificacion");
+    setEscuela(""); setEvaluacionActiva(null); setGrupos([]);
+    setGrupo(null); setFormulario(null); setEstudiantes([]); setAlumno(null);
+    setSesion(null); setIndexActual(0); setRespuestasLocal({});
+  };
+
+  const handleVerificado = async (colegioNombre: string, evaluacion: EvaluacionConProgreso) => {
+    setEscuela(colegioNombre);
+    setEvaluacionActiva(evaluacion);
+    setPasoError(null);
+    try {
+      const { grupos } = await databaseService.facilitador.listarGrupos(evaluacion.evaluacionId);
+      setGrupos(grupos);
+      setSeccion("seleccionarGrupo");
+    } catch (err) {
+      setPasoError(err instanceof ApiError ? err.message : "No se pudieron cargar los grupos");
+    }
+  };
+
+  const handleSeleccionarGrupo = (g: GrupoConProgreso) => {
+    setGrupo(g);
+    setSeccion("seleccionarFormulario");
+  };
+
+  const handleSeleccionarFormulario = async (f: FormularioDisponible) => {
+    if (!grupo || !evaluacionActiva) return;
+    setFormulario(f);
+    setPasoError(null);
+    try {
+      const { estudiantes } = await databaseService.facilitador.listarEstudiantes(grupo.grupoId, evaluacionActiva.evaluacionId);
+      setEstudiantes(estudiantes);
+      setSeccion("seleccionarAlumno");
+    } catch (err) {
+      setPasoError(err instanceof ApiError ? err.message : "No se pudieron cargar los estudiantes");
+    }
+  };
+
+  const handleSeleccionarAlumno = (a: EstudianteConEstado) => {
+    setAlumno(a);
+    setSeccion("confirmacion");
+  };
+
+  const handleIniciar = async () => {
+    if (!alumno || !formulario || !evaluacionActiva) return;
+    setIniciando(true);
+    try {
+      const { sesion: sesionResult, preguntas } = await databaseService.facilitador.iniciarSesion({
+        estudianteId: alumno.estudianteId,
+        formularioId: formulario.formularioId,
+        evaluacionId: evaluacionActiva.evaluacionId,
+      });
+
+      // Retoma una sesión ya empezada: precarga las respuestas guardadas
+      // y salta a la primera pregunta que todavía falta.
+      const respuestasPrevias: Record<string, number> = {};
+      preguntas.forEach(p => {
+        if (p.textoLibre) {
+          const opcion = p.opcionesRespuesta.find(o => o.texto === p.textoLibre);
+          if (opcion) respuestasPrevias[p.id] = opcion.valor;
+        }
+      });
+      const primerPendiente = preguntas.findIndex(p => !p.textoLibre);
+
+      setSesion({ sesionId: sesionResult.sesionId, preguntas });
+      setRespuestasLocal(respuestasPrevias);
+      setIndexActual(primerPendiente === -1 ? 0 : primerPendiente);
+      setSeccion("respondiendo");
+    } catch (err) {
+      alert(err instanceof ApiError ? err.message : "No se pudo iniciar la evaluación");
+    } finally {
+      setIniciando(false);
+    }
+  };
+
+  const handleSiguiente = async () => {
+    if (!sesion) return;
+    const pregunta = sesion.preguntas[indexActual];
+    if (!pregunta) return;
+    const valor = respuestasLocal[pregunta.id];
+    const opcion = pregunta.opcionesRespuesta.find(o => o.valor === valor);
+    if (!opcion) return;
+
+    setEnviando(true);
+    try {
+      await databaseService.facilitador.guardarRespuesta({
+        sesionId: sesion.sesionId,
+        preguntaId: pregunta.id,
+        textoLibre: opcion.texto,
+      });
+
+      const esUltima = indexActual === sesion.preguntas.length - 1;
+      if (!esUltima) {
+        setIndexActual(i => i + 1);
+        return;
+      }
+
+      try {
+        await databaseService.facilitador.completarSesion(sesion.sesionId);
+        setSeccion("completado");
+      } catch (err) {
+        if (err instanceof ApiError && err.status === 409) {
+          alert("Faltan preguntas por responder antes de terminar.");
+        } else {
+          alert(err instanceof ApiError ? err.message : "No se pudo completar la evaluación");
+        }
+      }
+    } catch (err) {
+      alert(err instanceof ApiError ? err.message : "No se pudo guardar la respuesta");
+    } finally {
+      setEnviando(false);
+    }
+  };
+
+  const preguntaActual = sesion?.preguntas[indexActual];
 
   return (
     <div style={{
@@ -462,8 +644,7 @@ export default function Encuesta() {
       fontFamily: "system-ui, -apple-system, sans-serif",
     }}>
 
-      {/* Indicador de pasos */}
-      {seccion !== "encuesta" && (
+      {(seccion === "verificacion" || seccion === "seleccionarGrupo" || seccion === "seleccionarFormulario" || seccion === "seleccionarAlumno") && (
         <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 24 }}>
           {PASOS.map((s, i) => {
             const activo = s === seccion;
@@ -478,7 +659,7 @@ export default function Encuesta() {
                   fontSize: 12, fontWeight: 600, transition: "all 0.2s",
                 }}>
                   {completado
-                    ? <svg width="12" height="10" viewBox="0 0 12 10" fill="none"><path d="M1 5L4.5 8.5L11 1.5" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                    ? <svg width="12" height="10" viewBox="0 0 12 10" fill="none"><path d="M1 5L4.5 8.5L11 1.5" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
                     : i + 1}
                 </div>
                 {i < PASOS.length - 1 && (
@@ -490,31 +671,57 @@ export default function Encuesta() {
         </div>
       )}
 
+      {pasoError && (
+        <p style={{ marginBottom: 12, fontSize: 13, color: COLORS.rojo400, textAlign: "center" }}>{pasoError}</p>
+      )}
+
       {seccion === "verificacion" && (
-        <VerificacionStep onContinue={(esc) => { setEscuela(esc); setSeccion("seleccionarGrupo"); }} />
+        <VerificacionStep onContinue={handleVerificado} />
       )}
       {seccion === "seleccionarGrupo" && (
-        <SeleccionarGrupoStep escuela={escuela} onBack={() => setSeccion("verificacion")}
-          onContinue={(g) => { setGrupo(g); setSeccion("seleccionarEvaluacion"); }} />
+        <SeleccionarGrupoStep escuela={escuela} grupos={grupos} onBack={reiniciar} onContinue={handleSeleccionarGrupo} />
       )}
-      {seccion === "seleccionarEvaluacion" && (
-        <SeleccionarEvaluacionStep escuela={escuela} grupo={grupo} onBack={() => setSeccion("seleccionarGrupo")}
-          onContinue={(tipo) => { setEvaluacion(tipo); setSeccion("seleccionarAlumno"); }} />
+      {seccion === "seleccionarFormulario" && grupo && (
+        <SeleccionarFormularioStep escuela={escuela} grupo={grupo} onBack={() => setSeccion("seleccionarGrupo")} onContinue={handleSeleccionarFormulario} />
       )}
-      {seccion === "seleccionarAlumno" && evaluacion && (
-        <SeleccionarAlumnoStep escuela={escuela} grupo={grupo} evaluacion={evaluacion}
-          onBack={() => setSeccion("seleccionarEvaluacion")}
-          onContinue={(a) => { setAlumno(a); setSeccion("encuesta"); }} />
-      )}
-      {seccion === "encuesta" && alumno && evaluacion && (
-        <EncuestaActiva alumno={alumno} evaluacion={evaluacion}
-          onTerminar={() => {
-            navigate("/test-reactivo");
-            // Conecta aquí con <Reactivo />
-            // Ejemplo: navigate(`/reactivo?alumno=${alumno.id}&formulario=${evaluacion.id}`)
-            alert(`Iniciando evaluación de ${evaluacion.label} para ${alumno.nombre}`);
-          }}
+      {seccion === "seleccionarAlumno" && grupo && formulario && (
+        <SeleccionarAlumnoStep
+          escuela={escuela} grupo={grupo} formulario={formulario} estudiantes={estudiantes}
+          onBack={() => setSeccion("seleccionarFormulario")}
+          onContinue={handleSeleccionarAlumno}
         />
+      )}
+      {seccion === "confirmacion" && alumno && formulario && (
+        <ConfirmacionStep alumno={alumno} formulario={formulario} iniciando={iniciando} onIniciar={handleIniciar} />
+      )}
+      {seccion === "respondiendo" && sesion && preguntaActual && alumno && (
+        <div style={{ width: "100%" }}>
+          <Reactivo
+            pregunta={preguntaActual.texto}
+            imagenUrl={preguntaActual.imagenUrl ?? undefined}
+            opciones={preguntaActual.opcionesRespuesta.map(o => ({ label: o.texto, value: o.valor }))}
+            numeroPregunta={indexActual + 1}
+            totalPreguntas={sesion.preguntas.length}
+            nombreEstudiante={alumno.nombreCompleto}
+            valorSeleccionado={respuestasLocal[preguntaActual.id] ?? null}
+            onSeleccionar={valor => setRespuestasLocal(prev => ({ ...prev, [preguntaActual.id]: valor }))}
+            onAnterior={indexActual > 0 ? () => setIndexActual(i => i - 1) : undefined}
+            onSiguiente={enviando ? undefined : handleSiguiente}
+            esUltima={indexActual === sesion.preguntas.length - 1}
+          />
+        </div>
+      )}
+      {seccion === "completado" && alumno && (
+        <CompletadoStep alumno={alumno} onSiguienteAlumno={() => {
+          setSesion(null); setIndexActual(0); setRespuestasLocal({}); setAlumno(null);
+          setSeccion("seleccionarAlumno");
+          // refresca la lista de pendientes para que ya no aparezca este alumno
+          if (grupo && evaluacionActiva) {
+            databaseService.facilitador.listarEstudiantes(grupo.grupoId, evaluacionActiva.evaluacionId)
+              .then(({ estudiantes }) => setEstudiantes(estudiantes))
+              .catch(() => {});
+          }
+        }} />
       )}
     </div>
   );
