@@ -14,8 +14,13 @@ export { evaluacionEstadoRoutes }   from "./admin/evaluacionEstado";
 export { gruposIdRoutes }           from "./admin/gruposId";
 export { reportesRoutes }           from "./admin/reportes";
 
+// ── Archivos subidos ─────────────────────────────────────────
+export { uploadsRoutes } from "./uploads";
+
 // ── Facilitador ───────────────────────────────────────────────
-export { verificarRoutes }              from "./facilitador/verificar";
+export { verificarRoutes }                     from "./facilitador/verificar";
+export { facilitadorEvaluacionIdRoutes }       from "./facilitador/evaluacionId";
+export { facilitadorEvaluacionVerificarRoutes } from "./facilitador/evaluacionVerificar";
 export { facilitadorGruposRoutes }      from "./facilitador/grupos";
 export { estudiantesRoutes }            from "./facilitador/estudiantes";
 export { sesionesRoutes }               from "./facilitador/sesiones";

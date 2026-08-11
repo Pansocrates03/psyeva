@@ -44,6 +44,7 @@ export default function MisAnalisis() {
   const [form, setForm] = useState({ colegioId: "", nombre: "", fecha: "" });
   const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [copiado, setCopiado] = useState<{ id: string; tipo: "evaluacion" | "reportes" } | null>(null);
 
   const cargarEvaluaciones = () => {
     setLoading(true);
@@ -102,6 +103,17 @@ export default function MisAnalisis() {
       cargarEvaluaciones();
     } catch (err) {
       alert(err instanceof ApiError ? err.message : "No se pudo cerrar la evaluación");
+    }
+  };
+
+  const copiarEnlace = async (id: string, tipo: "evaluacion" | "reportes") => {
+    const url = `${window.location.origin}/${tipo === "evaluacion" ? "evaluacion" : "reportes"}/${id}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopiado({ id, tipo });
+      setTimeout(() => setCopiado(current => current?.id === id && current.tipo === tipo ? null : current), 2000);
+    } catch {
+      alert(`No se pudo copiar automáticamente. Enlace:\n${url}`);
     }
   };
 
@@ -202,6 +214,16 @@ export default function MisAnalisis() {
                   align: "right",
                   render: item => (
                     <div data-no-row-click="true" style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
+                      <ActionButton
+                        label={copiado?.id === item.evaluacionId && copiado.tipo === "evaluacion" ? "¡Copiado!" : "Link encuesta"}
+                        icon="ti-link"
+                        onClick={() => copiarEnlace(item.evaluacionId, "evaluacion")}
+                      />
+                      <ActionButton
+                        label={copiado?.id === item.evaluacionId && copiado.tipo === "reportes" ? "¡Copiado!" : "Link reportes"}
+                        icon="ti-file-download"
+                        onClick={() => copiarEnlace(item.evaluacionId, "reportes")}
+                      />
                       {item.aceptaRespuestas
                         ? <ActionButton label="Cerrar" variant="archive" onClick={() => cerrarEvaluacion(item.evaluacionId)} />
                         : <ActionButton label="Eliminar" variant="danger" onClick={() => eliminarEvaluacion(item.evaluacionId)} />
