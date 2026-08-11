@@ -5,6 +5,7 @@ import type {
   EstudianteConEstado,
   Evaluacion,
   EvaluacionConProgreso,
+  EvaluacionParaFacilitador,
   Formulario,
   FormularioConPreguntas,
   FormularioConTotalPreguntas,
@@ -14,6 +15,7 @@ import type {
   GrupoRespuestas,
   Pregunta,
   Reporte,
+  ReporteConContexto,
   Sesion,
   CategoriaFormulario,
   TipoReporte,
@@ -385,6 +387,43 @@ class DatabaseService {
       return { colegio: data.colegio, evaluaciones: data.evaluaciones };
     },
 
+    // Info pública de una evaluación (nombre, colegio, si acepta
+    // respuestas / tiene reportes publicados) — sin sesión, para mostrar
+    // contexto antes de pedir clave de acceso o de entrar directo.
+    obtenerInfoEvaluacion: async (evaluacionId: string): Promise<EvaluacionParaFacilitador> => {
+      const { data } = await this.get<ApiEnvelope<EvaluacionParaFacilitador>>(
+        `/api/facilitador/evaluaciones/${evaluacionId}`,
+        { conColegio: false }
+      );
+      return data;
+    },
+
+    // Entra directo con el link /evaluacion/:id (sin clave de acceso) —
+    // el propio id de la evaluación funciona como el "secreto" del link.
+    // Se usa para APLICAR la encuesta.
+    entrarPorEvaluacion: async (evaluacionId: string): Promise<EvaluacionParaFacilitador> => {
+      const data = await this.facilitador.obtenerInfoEvaluacion(evaluacionId);
+      this.guardarSesionFacilitador(data.colegioId, btoa(data.colegioId));
+      return data;
+    },
+
+    // Verifica la clave de acceso escopeada a una evaluación puntual —
+    // se usa en /reportes/:id. A diferencia de entrarPorEvaluacion(), aquí
+    // SÍ hace falta la clave: el link solo indica qué evaluación ver.
+    verificarConEvaluacion: async (
+      evaluacionId: string,
+      claveAcceso: string
+    ): Promise<{ colegio: { id: string; nombre: string }; evaluacion: { id: string; nombre: string } }> => {
+      const { data } = await this.post<ApiEnvelope<{
+        colegio: { id: string; nombre: string };
+        evaluacion: { id: string; nombre: string };
+        token: string;
+      }>>(`/api/facilitador/evaluaciones/${evaluacionId}/verificar`, { claveAcceso }, { conColegio: false });
+
+      this.guardarSesionFacilitador(data.colegio.id, data.token);
+      return { colegio: data.colegio, evaluacion: data.evaluacion };
+    },
+
     listarGrupos: async (evaluacionId: string): Promise<{ evaluacion: Evaluacion; grupos: GrupoConProgreso[] }> => {
       const { data } = await this.get<ApiEnvelope<{ evaluacion: Evaluacion; grupos: GrupoConProgreso[] }>>(
         `/api/facilitador/grupos${buildQuery({ evaluacionId })}`
@@ -446,8 +485,8 @@ class DatabaseService {
 
     listarReportes: async (
       filtros: { evaluacionId?: string; tipo?: TipoReporte; grupoId?: string } = {}
-    ): Promise<{ total: number; reportes: Record<"general" | "grupal" | "individual", Reporte[]> }> => {
-      const { data } = await this.get<ApiEnvelope<{ total: number; reportes: Record<"general" | "grupal" | "individual", Reporte[]> }>>(
+    ): Promise<{ total: number; reportes: Record<"general" | "grupal" | "individual", ReporteConContexto[]> }> => {
+      const { data } = await this.get<ApiEnvelope<{ total: number; reportes: Record<"general" | "grupal" | "individual", ReporteConContexto[]> }>>(
         `/api/facilitador/reportes${buildQuery(filtros)}`
       );
       return data;

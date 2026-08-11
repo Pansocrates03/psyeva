@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
 import COLORS from "@/utils/Colors";
 import Reactivo from "./Reactivo";
 import { databaseService, ApiError } from "@/services/databaseService";
@@ -6,10 +7,17 @@ import { CATEGORIA_LABELS } from "@/utils/categorias";
 import type {
   CategoriaFormulario,
   EstudianteConEstado,
-  EvaluacionConProgreso,
   GrupoConProgreso,
   Pregunta,
 } from "@/utils/types";
+
+// La sección "verificacion" necesita colegioNombre + evaluacionId; tanto
+// facilitador.verificar() (clave de acceso) como facilitador.entrarPorEvaluacion()
+// (link /evaluacion/:id) devuelven suficiente para esto, sin importar la forma exacta.
+interface EvaluacionActiva {
+  evaluacionId: string;
+  aceptaRespuestas: boolean;
+}
 
 // ─────────────────────────────────────────────
 // Tipos
@@ -156,7 +164,7 @@ function LogoHeader({ escuela, grupo }: { escuela?: string; grupo?: string }) {
 // Paso 1 — Verificación de código
 // ─────────────────────────────────────────────
 function VerificacionStep({ onContinue }: {
-  onContinue: (colegioNombre: string, evaluacion: EvaluacionConProgreso) => void;
+  onContinue: (colegioNombre: string, evaluacion: EvaluacionActiva) => void;
 }) {
   const [codigo, setCodigo] = useState("");
   const [focused, setFocused] = useState(false);
@@ -501,9 +509,13 @@ function CompletadoStep({ alumno, onSiguienteAlumno }: { alumno: EstudianteConEs
 // Componente principal
 // ─────────────────────────────────────────────
 export default function Encuesta() {
+  // /evaluacion/:id — el link que se comparte con los maestros. Si viene
+  // presente, nos saltamos el paso de código de acceso por completo.
+  const { id: evaluacionIdParam } = useParams<{ id?: string }>();
+
   const [seccion, setSeccion] = useState<Seccion>("verificacion");
   const [escuela, setEscuela] = useState("");
-  const [evaluacionActiva, setEvaluacionActiva] = useState<EvaluacionConProgreso | null>(null);
+  const [evaluacionActiva, setEvaluacionActiva] = useState<EvaluacionActiva | null>(null);
   const [grupos, setGrupos] = useState<GrupoConProgreso[]>([]);
   const [grupo, setGrupo] = useState<GrupoConProgreso | null>(null);
   const [formulario, setFormulario] = useState<FormularioDisponible | null>(null);
@@ -517,6 +529,9 @@ export default function Encuesta() {
   const [enviando, setEnviando] = useState(false);
   const [pasoError, setPasoError] = useState<string | null>(null);
 
+  const [resolviendoLink, setResolviendoLink] = useState(Boolean(evaluacionIdParam));
+  const [linkError, setLinkError] = useState<string | null>(null);
+
   const PASOS: Seccion[] = ["verificacion", "seleccionarGrupo", "seleccionarFormulario", "seleccionarAlumno"];
   const pasoActual = PASOS.indexOf(seccion);
 
@@ -527,7 +542,7 @@ export default function Encuesta() {
     setSesion(null); setIndexActual(0); setRespuestasLocal({});
   };
 
-  const handleVerificado = async (colegioNombre: string, evaluacion: EvaluacionConProgreso) => {
+  const handleVerificado = async (colegioNombre: string, evaluacion: EvaluacionActiva) => {
     setEscuela(colegioNombre);
     setEvaluacionActiva(evaluacion);
     setPasoError(null);
@@ -539,6 +554,36 @@ export default function Encuesta() {
       setPasoError(err instanceof ApiError ? err.message : "No se pudieron cargar los grupos");
     }
   };
+
+  // Resuelve el link /evaluacion/:id: obtiene el colegio dueño de la
+  // evaluación (sin pedir clave) y salta directo a "seleccionar grupo".
+  useEffect(() => {
+    if (!evaluacionIdParam) return;
+
+    let cancelado = false;
+    setResolviendoLink(true);
+    setLinkError(null);
+
+    databaseService.facilitador.entrarPorEvaluacion(evaluacionIdParam)
+      .then(async evaluacion => {
+        if (cancelado) return;
+        if (!evaluacion.aceptaRespuestas) {
+          setLinkError("Esta evaluación no está aceptando respuestas en este momento.");
+          return;
+        }
+        await handleVerificado(evaluacion.colegioNombre, evaluacion);
+      })
+      .catch(err => {
+        if (cancelado) return;
+        setLinkError(err instanceof ApiError ? err.message : "No se pudo abrir esta evaluación.");
+      })
+      .finally(() => {
+        if (!cancelado) setResolviendoLink(false);
+      });
+
+    return () => { cancelado = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [evaluacionIdParam]);
 
   const handleSeleccionarGrupo = (g: GrupoConProgreso) => {
     setGrupo(g);
@@ -644,6 +689,22 @@ export default function Encuesta() {
       fontFamily: "system-ui, -apple-system, sans-serif",
     }}>
 
+      {evaluacionIdParam && (resolviendoLink || linkError) ? (
+        <div style={cardStyle}>
+          <LogoHeader />
+          <div style={{ ...cardBodyStyle, textAlign: "center" as const, padding: "36px 24px" }}>
+            {linkError ? (
+              <>
+                <div style={{ fontSize: 40, marginBottom: 12 }}>⚠️</div>
+                <p style={{ margin: 0, fontSize: 14, color: COLORS.rojo400 }}>{linkError}</p>
+              </>
+            ) : (
+              <p style={{ margin: 0, fontSize: 14, color: COLORS.neutro500 }}>Cargando evaluación...</p>
+            )}
+          </div>
+        </div>
+      ) : (
+      <>
       {(seccion === "verificacion" || seccion === "seleccionarGrupo" || seccion === "seleccionarFormulario" || seccion === "seleccionarAlumno") && (
         <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 24 }}>
           {PASOS.map((s, i) => {
@@ -722,6 +783,8 @@ export default function Encuesta() {
               .catch(() => {});
           }
         }} />
+      )}
+      </>
       )}
     </div>
   );

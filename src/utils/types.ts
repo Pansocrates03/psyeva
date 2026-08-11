@@ -78,6 +78,14 @@ export interface Reporte {
   createdAt: string;
 }
 
+// Lo que realmente devuelven /api/admin/reportes y /api/facilitador/reportes:
+// Reporte + el nombre del grupo/alumno al que pertenece (vía LEFT JOIN),
+// útil para mostrarlo sin tener que resolverlo aparte.
+export interface ReporteConContexto extends Reporte {
+  grupoNombre: string | null;
+  estudianteNombre: string | null;
+}
+
 export interface Respuesta {
   id: string;
   sesionId: string;
@@ -103,6 +111,17 @@ export interface EvaluacionConProgreso {
   sesionesCompletadas: string;
   sesionesPendientes: string;
   totalReportes: string;
+}
+
+// Respuesta de GET /api/facilitador/evaluaciones/:id — lo mínimo para
+// resolver el link /evaluacion/:id sin pedir clave de acceso.
+export interface EvaluacionParaFacilitador {
+  evaluacionId: string;
+  nombre: string;
+  aceptaRespuestas: boolean;
+  reportesPublicados: boolean;
+  colegioId: string;
+  colegioNombre: string;
 }
 
 export interface GrupoConProgreso {

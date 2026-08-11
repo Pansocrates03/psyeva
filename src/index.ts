@@ -17,8 +17,12 @@ import {
   gruposRespuestasRoutes,
   estudiantesIdRoutes,
   reportesRoutes,
+  // Archivos
+  uploadsRoutes,
   // Facilitador
   verificarRoutes,
+  facilitadorEvaluacionIdRoutes,
+  facilitadorEvaluacionVerificarRoutes,
   facilitadorGruposRoutes,
   estudiantesRoutes,
   sesionesRoutes,
@@ -45,8 +49,13 @@ const server = serve({
     "/api/admin/estudiantes/:id":                estudiantesIdRoutes,
     "/api/admin/reportes":                      reportesRoutes,
 
+    // ── Archivos subidos ──────────────────────────────────────
+    "/uploads/:filename":                       uploadsRoutes,
+
     // ── Facilitador ─────────────────────────────────────────
     "/api/facilitador/verificar":                    verificarRoutes,
+    "/api/facilitador/evaluaciones/:id":             facilitadorEvaluacionIdRoutes,
+    "/api/facilitador/evaluaciones/:id/verificar":   facilitadorEvaluacionVerificarRoutes,
     "/api/facilitador/grupos":                       facilitadorGruposRoutes,
     "/api/facilitador/estudiantes/:grupoId":         estudiantesRoutes,
     "/api/facilitador/sesiones":                     sesionesRoutes,

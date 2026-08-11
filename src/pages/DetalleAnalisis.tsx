@@ -116,6 +116,7 @@ export default function DetalleAnalisis() {
   const [formularios, setFormularios] = useState<FormularioConTotalPreguntas[]>([]);
   const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [enlaceCopiado, setEnlaceCopiado] = useState<"evaluacion" | "reportes" | null>(null);
 
   const cargarEvaluacion = () => {
     if (!evaluacionId) return;
@@ -212,6 +213,18 @@ export default function DetalleAnalisis() {
       cargarEvaluacion();
     } catch (err) {
       alert(err instanceof ApiError ? err.message : "No se pudo cambiar el estado de la evaluación");
+    }
+  };
+
+  const copiarEnlace = async (tipo: "evaluacion" | "reportes") => {
+    if (!evaluacionId) return;
+    const url = `${window.location.origin}/${tipo}/${evaluacionId}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setEnlaceCopiado(tipo);
+      setTimeout(() => setEnlaceCopiado(null), 2000);
+    } catch {
+      alert(`No se pudo copiar automáticamente. Enlace:\n${url}`);
     }
   };
 
@@ -407,7 +420,7 @@ export default function DetalleAnalisis() {
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 24 }}>
           <div>
             <p style={{ margin: "0 0 4px", fontSize: 12, color: COLORS.neutro500, textTransform: "uppercase", letterSpacing: "0.06em" }}>
-              Análisis · {evaluacion.colegioNombre}
+              Evaluación · {evaluacion.colegioNombre}
             </p>
             <h1 style={{ margin: "0 0 2px", fontSize: 26, fontWeight: 600, color: COLORS.neutro900 }}>
               {evaluacion.nombre}
@@ -425,6 +438,22 @@ export default function DetalleAnalisis() {
               {ESTADO_UI_LABELS[estado]}
             </span>
             <div style={{ display: "flex", gap: 8 }}>
+              <button onClick={() => copiarEnlace("evaluacion")} style={{
+                display: "flex", alignItems: "center", gap: 6,
+                padding: "7px 12px", borderRadius: 8, border: `1px solid ${COLORS.neutro100}`,
+                background: "#fff", color: COLORS.neutro700, fontSize: 12, cursor: "pointer",
+              }}>
+                <i className={`ti ${enlaceCopiado === "evaluacion" ? "ti-check" : "ti-link"}`} style={{ fontSize: 13 }} aria-hidden="true" />
+                {enlaceCopiado === "evaluacion" ? "¡Copiado!" : "Link de encuesta"}
+              </button>
+              <button onClick={() => copiarEnlace("reportes")} style={{
+                display: "flex", alignItems: "center", gap: 6,
+                padding: "7px 12px", borderRadius: 8, border: `1px solid ${COLORS.neutro100}`,
+                background: "#fff", color: COLORS.neutro700, fontSize: 12, cursor: "pointer",
+              }}>
+                <i className={`ti ${enlaceCopiado === "reportes" ? "ti-check" : "ti-file-download"}`} style={{ fontSize: 13 }} aria-hidden="true" />
+                {enlaceCopiado === "reportes" ? "¡Copiado!" : "Link de reportes"}
+              </button>
               {estado !== "aceptando" && (
                 <button onClick={() => cambiarFase("aceptaRespuestas", true)} style={{ padding: "7px 12px", borderRadius: 8, border: `1px solid ${COLORS.neutro100}`, background: "#fff", color: COLORS.neutro700, fontSize: 12, cursor: "pointer" }}>
                   Abrir para respuestas
