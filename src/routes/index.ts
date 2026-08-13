@@ -5,6 +5,8 @@ export { formulariosRoutes }        from "./admin/formularios";
 export { formulariosIdRoutes }      from "./admin/formulariosId";
 export { gruposRoutes }             from "./admin/grupos";
 export { gruposEstudiantesRoutes }  from "./admin/gruposEstudiantes";
+export { gruposEstudiantesImportarRoutes } from "./admin/gruposEstudiantesImportar";
+export { plantillasEstudiantesRoutes } from "./admin/plantillasEstudiantes";
 export { gruposRespuestasRoutes }   from "./admin/gruposRespuestas";
 export { estudiantesIdRoutes }      from "./admin/estudiantesId";
 export { evaluacionRoutes }         from "./admin/evaluacion";

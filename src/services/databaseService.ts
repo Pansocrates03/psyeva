@@ -13,6 +13,7 @@ import type {
   Grupo,
   GrupoConProgreso,
   GrupoRespuestas,
+  ImportacionEstudiantes,
   Pregunta,
   Reporte,
   ReporteConContexto,
@@ -300,6 +301,30 @@ class DatabaseService {
         { conColegio: false }
       );
       return data;
+    },
+
+    // Carga masiva desde .xlsx (ver descargarPlantillaEstudiantes para el
+    // formato). No es todo-o-nada: revisa `errores` para las filas que
+    // fallaron (p. ej. CURP duplicado) sin bloquear las demás.
+    importarEstudiantes: async (grupoId: string, archivo: File): Promise<ImportacionEstudiantes> => {
+      const form = new FormData();
+      form.set("archivo", archivo);
+      const { data } = await this.post<ApiEnvelope<ImportacionEstudiantes>>(
+        `/api/admin/grupos/${grupoId}/estudiantes/importar`,
+        form,
+        { conColegio: false }
+      );
+      return data;
+    },
+
+    descargarPlantillaEstudiantes: async (): Promise<{ blob: Blob; filename: string }> => {
+      const res = await fetch("/api/admin/plantillas/estudiantes");
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        const message = body && typeof body === "object" && "error" in body ? String(body.error) : `Error ${res.status}`;
+        throw new ApiError(res.status, message, body);
+      }
+      return { blob: await res.blob(), filename: "plantilla-estudiantes.xlsx" };
     },
 
     eliminarEstudiante: async (id: string): Promise<{ id: string; eliminado: boolean }> => {

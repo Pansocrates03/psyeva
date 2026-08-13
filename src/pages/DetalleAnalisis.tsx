@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import Sidebar from "../components/Sidebar";
 import StatCard from "../components/StatCard";
 import Drawer from "../components/Drawer";
+import Modal from "../components/Modal";
 import COLORS from "../utils/Colors";
 import DetalleAnalisisGrupos, { type Grupo as GrupoCardData } from "@/components/layouts/DetalleAnalisisGrupos";
 import DetalleAnalisisEstudiantes, { type EstudianteTablaRow } from "@/components/layouts/DetalleAnalisisEstudiantes";
@@ -15,6 +16,7 @@ import type {
   FormularioConTotalPreguntas,
   GrupoConProgreso,
   GrupoRespuestas,
+  ImportacionEstudiantes,
   Reporte,
 } from "../utils/types";
 
@@ -117,6 +119,9 @@ export default function DetalleAnalisis() {
   const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [enlaceCopiado, setEnlaceCopiado] = useState<"evaluacion" | "reportes" | null>(null);
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importando, setImportando] = useState(false);
+  const [importResultado, setImportResultado] = useState<ImportacionEstudiantes | null>(null);
 
   const cargarEvaluacion = () => {
     if (!evaluacionId) return;
@@ -271,6 +276,8 @@ export default function DetalleAnalisis() {
     setGrupoEditandoId(null);
     setGrupoEditandoEstudiantes([]);
     setGrupoForm(emptyGrupoForm());
+    setShowImportModal(false);
+    setImportResultado(null);
   };
 
   const updateAlumno = (index: number, field: "nombreCompleto" | "curp", value: string) => {
@@ -345,6 +352,42 @@ export default function DetalleAnalisis() {
       invalidarTabs();
     } catch (err) {
       alert(err instanceof ApiError ? err.message : "No se pudo quitar al estudiante");
+    }
+  };
+
+  // ── Importar alumnos desde Excel ──────────────────────────────
+  const descargarPlantilla = async () => {
+    try {
+      const { blob, filename } = await databaseService.admin.descargarPlantillaEstudiantes();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      alert(err instanceof ApiError ? err.message : "No se pudo descargar la plantilla");
+    }
+  };
+
+  const handleImportarArchivo = async (event: ChangeEvent<HTMLInputElement>) => {
+    const archivo = event.target.files?.[0];
+    event.target.value = "";
+    if (!archivo || !grupoEditandoId) return;
+
+    setImportando(true);
+    setImportResultado(null);
+    try {
+      const resultado = await databaseService.admin.importarEstudiantes(grupoEditandoId, archivo);
+      setImportResultado(resultado);
+      const detalle = await databaseService.admin.obtenerGrupo(grupoEditandoId);
+      setGrupoEditandoEstudiantes(detalle.estudiantes);
+      invalidarTabs();
+      cargarEvaluacion();
+    } catch (err) {
+      alert(err instanceof ApiError ? err.message : "No se pudo importar el archivo");
+    } finally {
+      setImportando(false);
     }
   };
 
@@ -586,9 +629,15 @@ export default function DetalleAnalisis() {
                 </div>
                 <div style={{ fontSize: 12, color: COLORS.neutro500 }}>Agrega nombre y CURP de cada alumno.</div>
               </div>
-              <button type="button" onClick={addAlumnoRow} style={{ padding: "8px 10px", borderRadius: 8, border: `1px solid ${COLORS.violeta100}`, background: COLORS.violeta50, color: COLORS.violeta600, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
-                + Añadir
-              </button>
+              <div style={{ display: "flex", gap: 6 }}>
+                <button type="button" onClick={() => setShowImportModal(true)} style={{ padding: "8px 10px", borderRadius: 8, border: `1px solid ${COLORS.neutro100}`, background: "#fff", color: COLORS.neutro700, fontSize: 13, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 5 }}>
+                  <i className="ti ti-file-spreadsheet" style={{ fontSize: 14 }} aria-hidden="true" />
+                  Importar Excel
+                </button>
+                <button type="button" onClick={addAlumnoRow} style={{ padding: "8px 10px", borderRadius: 8, border: `1px solid ${COLORS.violeta100}`, background: COLORS.violeta50, color: COLORS.violeta600, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                  + Añadir
+                </button>
+              </div>
             </div>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -651,6 +700,76 @@ export default function DetalleAnalisis() {
         </form>
         )}
       </Drawer>
+
+      {showImportModal && (
+        <Modal title="Importar alumnos desde Excel" onClose={() => { setShowImportModal(false); setImportResultado(null); }}>
+          {!grupoEditandoId ? (
+            <p style={{ margin: 0, fontSize: 14, color: COLORS.neutro500 }}>
+              Primero crea el grupo (nombre y formularios) y guárdalo — luego podrás importar el listado completo de alumnos.
+            </p>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              <button
+                type="button"
+                onClick={descargarPlantilla}
+                style={{
+                  display: "flex", alignItems: "center", gap: 10,
+                  padding: "14px 16px", borderRadius: 10,
+                  border: `1px solid ${COLORS.neutro100}`, background: "#fff",
+                  color: COLORS.neutro900, fontSize: 14, cursor: "pointer", textAlign: "left",
+                }}
+              >
+                <i className="ti ti-download" style={{ fontSize: 18, color: COLORS.violeta400 }} aria-hidden="true" />
+                <div>
+                  <div style={{ fontWeight: 600 }}>Descargar plantilla de ejemplo</div>
+                  <div style={{ fontSize: 12, color: COLORS.neutro500 }}>Úsala como base para que el archivo tenga el formato correcto.</div>
+                </div>
+              </button>
+
+              <label style={{
+                display: "flex", alignItems: "center", gap: 10,
+                padding: "14px 16px", borderRadius: 10,
+                border: `1.5px dashed ${COLORS.violeta200}`, background: COLORS.violeta50,
+                color: COLORS.violeta600, fontSize: 14, cursor: importando ? "not-allowed" : "pointer",
+                opacity: importando ? 0.6 : 1,
+              }}>
+                <i className="ti ti-upload" style={{ fontSize: 18 }} aria-hidden="true" />
+                <div>
+                  <div style={{ fontWeight: 600 }}>{importando ? "Subiendo..." : "Subir archivo de Excel"}</div>
+                  <div style={{ fontSize: 12 }}>Carga directamente a los alumnos del grupo (.xlsx).</div>
+                </div>
+                <input
+                  type="file"
+                  accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                  onChange={handleImportarArchivo}
+                  disabled={importando}
+                  style={{ display: "none" }}
+                />
+              </label>
+
+              {importResultado && (
+                <div style={{ border: `1px solid ${COLORS.neutro100}`, borderRadius: 10, padding: 12, background: COLORS.neutro50 }}>
+                  <p style={{ margin: "0 0 6px", fontSize: 13, color: COLORS.verde600, fontWeight: 600 }}>
+                    {importResultado.creados} alumno{importResultado.creados === 1 ? "" : "s"} agregado{importResultado.creados === 1 ? "" : "s"}.
+                  </p>
+                  {importResultado.errores.length > 0 && (
+                    <div>
+                      <p style={{ margin: "0 0 4px", fontSize: 12, color: COLORS.rojo600, fontWeight: 600 }}>
+                        {importResultado.errores.length} fila{importResultado.errores.length === 1 ? "" : "s"} con problemas:
+                      </p>
+                      <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: COLORS.rojo600 }}>
+                        {importResultado.errores.map((e, i) => (
+                          <li key={i}>Fila {e.fila}: {e.motivo}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </Modal>
+      )}
     </div>
   );
 }

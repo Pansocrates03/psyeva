@@ -30,7 +30,10 @@ export default function Modal({ onClose, title, children }: ModalProps) {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        zIndex: 100,
+        // Por encima del Drawer (zIndex: 120) — un Modal puede abrirse
+        // sobre un Drawer ya abierto (ej. "Importar Excel" dentro del
+        // drawer de grupo) y debe quedar visible encima, no detrás.
+        zIndex: 130,
       }}
     >
       <div

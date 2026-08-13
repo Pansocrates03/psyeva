@@ -148,6 +148,13 @@ export interface ColegioConTotalEvaluaciones extends Colegio {
   totalEvaluaciones: string;
 }
 
+// Respuesta de POST /api/admin/grupos/:id/estudiantes/importar
+export interface ImportacionEstudiantes {
+  creados: number;
+  estudiantes: Estudiante[];
+  errores: Array<{ fila: number; motivo: string }>;
+}
+
 export interface FormularioConTotalPreguntas extends Formulario {
   totalPreguntas: string;
 }

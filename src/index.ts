@@ -14,6 +14,8 @@ import {
   gruposRoutes,
   gruposIdRoutes,
   gruposEstudiantesRoutes,
+  gruposEstudiantesImportarRoutes,
+  plantillasEstudiantesRoutes,
   gruposRespuestasRoutes,
   estudiantesIdRoutes,
   reportesRoutes,
@@ -45,8 +47,10 @@ const server = serve({
     "/api/admin/grupos":                        gruposRoutes,
     "/api/admin/grupos/:id":                    gruposIdRoutes,
     "/api/admin/grupos/:id/estudiantes":         gruposEstudiantesRoutes,
+    "/api/admin/grupos/:id/estudiantes/importar": gruposEstudiantesImportarRoutes,
     "/api/admin/grupos/:id/respuestas":          gruposRespuestasRoutes,
     "/api/admin/estudiantes/:id":                estudiantesIdRoutes,
+    "/api/admin/plantillas/estudiantes":          plantillasEstudiantesRoutes,
     "/api/admin/reportes":                      reportesRoutes,
 
     // ── Archivos subidos ──────────────────────────────────────
