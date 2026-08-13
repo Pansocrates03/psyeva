@@ -1,19 +1,27 @@
+import { useNavigate } from "react-router-dom";
 import COLORS from "../utils/Colors";
+import { cerrarSesionAdmin } from "../utils/adminAuth";
 
 const NAV_ITEMS = [
   { label: "Evaluaciones",   icon: "ti-clipboard-list",   path: "/admin/evaluaciones" },
   { label: "Colegios",       icon: "ti-school",           path: "/admin/colegios" },
   { label: "Encuestas base", icon: "ti-forms",            path: "/admin/encuestas" },
   { label: "Configuración",  icon: "ti-settings",         path: "/admin/configuracion" },
-  { label: "Links externos",  icon: "ti-external-link",     path: "/admin/test-encuesta" },
+  { label: "Links externos",  icon: "ti-external-link",     path: "/test-encuesta" },
 ];
 
 export default function Sidebar() {
   const current = window.location.pathname;
+  const navigate = useNavigate();
 
   const isActive = (path: string) => {
     if (path === "/") return current === "/";
     return current.startsWith(path);
+  };
+
+  const handleLogout = () => {
+    cerrarSesionAdmin();
+    navigate("/");
   };
 
   return (
@@ -105,6 +113,38 @@ export default function Sidebar() {
           );
         })}
       </nav>
+
+      {/* Cerrar sesión */}
+      <div style={{ padding: "8px 8px 12px", borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+        <button
+          onClick={handleLogout}
+          style={{
+            width: "100%",
+            display: "flex",
+            alignItems: "center",
+            gap: 9,
+            padding: "9px 12px",
+            borderRadius: 8,
+            border: "none",
+            background: "transparent",
+            color: COLORS.neutro500,
+            fontSize: 13,
+            cursor: "pointer",
+            transition: "background 0.15s, color 0.15s",
+          }}
+          onMouseEnter={e => {
+            e.currentTarget.style.background = "rgba(255,255,255,0.06)";
+            e.currentTarget.style.color = "#fff";
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.background = "transparent";
+            e.currentTarget.style.color = COLORS.neutro500;
+          }}
+        >
+          <i className="ti ti-logout" style={{ fontSize: 16 }} aria-hidden="true" />
+          Cerrar sesión
+        </button>
+      </div>
     </aside>
   );
 }

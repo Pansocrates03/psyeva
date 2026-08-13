@@ -10,18 +10,19 @@ import Reactivo from "./pages/Reactivo";
 import Encuesta from "./pages/Encuesta";
 import Reportes from "./pages/Reportes";
 import Login from "./pages/Login";
+import RequireAdmin from "./components/RequireAdmin";
 
 export function App() {
   return (
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Login />} />
-        <Route path="/admin/evaluaciones" element={<MisAnalisis />} />
-        <Route path="/admin/evaluaciones/:id" element={<DetalleAnalisis />} />
-        <Route path="/admin/colegios" element={<Colegios />} />
-        <Route path="/admin/escuelas" element={<Colegios />} />
-        <Route path="/admin/encuestas" element={<EncuestasBase />} />
-        <Route path="/admin/configuracion" element={<WIP />} />
+        <Route path="/admin/evaluaciones" element={<RequireAdmin><MisAnalisis /></RequireAdmin>} />
+        <Route path="/admin/evaluaciones/:id" element={<RequireAdmin><DetalleAnalisis /></RequireAdmin>} />
+        <Route path="/admin/colegios" element={<RequireAdmin><Colegios /></RequireAdmin>} />
+        <Route path="/admin/escuelas" element={<RequireAdmin><Colegios /></RequireAdmin>} />
+        <Route path="/admin/encuestas" element={<RequireAdmin><EncuestasBase /></RequireAdmin>} />
+        <Route path="/admin/configuracion" element={<RequireAdmin><WIP /></RequireAdmin>} />
         <Route path="/test-encuesta" element={<Encuesta />} />
         <Route path="/evaluacion/:id" element={<Encuesta />} />
         <Route path="/reportes/:id" element={<Reportes />} />
