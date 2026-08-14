@@ -1,0 +1,50 @@
+# MinIO local: emula el bucket S3-compatible que en producción provee Railway.
+# Mismo protocolo S3 → el código de src/services/storageService.ts no cambia
+# entre este entorno local y Railway, solo las env vars.
+#
+# Uso:
+#   docker compose up -d
+#   Consola web: http://localhost:9001  (user: minioadmin / pass: minioadmin)
+#   API S3:      http://localhost:9000
+#
+# El servicio "init" crea el bucket psyeva-reportes (o el que esté en
+# S3_BUCKET) y lo deja en modo público de lectura la primera vez que se
+# levanta — no hace falta ningún paso manual en la consola.
+services:
+  minio:
+    image: minio/minio:latest
+    container_name: psyeva-minio
+    ports:
+      - "9000:9000"   # API S3
+      - "9001:9001"   # Consola web
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 2s
+      retries: 20
+
+  init:
+    image: minio/mc:latest
+    container_name: psyeva-minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+      BUCKET: psyeva-reportes
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 $$MINIO_ROOT_USER $$MINIO_ROOT_PASSWORD &&
+      mc mb --ignore-existing local/$$BUCKET &&
+      mc anonymous set download local/$$BUCKET &&
+      echo 'Bucket listo: '$$BUCKET' (lectura pública)'
+      "
+
+volumes:
+  minio-data:

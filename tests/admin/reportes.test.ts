@@ -1,24 +1,19 @@
 import { describe, test, expect, beforeAll, afterAll, beforeEach } from "bun:test";
-import { mkdtemp, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import path from "node:path";
 import { createTestServer, resetDb, sql } from "../setup";
 import { reportesRoutes } from "../../src/routes";
 import { mock } from "../factories";
 
+// Igual que con Postgres, no hay bucket de test separado: estos tests suben
+// PDFs reales al MinIO local (ver docker-compose.yml → `docker compose up -d`).
+// Si S3_ENDPOINT no apunta a un MinIO corriendo, solo falla el test que
+// efectivamente sube un archivo (los demás no llegan a tocar storage).
 let server: ReturnType<typeof createTestServer>;
-let uploadsDir: string;
 
-beforeAll(async () => {
-  // Aísla los PDFs subidos en un directorio temporal fuera del repo.
-  uploadsDir = await mkdtemp(path.join(tmpdir(), "psyeva-uploads-"));
-  process.env.UPLOADS_DIR = uploadsDir;
+beforeAll(() => {
   server = createTestServer({ "/api/admin/reportes": reportesRoutes });
 });
-afterAll(async () => {
+afterAll(() => {
   server.stop();
-  delete process.env.UPLOADS_DIR;
-  await rm(uploadsDir, { recursive: true, force: true });
 });
 beforeEach(resetDb);
 
@@ -84,7 +79,7 @@ describe("POST /api/admin/reportes", () => {
     expect(res.status).toBe(404);
   });
 
-  test("201, guarda el PDF en disco e inserta el registro", async () => {
+  test("201, sube el PDF al bucket e inserta el registro", async () => {
     const form = new FormData();
     form.set("archivo", pdfFile());
     form.set("tipo", "general");
@@ -95,11 +90,16 @@ describe("POST /api/admin/reportes", () => {
 
     const body = await res.json();
     expect(body.data.tipo).toBe("general");
+    expect(body.data.archivoUrl).toContain("/reportes/general_");
 
     const [row] = await sql`SELECT * FROM reporte WHERE id = ${body.data.id}`;
     expect(row.evaluacionId).toBe(mock.evaluacionSanJose);
 
-    const savedFile = Bun.file(path.join(uploadsDir, body.data.archivoUrl.replace("/uploads/", "")));
-    expect(await savedFile.exists()).toBe(true);
+    // El bucket queda público de lectura (ver docker-compose.yml, servicio
+    // "init") — la URL devuelta debe servir el PDF real, no un 403/404.
+    const uploaded = await fetch(body.data.archivoUrl);
+    expect(uploaded.status).toBe(200);
+    const buffer = new Uint8Array(await uploaded.arrayBuffer());
+    expect(buffer[0]).toBe(0x25); // "%PDF"
   });
 });

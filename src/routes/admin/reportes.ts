@@ -1,4 +1,5 @@
 import sql from "../../db";
+import { uploadFile } from "../../services/storageService";
 
 // GET  /api/admin/reportes  → lista reportes con filtros opcionales
 // POST /api/admin/reportes  → sube un nuevo reporte (PDF)
@@ -111,15 +112,12 @@ export const reportesRoutes = {
         return Response.json({ error: "Evaluación no encontrada" }, { status: 404 });
       }
 
-      // Guarda el archivo en disco
-      // En producción reemplaza con S3, R2, etc.
-      const uploadsDir = process.env.UPLOADS_DIR ?? "./uploads";
-      const timestamp  = Date.now();
-      const filename   = `${tipo}_${timestamp}_${archivo.name.replace(/\s+/g, "_")}`;
-      const filepath   = `${uploadsDir}/${filename}`;
+      // Sube el archivo al bucket S3-compatible (MinIO local / Railway en prod)
+      const timestamp = Date.now();
+      const filename  = `${tipo}_${timestamp}_${archivo.name.replace(/\s+/g, "_")}`;
+      const key       = `reportes/${filename}`;
 
-      await Bun.write(filepath, await archivo.arrayBuffer());
-      const archivoUrl = `/uploads/${filename}`;
+      const archivoUrl = await uploadFile(key, await archivo.arrayBuffer(), archivo.type);
 
       // Inserta en BD — sin campo publicado
       const [nuevo] = await sql`

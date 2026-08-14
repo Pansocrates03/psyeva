@@ -19,8 +19,6 @@ import {
   gruposRespuestasRoutes,
   estudiantesIdRoutes,
   reportesRoutes,
-  // Archivos
-  uploadsRoutes,
   // Facilitador
   verificarRoutes,
   facilitadorEvaluacionIdRoutes,
@@ -52,9 +50,6 @@ const server = serve({
     "/api/admin/estudiantes/:id":                estudiantesIdRoutes,
     "/api/admin/plantillas/estudiantes":          plantillasEstudiantesRoutes,
     "/api/admin/reportes":                      reportesRoutes,
-
-    // ── Archivos subidos ──────────────────────────────────────
-    "/uploads/:filename":                       uploadsRoutes,
 
     // ── Facilitador ─────────────────────────────────────────
     "/api/facilitador/verificar":                    verificarRoutes,

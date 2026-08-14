@@ -100,7 +100,7 @@ Ambos flujos, al validar, guardan la sesión facilitador (`X-Colegio-Id`) en `da
 
 ### Archivos subidos
 
-Los PDFs de reportes (`POST /api/admin/reportes`) se guardan en `./uploads/` (configurable con `UPLOADS_DIR`) y se sirven de vuelta vía `GET /uploads/:filename` (`src/routes/uploads.ts`) — sin esa ruta, cualquier link a un reporte cae en el catch-all del SPA y devuelve `index.html` en vez del archivo. `uploads/` está en `.gitignore`; no versionar PDFs subidos.
+Los PDFs de reportes (`POST /api/admin/reportes`) se suben a un bucket S3-compatible vía `src/services/storageService.ts` (`uploadFile`, wrapper sobre `@aws-sdk/client-s3`) y `archivo_url` guarda la URL pública devuelta por el bucket — no un path servido por la propia app. Configuración por env vars `S3_ENDPOINT` / `S3_BUCKET` / `S3_ACCESS_KEY` / `S3_SECRET_KEY` / `S3_REGION` / `S3_FORCE_PATH_STYLE` / `S3_PUBLIC_URL` (ver `.env.example`). En local, `docker-compose.yml` levanta un MinIO (mismo protocolo S3 que los buckets de Railway) y crea el bucket ya en modo público de lectura la primera vez (`docker compose up -d`); en producción (Railway) las mismas env vars apuntan al bucket real — el código de `storageService.ts` no cambia entre entornos. No hay ruta propia sirviendo archivos (`src/routes/uploads.ts` se eliminó junto con este cambio) — las URLs de `archivo_url` apuntan directo al bucket.
 
 ### Auth del dashboard admin
 
@@ -129,4 +129,4 @@ Todo el manejo de `.xlsx` (import de alumnos, plantilla de ejemplo, export de re
 
 **Gotcha real de `bun:test`:** `expect(sql\`...\`).rejects.toThrow()` cuelga el proceso indefinidamente — la `Query` de `postgres.js` no es una `Promise` nativa y `expect()` nunca dispara su ejecución. Usar `try/catch` en su lugar (ver el helper `expectRaises` en `tests/db/functions.test.ts`).
 
-Al escribir rutas nuevas que suben archivos en tests, aislar `UPLOADS_DIR` en un directorio temporal (`mkdtemp`) en `beforeAll`/`afterAll` — no escribir en el `./uploads/` real del proyecto.
+**No hay bucket de test separado** — igual que con Postgres, los tests que suben archivos (`tests/admin/reportes.test.ts`) pegan contra el MinIO local real (`S3_*` de `.env`). Requiere `docker compose up -d` corriendo; si no, solo fallan los tests que efectivamente suben un archivo.

@@ -6,9 +6,6 @@ out
 dist
 *.tgz
 
-# PDFs subidos por el admin (ver POST /api/admin/reportes)
-uploads
-
 # code coverage
 coverage
 *.lcov
