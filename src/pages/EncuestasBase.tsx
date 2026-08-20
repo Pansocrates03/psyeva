@@ -6,6 +6,7 @@ import COLORS from "../utils/Colors";
 import StatCard from "@/components/StatCard";
 import { databaseService, ApiError } from "../services/databaseService";
 import { CATEGORIA_LABELS, CATEGORIAS } from "../utils/categorias";
+import { RESPUESTAS_PRESETS } from "../utils/respuestasPreset";
 import type { CategoriaFormulario, FormularioConTotalPreguntas } from "../utils/types";
 
 interface IncisoForm {
@@ -205,6 +206,22 @@ export default function EncuestasBase() {
         respuestas[respuestaIndex] = value;
         return { ...inciso, respuestas };
       }),
+    }));
+  };
+
+  const applyPreset = (incisoIndex: number, presetId: string) => {
+    const preset = RESPUESTAS_PRESETS.find(p => p.id === presetId);
+    if (!preset) return;
+
+    const inciso = form.incisos[incisoIndex];
+    const hasContent = inciso?.respuestas.some(r => r.trim()) ?? false;
+    if (hasContent && !confirm("Esto va a reemplazar las respuestas actuales de este inciso. ¿Continuar?")) {
+      return;
+    }
+
+    setForm(prev => ({
+      ...prev,
+      incisos: prev.incisos.map((inc, i) => i === incisoIndex ? { ...inc, respuestas: [...preset.respuestas] } : inc),
     }));
   };
 
@@ -446,7 +463,21 @@ export default function EncuestasBase() {
                         </div>
 
                         <div>
-                          <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: COLORS.neutro700, marginBottom: 6 }}>Respuestas posibles</label>
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6, gap: 8 }}>
+                            <label style={{ fontSize: 12, fontWeight: 600, color: COLORS.neutro700 }}>Respuestas posibles</label>
+                            <select
+                              value=""
+                              onChange={event => {
+                                if (event.target.value) applyPreset(index, event.target.value);
+                              }}
+                              style={{ padding: "5px 8px", border: `1px solid ${COLORS.violeta200}`, borderRadius: 6, fontSize: 12, color: COLORS.violeta600, background: COLORS.violeta50, outline: "none" }}
+                            >
+                              <option value="">Respuestas rápidas...</option>
+                              {RESPUESTAS_PRESETS.map(preset => (
+                                <option key={preset.id} value={preset.id}>{preset.label}</option>
+                              ))}
+                            </select>
+                          </div>
                           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                             {inciso.respuestas.map((respuesta, respuestaIndex) => (
                               <div key={respuestaIndex} style={{ display: "flex", gap: 6 }}>

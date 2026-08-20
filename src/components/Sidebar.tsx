@@ -1,4 +1,5 @@
 import COLORS from "../utils/Colors";
+import logoPsyeva from "../assets/Psyeva_logo.png";
 
 const NAV_ITEMS = [
   { label: "Evaluaciones",   icon: "ti-clipboard-list",   path: "/admin/evaluaciones" },
@@ -36,23 +37,11 @@ export default function Sidebar() {
         padding: "20px 16px 18px",
         borderBottom: "1px solid rgba(255,255,255,0.08)",
       }}>
-        <div style={{
-          width: 34,
-          height: 34,
-          borderRadius: 8,
-          background: COLORS.violeta400,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          flexShrink: 0,
-        }}>
-          <div style={{
-            width: 16,
-            height: 16,
-            borderRadius: 4,
-            background: COLORS.verde400,
-          }} />
-        </div>
+        <img
+          src={logoPsyeva}
+          alt="Psyeva"
+          style={{ width: 38, height: 38, objectFit: "contain", flexShrink: 0 }}
+        />
         <div>
           <div style={{ fontSize: 13, fontWeight: 600, color: "#fff", lineHeight: 1.2 }}>
             Dashboard
