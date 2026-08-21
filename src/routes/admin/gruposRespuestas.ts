@@ -22,11 +22,12 @@ export const gruposRespuestasRoutes = {
         .filter((id): id is string => Boolean(id));
 
       const preguntas = formularioIds.length === 0 ? [] : await sql`
-        SELECT p.id, p.texto, p.formulario_id, f.titulo AS formulario_titulo, f.categoria
+        SELECT p.id, p.texto, sec.formulario_id, f.titulo AS formulario_titulo, f.categoria
         FROM pregunta p
-        JOIN formulario f ON f.id = p.formulario_id
-        WHERE p.formulario_id IN ${sql(formularioIds)}
-        ORDER BY f.categoria, p.id
+        JOIN seccion    sec ON sec.id = p.seccion_id
+        JOIN formulario f   ON f.id   = sec.formulario_id
+        WHERE sec.formulario_id IN ${sql(formularioIds)}
+        ORDER BY f.categoria, sec.orden, p.orden
       `;
 
       const estudiantes = await sql`
@@ -43,12 +44,13 @@ export const gruposRespuestasRoutes = {
           r.texto_libre
         FROM estudiante e
         CROSS JOIN pregunta p
+        JOIN seccion sec      ON sec.id = p.seccion_id
         LEFT JOIN sesion    s ON s.estudiante_id = e.id
-                              AND s.formulario_id = p.formulario_id
+                              AND s.formulario_id = sec.formulario_id
                               AND s.evaluacion_id = ${grupo.evaluacionId}
         LEFT JOIN respuesta r ON r.sesion_id = s.id AND r.pregunta_id = p.id
         WHERE e.grupo_id = ${grupoId}
-          AND p.formulario_id IN ${sql(formularioIds.length > 0 ? formularioIds : ["00000000-0000-0000-0000-000000000000"])}
+          AND sec.formulario_id IN ${sql(formularioIds.length > 0 ? formularioIds : ["00000000-0000-0000-0000-000000000000"])}
       `;
 
       const respuestasPorEstudiante = new Map<string, Record<string, string | null>>();

@@ -52,19 +52,26 @@ export const sesionesRoutes = {
         return Response.json({ error: "Sesión no encontrada" }, { status: 404 });
       }
 
-      // Preguntas con respuestas ya guardadas (null si aún no respondió)
+      // Preguntas con respuestas ya guardadas (null si aún no respondió).
+      // Trae aplanados instrucción + opciones de la sección de cada
+      // pregunta, para que el frontend no necesite una segunda consulta.
       const preguntas = await sql`
         SELECT
           p.id,
           p.texto,
           p.imagen_url,
-          p.opciones_respuesta,
+          sec.id                     AS seccion_id,
+          sec.instruccion_texto,
+          sec.instruccion_imagen_url,
+          sec.opciones_respuesta,
           r.texto_libre,
           r.respondida_at
         FROM pregunta p
+        JOIN seccion sec      ON sec.id = p.seccion_id
         LEFT JOIN respuesta r ON r.pregunta_id = p.id
                               AND r.sesion_id  = ${sesionId}
-        WHERE p.formulario_id = ${sesion.formularioId}
+        WHERE sec.formulario_id = ${sesion.formularioId}
+        ORDER BY sec.orden, p.orden
       `;
 
       return Response.json({ data: { sesion, preguntas } });
@@ -140,19 +147,25 @@ export const sesionesRoutes = {
         throw fnErr;
       }
 
-      // Preguntas del formulario
+      // Preguntas del formulario, con instrucción + opciones de su
+      // sección aplanadas (mismo shape que el GET de arriba).
       const preguntas = await sql`
         SELECT
           p.id,
           p.texto,
           p.imagen_url,
-          p.opciones_respuesta,
+          sec.id                     AS seccion_id,
+          sec.instruccion_texto,
+          sec.instruccion_imagen_url,
+          sec.opciones_respuesta,
           r.texto_libre,
           r.respondida_at
         FROM pregunta p
+        JOIN seccion sec      ON sec.id = p.seccion_id
         LEFT JOIN respuesta r ON r.pregunta_id = p.id
                               AND r.sesion_id  = ${sesionResult.sesionId}
-        WHERE p.formulario_id = ${formularioId}
+        WHERE sec.formulario_id = ${formularioId}
+        ORDER BY sec.orden, p.orden
       `;
 
       const status = sesionResult.esNueva ? 201 : 200;

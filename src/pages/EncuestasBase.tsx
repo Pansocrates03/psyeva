@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 import Sidebar from "../components/Sidebar";
 import ActionButton from "../components/ActionButton";
 import Drawer from "../components/Drawer";
+import SelectorImagen from "../components/SelectorImagen";
 import COLORS from "../utils/Colors";
 import StatCard from "@/components/StatCard";
 import { databaseService, ApiError } from "../services/databaseService";
@@ -9,17 +10,25 @@ import { CATEGORIA_LABELS, CATEGORIAS } from "../utils/categorias";
 import { RESPUESTAS_PRESETS } from "../utils/respuestasPreset";
 import type { CategoriaFormulario, FormularioConTotalPreguntas } from "../utils/types";
 
-interface IncisoForm {
+interface PreguntaForm {
   id: number;
-  pregunta: string;
-  respuestas: string[];
+  texto: string;
+  imagenUrl: string;
+}
+
+interface SeccionForm {
+  id: number;
+  instruccionTexto: string;
+  instruccionImagenUrl: string;
+  opcionesRespuesta: string[];
+  preguntas: PreguntaForm[];
 }
 
 interface FormState {
   titulo: string;
   categoria: CategoriaFormulario;
   descripcion: string;
-  incisos: IncisoForm[];
+  secciones: SeccionForm[];
 }
 
 const CATEGORIA_META: Record<CategoriaFormulario, { bg: string; color: string; border: string }> = {
@@ -28,17 +37,25 @@ const CATEGORIA_META: Record<CategoriaFormulario, { bg: string; color: string; b
   aprendizaje: { bg: COLORS.azul50, color: COLORS.azul600, border: COLORS.azul100 },
 };
 
-const createInciso = (): IncisoForm => ({
+const createPregunta = (): PreguntaForm => ({
   id: Date.now() + Math.random(),
-  pregunta: "",
-  respuestas: ["", "", "", ""],
+  texto: "",
+  imagenUrl: "",
+});
+
+const createSeccion = (): SeccionForm => ({
+  id: Date.now() + Math.random(),
+  instruccionTexto: "",
+  instruccionImagenUrl: "",
+  opcionesRespuesta: ["", "", "", ""],
+  preguntas: [createPregunta()],
 });
 
 const emptyForm = (): FormState => ({
   titulo: "",
   categoria: "emociones",
   descripcion: "",
-  incisos: [createInciso()],
+  secciones: [createSeccion()],
 });
 
 export default function EncuestasBase() {
@@ -54,7 +71,7 @@ export default function EncuestasBase() {
   const [saving, setSaving] = useState(false);
 
   const [query, setQuery] = useState("");
-  const [expandedIncisos, setExpandedIncisos] = useState<Record<number, boolean>>({});
+  const [expandedSecciones, setExpandedSecciones] = useState<Record<number, boolean>>({});
   const [filter, setFilter] = useState<CategoriaFormulario | "Todas">("Todas");
 
   const cargarEncuestas = () => {
@@ -84,14 +101,14 @@ export default function EncuestasBase() {
     setEditingId(null);
     setForm(emptyForm());
     setFormError(null);
-    setExpandedIncisos({});
+    setExpandedSecciones({});
     setIsDrawerOpen(true);
   };
 
   const openEditDrawer = async (encuesta: FormularioConTotalPreguntas) => {
     setEditingId(encuesta.id);
     setFormError(null);
-    setExpandedIncisos({});
+    setExpandedSecciones({});
     setIsDrawerOpen(true);
     setLoadingDetalle(true);
     try {
@@ -100,10 +117,16 @@ export default function EncuestasBase() {
         titulo: detalle.titulo,
         categoria: detalle.categoria,
         descripcion: detalle.descripcion ?? "",
-        incisos: detalle.preguntas.map(p => ({
+        secciones: detalle.secciones.map(s => ({
           id: Date.now() + Math.random(),
-          pregunta: p.texto,
-          respuestas: p.opcionesRespuesta.map(o => o.texto),
+          instruccionTexto: s.instruccionTexto ?? "",
+          instruccionImagenUrl: s.instruccionImagenUrl ?? "",
+          opcionesRespuesta: s.opcionesRespuesta.map(o => o.texto),
+          preguntas: s.preguntas.map(p => ({
+            id: Date.now() + Math.random(),
+            texto: p.texto,
+            imagenUrl: p.imagenUrl ?? "",
+          })),
         })),
       });
     } catch (err) {
@@ -121,16 +144,20 @@ export default function EncuestasBase() {
       return;
     }
 
-    const preguntas = form.incisos.map(inciso => ({
-      texto: inciso.pregunta.trim(),
-      opcionesRespuesta: inciso.respuestas
+    const secciones = form.secciones.map(seccion => ({
+      instruccionTexto: seccion.instruccionTexto.trim() || null,
+      instruccionImagenUrl: seccion.instruccionImagenUrl.trim() || null,
+      opcionesRespuesta: seccion.opcionesRespuesta
         .map(texto => texto.trim())
         .filter(texto => texto.length > 0)
         .map((texto, index) => ({ valor: index + 1, texto })),
+      preguntas: seccion.preguntas
+        .map(p => ({ texto: p.texto.trim(), imagenUrl: p.imagenUrl.trim() || null }))
+        .filter(p => p.texto.length > 0),
     }));
 
-    if (preguntas.some(p => !p.texto || p.opcionesRespuesta.length < 2)) {
-      setFormError("Cada inciso necesita una pregunta y al menos 2 respuestas.");
+    if (secciones.some(s => (!s.instruccionTexto && !s.instruccionImagenUrl) || s.opcionesRespuesta.length < 2 || s.preguntas.length === 0)) {
+      setFormError("Cada sección necesita una instrucción (texto o imagen), al menos 2 respuestas y al menos una pregunta.");
       return;
     }
 
@@ -143,19 +170,19 @@ export default function EncuestasBase() {
             titulo: form.titulo.trim(),
             descripcion: form.descripcion.trim(),
             categoria: form.categoria,
-            preguntas,
+            secciones,
           });
         } catch (err) {
           if (err instanceof ApiError && err.status === 409) {
             // Ya hay respuestas registradas para las preguntas actuales:
-            // guarda al menos los metadatos y avisa que las preguntas no cambiaron.
+            // guarda al menos los metadatos y avisa que las secciones no cambiaron.
             await databaseService.admin.actualizarFormulario(editingId, {
               titulo: form.titulo.trim(),
               descripcion: form.descripcion.trim(),
               categoria: form.categoria,
             });
             setFormError(null);
-            alert("Ya hay alumnos que respondieron esta encuesta, así que las preguntas no se modificaron. Sí se guardaron el nombre, categoría y descripción.");
+            alert("Ya hay alumnos que respondieron esta encuesta, así que las secciones no se modificaron. Sí se guardaron el nombre, categoría y descripción.");
           } else {
             throw err;
           }
@@ -165,7 +192,7 @@ export default function EncuestasBase() {
           titulo: form.titulo.trim(),
           descripcion: form.descripcion.trim(),
           categoria: form.categoria,
-          preguntas,
+          secciones,
         });
       }
 
@@ -190,76 +217,119 @@ export default function EncuestasBase() {
     }
   };
 
-  const updateIncisoPregunta = (index: number, value: string) => {
+  const updateSeccionCampo = (index: number, campo: "instruccionTexto" | "instruccionImagenUrl", value: string) => {
     setForm(prev => ({
       ...prev,
-      incisos: prev.incisos.map((inciso, incisoIndex) => incisoIndex === index ? { ...inciso, pregunta: value } : inciso),
+      secciones: prev.secciones.map((seccion, i) => i === index ? { ...seccion, [campo]: value } : seccion),
     }));
   };
 
-  const updateIncisoRespuesta = (incisoIndex: number, respuestaIndex: number, value: string) => {
+  const updateOpcion = (seccionIndex: number, opcionIndex: number, value: string) => {
     setForm(prev => ({
       ...prev,
-      incisos: prev.incisos.map((inciso, currentIndex) => {
-        if (currentIndex !== incisoIndex) return inciso;
-        const respuestas = [...inciso.respuestas];
-        respuestas[respuestaIndex] = value;
-        return { ...inciso, respuestas };
+      secciones: prev.secciones.map((seccion, i) => {
+        if (i !== seccionIndex) return seccion;
+        const opcionesRespuesta = [...seccion.opcionesRespuesta];
+        opcionesRespuesta[opcionIndex] = value;
+        return { ...seccion, opcionesRespuesta };
       }),
     }));
   };
 
-  const applyPreset = (incisoIndex: number, presetId: string) => {
+  const applyPreset = (seccionIndex: number, presetId: string) => {
     const preset = RESPUESTAS_PRESETS.find(p => p.id === presetId);
     if (!preset) return;
 
-    const inciso = form.incisos[incisoIndex];
-    const hasContent = inciso?.respuestas.some(r => r.trim()) ?? false;
-    if (hasContent && !confirm("Esto va a reemplazar las respuestas actuales de este inciso. ¿Continuar?")) {
+    const seccion = form.secciones[seccionIndex];
+    const hasContent = seccion?.opcionesRespuesta.some(r => r.trim()) ?? false;
+    if (hasContent && !confirm("Esto va a reemplazar las respuestas actuales de esta sección. ¿Continuar?")) {
       return;
     }
 
     setForm(prev => ({
       ...prev,
-      incisos: prev.incisos.map((inc, i) => i === incisoIndex ? { ...inc, respuestas: [...preset.respuestas] } : inc),
+      secciones: prev.secciones.map((s, i) => i === seccionIndex ? { ...s, opcionesRespuesta: [...preset.respuestas] } : s),
     }));
   };
 
-  const addRespuesta = (incisoIndex: number) => {
+  const addOpcion = (seccionIndex: number) => {
     setForm(prev => ({
       ...prev,
-      incisos: prev.incisos.map((inciso, i) => i === incisoIndex ? { ...inciso, respuestas: [...inciso.respuestas, ""] } : inciso),
+      secciones: prev.secciones.map((s, i) => i === seccionIndex ? { ...s, opcionesRespuesta: [...s.opcionesRespuesta, ""] } : s),
     }));
   };
 
-  const removeRespuesta = (incisoIndex: number, respuestaIndex: number) => {
+  const removeOpcion = (seccionIndex: number, opcionIndex: number) => {
     setForm(prev => ({
       ...prev,
-      incisos: prev.incisos.map((inciso, i) => {
-        if (i !== incisoIndex || inciso.respuestas.length <= 2) return inciso;
-        return { ...inciso, respuestas: inciso.respuestas.filter((_, r) => r !== respuestaIndex) };
+      secciones: prev.secciones.map((s, i) => {
+        if (i !== seccionIndex || s.opcionesRespuesta.length <= 2) return s;
+        return { ...s, opcionesRespuesta: s.opcionesRespuesta.filter((_, o) => o !== opcionIndex) };
       }),
     }));
   };
 
-  const addInciso = () => {
-    setForm(prev => ({ ...prev, incisos: [...prev.incisos, createInciso()] }));
-  };
-
-  const removeInciso = (index: number) => {
+  const updatePreguntaTexto = (seccionIndex: number, preguntaIndex: number, value: string) => {
     setForm(prev => ({
       ...prev,
-      incisos: prev.incisos.filter((_, incisoIndex) => incisoIndex !== index),
+      secciones: prev.secciones.map((seccion, i) => {
+        if (i !== seccionIndex) return seccion;
+        return {
+          ...seccion,
+          preguntas: seccion.preguntas.map((p, pi) => pi === preguntaIndex ? { ...p, texto: value } : p),
+        };
+      }),
     }));
-    setExpandedIncisos(prev => {
+  };
+
+  const updatePreguntaImagen = (seccionIndex: number, preguntaIndex: number, url: string) => {
+    setForm(prev => ({
+      ...prev,
+      secciones: prev.secciones.map((seccion, i) => {
+        if (i !== seccionIndex) return seccion;
+        return {
+          ...seccion,
+          preguntas: seccion.preguntas.map((p, pi) => pi === preguntaIndex ? { ...p, imagenUrl: url } : p),
+        };
+      }),
+    }));
+  };
+
+  const addPregunta = (seccionIndex: number) => {
+    setForm(prev => ({
+      ...prev,
+      secciones: prev.secciones.map((s, i) => i === seccionIndex ? { ...s, preguntas: [...s.preguntas, createPregunta()] } : s),
+    }));
+  };
+
+  const removePregunta = (seccionIndex: number, preguntaIndex: number) => {
+    setForm(prev => ({
+      ...prev,
+      secciones: prev.secciones.map((s, i) => {
+        if (i !== seccionIndex || s.preguntas.length <= 1) return s;
+        return { ...s, preguntas: s.preguntas.filter((_, p) => p !== preguntaIndex) };
+      }),
+    }));
+  };
+
+  const addSeccion = () => {
+    setForm(prev => ({ ...prev, secciones: [...prev.secciones, createSeccion()] }));
+  };
+
+  const removeSeccion = (index: number) => {
+    setForm(prev => ({
+      ...prev,
+      secciones: prev.secciones.filter((_, seccionIndex) => seccionIndex !== index),
+    }));
+    setExpandedSecciones(prev => {
       const next = { ...prev };
       delete next[index];
       return next;
     });
   };
 
-  const toggleInciso = (index: number) => {
-    setExpandedIncisos(prev => ({ ...prev, [index]: !prev[index] }));
+  const toggleSeccion = (index: number) => {
+    setExpandedSecciones(prev => ({ ...prev, [index]: !prev[index] }));
   };
 
   return (
@@ -413,30 +483,36 @@ export default function EncuestasBase() {
           <div style={{ border: `1px solid ${COLORS.neutro100}`, borderRadius: 12, padding: 14, background: COLORS.neutro50 }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
               <div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: COLORS.neutro900 }}>Incisos</div>
-                <div style={{ fontSize: 12, color: COLORS.neutro500 }}>Cada inciso tiene una pregunta y sus opciones de respuesta.</div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: COLORS.neutro900 }}>Secciones</div>
+                <div style={{ fontSize: 12, color: COLORS.neutro500 }}>
+                  Cada sección tiene una instrucción y un set de respuestas compartido por todas sus preguntas.
+                </div>
               </div>
             </div>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              {form.incisos.map((inciso, index) => {
-                const isExpanded = expandedIncisos[index] ?? false;
+              {form.secciones.map((seccion, index) => {
+                const isExpanded = expandedSecciones[index] ?? false;
+                const tituloSeccion = seccion.instruccionTexto.trim() || `Sección ${index + 1}`;
                 return (
-                  <div key={inciso.id} style={{ background: "#fff", border: `1px solid ${COLORS.neutro100}`, borderRadius: 10, padding: 12 }}>
+                  <div key={seccion.id} style={{ background: "#fff", border: `1px solid ${COLORS.neutro100}`, borderRadius: 10, padding: 12 }}>
                     <button
                       type="button"
-                      onClick={() => toggleInciso(index)}
+                      onClick={() => toggleSeccion(index)}
                       style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", background: "transparent", border: "none", padding: 0, cursor: "pointer", textAlign: "left" }}
                     >
-                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <div style={{ width: 24, height: 24, borderRadius: 999, background: COLORS.violeta50, color: COLORS.violeta600, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+                        <div style={{ width: 24, height: 24, borderRadius: 999, background: COLORS.violeta50, color: COLORS.violeta600, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, flexShrink: 0 }}>
                           {index + 1}
                         </div>
-                        <div style={{ fontSize: 13, fontWeight: 700, color: COLORS.neutro900 }}>
-                          {inciso.pregunta.trim() || `Inciso ${index + 1}`}
+                        <div style={{ fontSize: 13, fontWeight: 700, color: COLORS.neutro900, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {tituloSeccion}
+                        </div>
+                        <div style={{ fontSize: 11, color: COLORS.neutro400, flexShrink: 0 }}>
+                          ({seccion.preguntas.length} {seccion.preguntas.length === 1 ? "pregunta" : "preguntas"})
                         </div>
                       </div>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
                         <span style={{ fontSize: 12, color: COLORS.neutro500 }}>{isExpanded ? "Ocultar" : "Editar"}</span>
                         <i className={`ti ${isExpanded ? "ti-chevron-up" : "ti-chevron-down"}`} style={{ fontSize: 14, color: COLORS.neutro500 }} />
                       </div>
@@ -445,26 +521,34 @@ export default function EncuestasBase() {
                     {isExpanded && (
                       <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 10 }}>
                         <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                          {form.incisos.length > 1 && (
-                            <button type="button" onClick={() => removeInciso(index)} style={{ border: "none", background: "transparent", color: COLORS.neutro500, cursor: "pointer", fontSize: 15 }} aria-label="Eliminar inciso">
+                          {form.secciones.length > 1 && (
+                            <button type="button" onClick={() => removeSeccion(index)} style={{ border: "none", background: "transparent", color: COLORS.neutro500, cursor: "pointer", fontSize: 15 }} aria-label="Eliminar sección">
                               <i className="ti ti-trash" />
                             </button>
                           )}
                         </div>
 
                         <div>
-                          <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: COLORS.neutro700, marginBottom: 6 }}>Pregunta del inciso</label>
-                          <input
-                            value={inciso.pregunta}
-                            onChange={event => updateIncisoPregunta(index, event.target.value)}
-                            placeholder={`Escribe la pregunta del inciso ${index + 1}`}
-                            style={{ width: "100%", padding: "9px 12px", border: `1px solid ${COLORS.neutro100}`, borderRadius: 8, fontSize: 14, color: COLORS.neutro900, outline: "none", boxSizing: "border-box" }}
+                          <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: COLORS.neutro700, marginBottom: 6 }}>Instrucción (texto)</label>
+                          <textarea
+                            value={seccion.instruccionTexto}
+                            onChange={event => updateSeccionCampo(index, "instruccionTexto", event.target.value)}
+                            placeholder="Ej. Lee los enunciados y contesta si te pasa o no te pasa."
+                            rows={2}
+                            style={{ width: "100%", padding: "9px 12px", border: `1px solid ${COLORS.neutro100}`, borderRadius: 8, fontSize: 14, color: COLORS.neutro900, outline: "none", boxSizing: "border-box", resize: "vertical" }}
                           />
                         </div>
 
+                        <SelectorImagen
+                          carpeta="assets/form_emociones/instrucciones"
+                          value={seccion.instruccionImagenUrl}
+                          onChange={url => updateSeccionCampo(index, "instruccionImagenUrl", url)}
+                          label="Instrucción (imagen, opcional — usala si preferís reemplazar el texto por un dibujo)"
+                        />
+
                         <div>
                           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6, gap: 8 }}>
-                            <label style={{ fontSize: 12, fontWeight: 600, color: COLORS.neutro700 }}>Respuestas posibles</label>
+                            <label style={{ fontSize: 12, fontWeight: 600, color: COLORS.neutro700 }}>Respuestas de esta sección</label>
                             <select
                               value=""
                               onChange={event => {
@@ -479,24 +563,58 @@ export default function EncuestasBase() {
                             </select>
                           </div>
                           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                            {inciso.respuestas.map((respuesta, respuestaIndex) => (
-                              <div key={respuestaIndex} style={{ display: "flex", gap: 6 }}>
+                            {seccion.opcionesRespuesta.map((opcion, opcionIndex) => (
+                              <div key={opcionIndex} style={{ display: "flex", gap: 6 }}>
                                 <input
-                                  value={respuesta}
-                                  onChange={event => updateIncisoRespuesta(index, respuestaIndex, event.target.value)}
-                                  placeholder={`Opción ${respuestaIndex + 1}`}
+                                  value={opcion}
+                                  onChange={event => updateOpcion(index, opcionIndex, event.target.value)}
+                                  placeholder={`Opción ${opcionIndex + 1}`}
                                   style={{ flex: 1, padding: "9px 12px", border: `1px solid ${COLORS.neutro100}`, borderRadius: 8, fontSize: 14, color: COLORS.neutro900, outline: "none", boxSizing: "border-box" }}
                                 />
-                                {inciso.respuestas.length > 2 && (
-                                  <button type="button" onClick={() => removeRespuesta(index, respuestaIndex)} style={{ border: "none", background: "transparent", color: COLORS.neutro400, cursor: "pointer" }} aria-label="Eliminar opción">
+                                {seccion.opcionesRespuesta.length > 2 && (
+                                  <button type="button" onClick={() => removeOpcion(index, opcionIndex)} style={{ border: "none", background: "transparent", color: COLORS.neutro400, cursor: "pointer" }} aria-label="Eliminar opción">
                                     <i className="ti ti-x" />
                                   </button>
                                 )}
                               </div>
                             ))}
                           </div>
-                          <button type="button" onClick={() => addRespuesta(index)} style={{ marginTop: 8, border: "none", background: "transparent", color: COLORS.violeta600, cursor: "pointer", fontSize: 12, fontWeight: 600, padding: 0 }}>
+                          <button type="button" onClick={() => addOpcion(index)} style={{ marginTop: 8, border: "none", background: "transparent", color: COLORS.violeta600, cursor: "pointer", fontSize: 12, fontWeight: 600, padding: 0 }}>
                             + Añadir opción
+                          </button>
+                        </div>
+
+                        <div style={{ borderTop: `1px solid ${COLORS.neutro100}`, paddingTop: 10 }}>
+                          <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: COLORS.neutro700, marginBottom: 6 }}>
+                            Preguntas de esta sección
+                          </label>
+                          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                            {seccion.preguntas.map((pregunta, preguntaIndex) => (
+                              <div key={pregunta.id} style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 22, fontSize: 12, color: COLORS.neutro400, flexShrink: 0 }}>
+                                  {preguntaIndex + 1}.
+                                </div>
+                                <input
+                                  value={pregunta.texto}
+                                  onChange={event => updatePreguntaTexto(index, preguntaIndex, event.target.value)}
+                                  placeholder={`Pregunta ${preguntaIndex + 1}`}
+                                  style={{ flex: 1, padding: "9px 12px", border: `1px solid ${COLORS.neutro100}`, borderRadius: 8, fontSize: 14, color: COLORS.neutro900, outline: "none", boxSizing: "border-box" }}
+                                />
+                                <SelectorImagen
+                                  carpeta="assets/form_emociones/preguntas"
+                                  value={pregunta.imagenUrl}
+                                  onChange={url => updatePreguntaImagen(index, preguntaIndex, url)}
+                                />
+                                {seccion.preguntas.length > 1 && (
+                                  <button type="button" onClick={() => removePregunta(index, preguntaIndex)} style={{ border: "none", background: "transparent", color: COLORS.neutro400, cursor: "pointer", flexShrink: 0 }} aria-label="Eliminar pregunta">
+                                    <i className="ti ti-x" />
+                                  </button>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                          <button type="button" onClick={() => addPregunta(index)} style={{ marginTop: 8, border: "none", background: "transparent", color: COLORS.violeta600, cursor: "pointer", fontSize: 12, fontWeight: 600, padding: 0 }}>
+                            + Añadir pregunta
                           </button>
                         </div>
                       </div>
@@ -506,9 +624,9 @@ export default function EncuestasBase() {
               })}
             </div>
 
-            <div style={{ background: COLORS.neutro50 }}>
-              <button type="button" onClick={addInciso} style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: `1px dashed ${COLORS.violeta200}`, background: COLORS.violeta50, color: COLORS.violeta600, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
-                + Añadir inciso
+            <div style={{ background: COLORS.neutro50, marginTop: 12 }}>
+              <button type="button" onClick={addSeccion} style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: `1px dashed ${COLORS.violeta200}`, background: COLORS.violeta50, color: COLORS.violeta600, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                + Añadir sección
               </button>
             </div>
           </div>

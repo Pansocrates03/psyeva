@@ -9,7 +9,7 @@
 // si se manda ese header. La visibilidad pública se controla a nivel de
 // bucket (bucket policy), no por objeto — ver README / docker-compose.yml
 // para el comando que deja el bucket de MinIO en modo público de lectura.
-import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { ListObjectsV2Command, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 
 let client: S3Client | null = null;
 
@@ -77,4 +77,31 @@ export async function uploadFile(
   );
 
   return `${getPublicBase()}/${bucket}/${key}`;
+}
+
+export interface ArchivoBucket {
+  key: string;
+  url: string;
+}
+
+/**
+ * Lista los objetos del bucket bajo un prefijo (p. ej.
+ * "assets/form_emociones/preguntas/") y devuelve su URL pública. Se usa
+ * para el selector de imágenes predefinidas del admin (ver
+ * src/routes/admin/imagenes.ts) — nunca se expone directo a rutas sin
+ * validar el prefijo primero, para no poder listar todo el bucket
+ * (incluidos los PDFs de reportes) desde ahí.
+ */
+export async function listFiles(prefix: string): Promise<ArchivoBucket[]> {
+  const bucket = getBucket();
+  const base   = getPublicBase();
+
+  const res = await getClient().send(
+    new ListObjectsV2Command({ Bucket: bucket, Prefix: prefix })
+  );
+
+  return (res.Contents ?? [])
+    .filter((obj): obj is { Key: string } => Boolean(obj.Key) && !obj.Key!.endsWith("/"))
+    .map(obj => ({ key: obj.Key, url: `${base}/${bucket}/${obj.Key}` }))
+    .sort((a, b) => a.key.localeCompare(b.key, undefined, { numeric: true }));
 }

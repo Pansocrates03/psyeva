@@ -350,10 +350,12 @@ BEGIN
       USING HINT = 'La sesión no existe o ya está completada';
   END IF;
 
-  -- 2. Cuenta preguntas del formulario
+  -- 2. Cuenta preguntas del formulario (a través de sus secciones,
+  --    ya que pregunta.formulario_id no existe — ver schema.sql)
   SELECT COUNT(*) INTO v_total
-  FROM pregunta
-  WHERE formulario_id = v_formulario_id;
+  FROM pregunta p
+  JOIN seccion s ON s.id = p.seccion_id
+  WHERE s.formulario_id = v_formulario_id;
 
   -- 3. Cuenta respuestas registradas
   SELECT COUNT(*) INTO v_respondidas

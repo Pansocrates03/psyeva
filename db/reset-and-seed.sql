@@ -3,7 +3,7 @@
 -- ============================================================
 
 -- Limpiar datos en orden inverso para respetar FKs
-TRUNCATE TABLE respuesta, sesion, reporte, estudiante, grupo, evaluacion, pregunta, formulario, colegio RESTART IDENTITY CASCADE;
+TRUNCATE TABLE respuesta, sesion, reporte, estudiante, grupo, evaluacion, pregunta, seccion, formulario, colegio RESTART IDENTITY CASCADE;
 
 -- COLEGIOS
 INSERT INTO colegio (id, nombre, clave_acceso, created_at) VALUES
@@ -16,14 +16,27 @@ INSERT INTO formulario (id, titulo, descripcion, categoria, created_at) VALUES
   ('44444444-4444-4444-4444-444444444444', 'Bienestar psicológico', 'Encuesta para identificar bienestar y apoyo emocional.', 'bienestar_psicologico', '2026-01-20 08:15:00'),
   ('55555555-5555-5555-5555-555555555555', 'Aprendizaje y metas', 'Encuesta sobre hábitos de estudio y motivación.', 'aprendizaje', '2026-01-20 08:30:00');
 
+-- SECCIONES
+-- Cada pregunta original tenía su propio set de opciones, así que
+-- para no cambiar el significado del dato de prueba cada una queda
+-- en su propia sección (además demuestra bien que un formulario
+-- puede tener varias secciones).
+INSERT INTO seccion (id, formulario_id, orden, instruccion_texto, instruccion_imagen_url, opciones_respuesta) VALUES
+  ('f0000001-0000-0000-0000-000000000001', '33333333-3333-3333-3333-333333333333', 1, 'Lee la pregunta y elige la opción que mejor te describe.', NULL, '[{"valor":1,"texto":"Muy mal"},{"valor":2,"texto":"Mal"},{"valor":3,"texto":"Bien"},{"valor":4,"texto":"Muy bien"}]'),
+  ('f0000002-0000-0000-0000-000000000002', '33333333-3333-3333-3333-333333333333', 2, 'Lee la pregunta y contesta qué tan seguido te pasa.',      NULL, '[{"valor":1,"texto":"Nunca"},{"valor":2,"texto":"Pocas veces"},{"valor":3,"texto":"A veces"},{"valor":4,"texto":"Siempre"}]'),
+  ('f0000003-0000-0000-0000-000000000003', '44444444-4444-4444-4444-444444444444', 1, 'Lee la pregunta y contesta qué tan seguido te pasa.',      NULL, '[{"valor":1,"texto":"Nunca"},{"valor":2,"texto":"Pocas veces"},{"valor":3,"texto":"A veces"},{"valor":4,"texto":"Siempre"}]'),
+  ('f0000004-0000-0000-0000-000000000004', '44444444-4444-4444-4444-444444444444', 2, 'Lee la pregunta y contesta qué tan seguido te pasa.',      NULL, '[{"valor":1,"texto":"Nunca"},{"valor":2,"texto":"Pocas veces"},{"valor":3,"texto":"A veces"},{"valor":4,"texto":"Siempre"}]'),
+  ('f0000005-0000-0000-0000-000000000005', '55555555-5555-5555-5555-555555555555', 1, 'Lee la pregunta y elige la opción que mejor te describe.', NULL, '[{"valor":1,"texto":"Nada motivado"},{"valor":2,"texto":"Poco motivado"},{"valor":3,"texto":"Motivado"},{"valor":4,"texto":"Muy motivado"}]'),
+  ('f0000006-0000-0000-0000-000000000006', '55555555-5555-5555-5555-555555555555', 2, 'Lee la pregunta y contesta qué tan seguido te pasa.',      NULL, '[{"valor":1,"texto":"Nunca"},{"valor":2,"texto":"Pocas veces"},{"valor":3,"texto":"A veces"},{"valor":4,"texto":"Siempre"}]');
+
 -- PREGUNTAS
-INSERT INTO pregunta (id, formulario_id, texto, imagen_url, opciones_respuesta) VALUES
-  ('66666666-6666-6666-6666-666666666666', '33333333-3333-3333-3333-333333333333', '¿Cómo te sientes hoy en la escuela?', NULL, '[{"valor":1,"texto":"Muy mal"},{"valor":2,"texto":"Mal"},{"valor":3,"texto":"Bien"},{"valor":4,"texto":"Muy bien"}]'),
-  ('77777777-7777-7777-7777-777777777777', '33333333-3333-3333-3333-333333333333', '¿Sientes que tus compañeros te escuchan?', NULL, '[{"valor":1,"texto":"Nunca"},{"valor":2,"texto":"Pocas veces"},{"valor":3,"texto":"A veces"},{"valor":4,"texto":"Siempre"}]'),
-  ('88888888-8888-8888-8888-888888888888', '44444444-4444-4444-4444-444444444444', '¿Te sientes acompañado por tus maestros?', NULL, '[{"valor":1,"texto":"Nunca"},{"valor":2,"texto":"Pocas veces"},{"valor":3,"texto":"A veces"},{"valor":4,"texto":"Siempre"}]'),
-  ('99999999-9999-9999-9999-999999999999', '44444444-4444-4444-4444-444444444444', '¿Te resulta fácil pedir ayuda cuando lo necesitas?', NULL, '[{"valor":1,"texto":"Nunca"},{"valor":2,"texto":"Pocas veces"},{"valor":3,"texto":"A veces"},{"valor":4,"texto":"Siempre"}]'),
-  ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '55555555-5555-5555-5555-555555555555', '¿Qué tan motivado estás para estudiar?', NULL, '[{"valor":1,"texto":"Nada motivado"},{"valor":2,"texto":"Poco motivado"},{"valor":3,"texto":"Motivado"},{"valor":4,"texto":"Muy motivado"}]'),
-  ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', '55555555-5555-5555-5555-555555555555', '¿Logras organizar tu tiempo para estudiar?', NULL, '[{"valor":1,"texto":"Nunca"},{"valor":2,"texto":"Pocas veces"},{"valor":3,"texto":"A veces"},{"valor":4,"texto":"Siempre"}]');
+INSERT INTO pregunta (id, seccion_id, orden, texto, imagen_url) VALUES
+  ('66666666-6666-6666-6666-666666666666', 'f0000001-0000-0000-0000-000000000001', 1, '¿Cómo te sientes hoy en la escuela?', NULL),
+  ('77777777-7777-7777-7777-777777777777', 'f0000002-0000-0000-0000-000000000002', 1, '¿Sientes que tus compañeros te escuchan?', NULL),
+  ('88888888-8888-8888-8888-888888888888', 'f0000003-0000-0000-0000-000000000003', 1, '¿Te sientes acompañado por tus maestros?', NULL),
+  ('99999999-9999-9999-9999-999999999999', 'f0000004-0000-0000-0000-000000000004', 1, '¿Te resulta fácil pedir ayuda cuando lo necesitas?', NULL),
+  ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'f0000005-0000-0000-0000-000000000005', 1, '¿Qué tan motivado estás para estudiar?', NULL),
+  ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'f0000006-0000-0000-0000-000000000006', 1, '¿Logras organizar tu tiempo para estudiar?', NULL);
 
 -- EVALUACIONES
 INSERT INTO evaluacion (id, colegio_id, nombre, acepta_respuestas, reportes_publicados, fecha, created_at) VALUES

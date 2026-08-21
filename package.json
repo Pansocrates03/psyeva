@@ -7,7 +7,8 @@
     "dev": "bun --hot src/index.ts",
     "start": "NODE_ENV=production bun src/index.ts",
     "build": "bun run build.ts",
-    "test": "bun test"
+    "test": "bun test",
+    "seed:imagenes": "bun scripts/upload-form-emociones-assets.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1110.0",

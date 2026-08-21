@@ -29,12 +29,44 @@ export interface Formulario {
   createdAt: string;
 }
 
+export interface OpcionRespuesta {
+  valor: number;
+  texto: string;
+}
+
 export interface Pregunta {
   id: string;
-  formularioId: string;
+  seccionId: string;
+  orden: number;
   texto: string;
   imagenUrl: string | null;
-  opcionesRespuesta: Array<{ valor: number; texto: string }>;
+}
+
+export interface Seccion {
+  id: string;
+  formularioId: string;
+  orden: number;
+  instruccionTexto: string | null;
+  instruccionImagenUrl: string | null;
+  opcionesRespuesta: OpcionRespuesta[];
+}
+
+export interface SeccionConPreguntas extends Seccion {
+  preguntas: Pregunta[];
+}
+
+// Pregunta tal como la devuelve el flujo de facilitador (sesiones.ts):
+// trae aplanados los datos de su sección (instrucción + opciones
+// compartidas) para que el frontend que juega la encuesta no necesite
+// una segunda consulta ni conocer el concepto de "sección".
+export interface PreguntaSesion {
+  id: string;
+  seccionId: string;
+  texto: string;
+  imagenUrl: string | null;
+  opcionesRespuesta: OpcionRespuesta[];
+  instruccionTexto: string | null;
+  instruccionImagenUrl: string | null;
   // Presentes solo cuando la pregunta viene junto al estado de una sesión
   textoLibre?: string | null;
   respondidaAt?: string | null;
@@ -159,15 +191,28 @@ export interface FormularioConTotalPreguntas extends Formulario {
   totalPreguntas: string;
 }
 
-export interface FormularioConPreguntas extends Formulario {
-  preguntas: Pregunta[];
+export interface FormularioConSecciones extends Formulario {
+  secciones: SeccionConPreguntas[];
 }
 
-// Forma que espera el backend al crear/reemplazar preguntas de un formulario
+// Formas que espera el backend al crear/reemplazar las secciones de un formulario
 export interface PreguntaInput {
   texto: string;
   imagenUrl?: string | null;
-  opcionesRespuesta: Array<{ valor: number; texto: string }>;
+}
+
+export interface SeccionInput {
+  instruccionTexto?: string | null;
+  instruccionImagenUrl?: string | null;
+  opcionesRespuesta: OpcionRespuesta[];
+  preguntas: PreguntaInput[];
+}
+
+// Imagen predefinida disponible en el bucket para elegir como imagen de
+// una pregunta o instrucción de sección (ver GET /api/admin/imagenes).
+export interface ArchivoBucket {
+  key: string;
+  url: string;
 }
 
 export interface PreguntaConFormulario {

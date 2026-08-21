@@ -15,6 +15,7 @@ export { evaluacionExportarRoutes } from "./admin/evaluacionExportar";
 export { evaluacionEstadoRoutes }   from "./admin/evaluacionEstado";
 export { gruposIdRoutes }           from "./admin/gruposId";
 export { reportesRoutes }           from "./admin/reportes";
+export { imagenesRoutes }           from "./admin/imagenes";
 
 // ── Facilitador ───────────────────────────────────────────────
 export { verificarRoutes }                     from "./facilitador/verificar";

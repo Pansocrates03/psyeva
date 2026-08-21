@@ -16,11 +16,52 @@ export const formulariosIdRoutes = {
         return Response.json({ error: "Formulario no encontrado" }, { status: 404 });
       }
 
-      const preguntas = await sql`
-        SELECT * FROM pregunta WHERE formulario_id = ${id} ORDER BY id
+      // Secciones + preguntas en una sola query (LEFT JOIN: una sección
+      // sin preguntas todavía debe aparecer igual), agrupadas después en JS.
+      const filas = await sql`
+        SELECT
+          s.id                     AS seccion_id,
+          s.orden                  AS seccion_orden,
+          s.instruccion_texto,
+          s.instruccion_imagen_url,
+          s.opciones_respuesta,
+          p.id                     AS pregunta_id,
+          p.orden                  AS pregunta_orden,
+          p.texto                  AS pregunta_texto,
+          p.imagen_url             AS pregunta_imagen_url
+        FROM seccion s
+        LEFT JOIN pregunta p ON p.seccion_id = s.id
+        WHERE s.formulario_id = ${id}
+        ORDER BY s.orden, p.orden
       `;
 
-      return Response.json({ data: { ...formulario, preguntas } });
+      const seccionesPorId = new Map<string, {
+        id: string; orden: number;
+        instruccionTexto: string | null; instruccionImagenUrl: string | null;
+        opcionesRespuesta: unknown; preguntas: unknown[];
+      }>();
+      for (const fila of filas) {
+        if (!seccionesPorId.has(fila.seccionId)) {
+          seccionesPorId.set(fila.seccionId, {
+            id: fila.seccionId,
+            orden: fila.seccionOrden,
+            instruccionTexto: fila.instruccionTexto,
+            instruccionImagenUrl: fila.instruccionImagenUrl,
+            opcionesRespuesta: fila.opcionesRespuesta,
+            preguntas: [],
+          });
+        }
+        if (fila.preguntaId) {
+          seccionesPorId.get(fila.seccionId)!.preguntas.push({
+            id: fila.preguntaId,
+            orden: fila.preguntaOrden,
+            texto: fila.preguntaTexto,
+            imagenUrl: fila.preguntaImagenUrl,
+          });
+        }
+      }
+
+      return Response.json({ data: { ...formulario, secciones: [...seccionesPorId.values()] } });
     } catch (err) {
       console.error("[GET /api/admin/formularios/:id]", err);
       return Response.json({ error: "Error al obtener el formulario" }, { status: 500 });
@@ -31,7 +72,7 @@ export const formulariosIdRoutes = {
     try {
       const id = new URL(req.url).pathname.split("/").at(-1)!;
       const body = await req.json();
-      const { titulo, descripcion, categoria, preguntas } = body;
+      const { titulo, descripcion, categoria, secciones } = body;
 
       if (categoria && !CATEGORIAS_VALIDAS.includes(categoria)) {
         return Response.json(
@@ -39,16 +80,33 @@ export const formulariosIdRoutes = {
           { status: 400 }
         );
       }
-      if (preguntas !== undefined) {
-        if (!Array.isArray(preguntas) || preguntas.length === 0) {
-          return Response.json({ error: "preguntas debe ser un array con al menos un elemento" }, { status: 400 });
+      if (secciones !== undefined) {
+        if (!Array.isArray(secciones) || secciones.length === 0) {
+          return Response.json({ error: "secciones debe ser un array con al menos un elemento" }, { status: 400 });
         }
-        for (const p of preguntas) {
-          if (!p.texto || !Array.isArray(p.opcionesRespuesta) || p.opcionesRespuesta.length < 2) {
+        for (const s of secciones) {
+          if (!s.instruccionTexto && !s.instruccionImagenUrl) {
             return Response.json(
-              { error: "Cada pregunta requiere texto y al menos 2 opcionesRespuesta" },
+              { error: "Cada sección requiere instruccionTexto o instruccionImagenUrl" },
               { status: 400 }
             );
+          }
+          if (!Array.isArray(s.opcionesRespuesta) || s.opcionesRespuesta.length < 2) {
+            return Response.json(
+              { error: "Cada sección requiere al menos 2 opcionesRespuesta" },
+              { status: 400 }
+            );
+          }
+          if (!Array.isArray(s.preguntas) || s.preguntas.length === 0) {
+            return Response.json(
+              { error: "Cada sección requiere al menos una pregunta" },
+              { status: 400 }
+            );
+          }
+          for (const p of s.preguntas) {
+            if (!p.texto) {
+              return Response.json({ error: "Cada pregunta requiere texto" }, { status: 400 });
+            }
           }
         }
       }
@@ -66,14 +124,33 @@ export const formulariosIdRoutes = {
 
         if (!actualizado) return null;
 
-        // Reemplaza el set completo de preguntas solo si se envió uno nuevo
-        if (preguntas !== undefined) {
-          await tx`DELETE FROM pregunta WHERE formulario_id = ${id}`;
-          for (const p of preguntas) {
-            await tx`
-              INSERT INTO pregunta (formulario_id, texto, imagen_url, opciones_respuesta)
-              VALUES (${id}, ${p.texto.trim()}, ${p.imagenUrl ?? null}, ${sql.json(p.opcionesRespuesta)})
+        // Reemplaza el set completo de secciones (y sus preguntas, por
+        // CASCADE) solo si se envió uno nuevo. Si alguna pregunta actual
+        // ya tiene respuestas registradas, el DELETE falla por el FK
+        // RESTRICT de respuesta.pregunta_id — se traduce a 409 más abajo.
+        if (secciones !== undefined) {
+          await tx`DELETE FROM seccion WHERE formulario_id = ${id}`;
+          for (let si = 0; si < secciones.length; si++) {
+            const s = secciones[si];
+            const [nuevaSeccion] = await tx`
+              INSERT INTO seccion (formulario_id, orden, instruccion_texto, instruccion_imagen_url, opciones_respuesta)
+              VALUES (
+                ${id},
+                ${si + 1},
+                ${s.instruccionTexto ?? null},
+                ${s.instruccionImagenUrl ?? null},
+                ${sql.json(s.opcionesRespuesta)}
+              )
+              RETURNING id
             `;
+
+            for (let pi = 0; pi < s.preguntas.length; pi++) {
+              const p = s.preguntas[pi];
+              await tx`
+                INSERT INTO pregunta (seccion_id, orden, texto, imagen_url)
+                VALUES (${nuevaSeccion.id}, ${pi + 1}, ${p.texto.trim()}, ${p.imagenUrl ?? null})
+              `;
+            }
           }
         }
 

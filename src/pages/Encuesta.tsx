@@ -8,7 +8,7 @@ import type {
   CategoriaFormulario,
   EstudianteConEstado,
   GrupoConProgreso,
-  Pregunta,
+  PreguntaSesion,
 } from "@/utils/types";
 
 // La sección "verificacion" necesita colegioNombre + evaluacionId; tanto
@@ -39,7 +39,7 @@ interface FormularioDisponible {
 
 interface SesionActiva {
   sesionId: string;
-  preguntas: Pregunta[];
+  preguntas: PreguntaSesion[];
 }
 
 // ─────────────────────────────────────────────
@@ -760,6 +760,8 @@ export default function Encuesta() {
           <Reactivo
             pregunta={preguntaActual.texto}
             imagenUrl={preguntaActual.imagenUrl ?? undefined}
+            instruccionTexto={preguntaActual.instruccionTexto ?? undefined}
+            instruccionImagenUrl={preguntaActual.instruccionImagenUrl ?? undefined}
             opciones={preguntaActual.opcionesRespuesta.map(o => ({ label: o.texto, value: o.valor }))}
             numeroPregunta={indexActual + 1}
             totalPreguntas={sesion.preguntas.length}

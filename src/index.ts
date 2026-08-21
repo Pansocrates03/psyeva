@@ -19,6 +19,7 @@ import {
   gruposRespuestasRoutes,
   estudiantesIdRoutes,
   reportesRoutes,
+  imagenesRoutes,
   // Facilitador
   verificarRoutes,
   facilitadorEvaluacionIdRoutes,
@@ -50,6 +51,7 @@ const server = serve({
     "/api/admin/estudiantes/:id":                estudiantesIdRoutes,
     "/api/admin/plantillas/estudiantes":          plantillasEstudiantesRoutes,
     "/api/admin/reportes":                      reportesRoutes,
+    "/api/admin/imagenes":                      imagenesRoutes,
 
     // ── Facilitador ─────────────────────────────────────────
     "/api/facilitador/verificar":                    verificarRoutes,

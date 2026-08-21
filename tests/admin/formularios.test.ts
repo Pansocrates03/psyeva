@@ -18,13 +18,14 @@ const post = (body: unknown) =>
     body: JSON.stringify(body),
   });
 
-const preguntaValida = (texto: string) => ({
-  texto,
+const seccionValida = (textoPregunta: string) => ({
+  instruccionTexto: "Lee la pregunta y contesta qué tan seguido te pasa.",
   opcionesRespuesta: [
     { valor: 1, texto: "Nunca" },
     { valor: 2, texto: "A veces" },
     { valor: 3, texto: "Siempre" },
   ],
+  preguntas: [{ texto: textoPregunta }],
 });
 
 describe("GET /api/admin/formularios", () => {
@@ -42,45 +43,91 @@ describe("GET /api/admin/formularios", () => {
 
 describe("POST /api/admin/formularios", () => {
   test("400 si faltan titulo o categoria", async () => {
-    const res = await post({ preguntas: [preguntaValida("¿Cómo te sientes?")] });
+    const res = await post({ secciones: [seccionValida("¿Cómo te sientes?")] });
     expect(res.status).toBe(400);
   });
 
   test("400 si categoria no es válida", async () => {
     const res = await post({
-      titulo: "Test", categoria: "no-existe", preguntas: [preguntaValida("¿?")],
+      titulo: "Test", categoria: "no-existe", secciones: [seccionValida("¿?")],
     });
     expect(res.status).toBe(400);
   });
 
-  test("400 si preguntas está vacío", async () => {
-    const res = await post({ titulo: "Test", categoria: "emociones", preguntas: [] });
+  test("400 si secciones está vacío", async () => {
+    const res = await post({ titulo: "Test", categoria: "emociones", secciones: [] });
     expect(res.status).toBe(400);
   });
 
-  test("400 si una pregunta no tiene suficientes opciones", async () => {
+  test("400 si una sección no tiene instrucción (ni texto ni imagen)", async () => {
     const res = await post({
       titulo: "Test",
       categoria: "emociones",
-      preguntas: [{ texto: "¿?", opcionesRespuesta: [{ valor: 1, texto: "Sí" }] }],
+      secciones: [{
+        opcionesRespuesta: [{ valor: 1, texto: "Sí" }, { valor: 2, texto: "No" }],
+        preguntas: [{ texto: "¿?" }],
+      }],
     });
     expect(res.status).toBe(400);
   });
 
-  test("201 y crea el formulario con sus preguntas de forma atómica", async () => {
+  test("400 si una sección no tiene suficientes opciones", async () => {
+    const res = await post({
+      titulo: "Test",
+      categoria: "emociones",
+      secciones: [{
+        instruccionTexto: "Contesta sí o no.",
+        opcionesRespuesta: [{ valor: 1, texto: "Sí" }],
+        preguntas: [{ texto: "¿?" }],
+      }],
+    });
+    expect(res.status).toBe(400);
+  });
+
+  test("400 si una sección no tiene preguntas", async () => {
+    const res = await post({
+      titulo: "Test",
+      categoria: "emociones",
+      secciones: [{
+        instruccionTexto: "Contesta sí o no.",
+        opcionesRespuesta: [{ valor: 1, texto: "Sí" }, { valor: 2, texto: "No" }],
+        preguntas: [],
+      }],
+    });
+    expect(res.status).toBe(400);
+  });
+
+  test("201 y crea el formulario con sus secciones y preguntas de forma atómica", async () => {
     const res = await post({
       titulo: "Nueva encuesta",
       descripcion: "Descripción de prueba",
       categoria: "aprendizaje",
-      preguntas: [preguntaValida("¿Pregunta 1?"), preguntaValida("¿Pregunta 2?")],
+      secciones: [
+        seccionValida("¿Pregunta 1?"),
+        {
+          instruccionTexto: "Sí / No",
+          opcionesRespuesta: [{ valor: 1, texto: "Sí" }, { valor: 2, texto: "No" }],
+          preguntas: [{ texto: "¿Pregunta 2?" }, { texto: "¿Pregunta 3?" }],
+        },
+      ],
     });
     expect(res.status).toBe(201);
 
     const body = await res.json();
     expect(body.data.titulo).toBe("Nueva encuesta");
 
-    const preguntas = await sql`SELECT * FROM pregunta WHERE formulario_id = ${body.data.id}`;
-    expect(preguntas).toHaveLength(2);
-    expect(preguntas[0]!.opcionesRespuesta).toHaveLength(3);
+    const secciones = await sql`
+      SELECT * FROM seccion WHERE formulario_id = ${body.data.id} ORDER BY orden
+    `;
+    expect(secciones).toHaveLength(2);
+    expect(secciones[0]!.opcionesRespuesta).toHaveLength(3);
+    expect(secciones[1]!.opcionesRespuesta).toHaveLength(2);
+
+    const preguntas = await sql`
+      SELECT p.* FROM pregunta p
+      JOIN seccion s ON s.id = p.seccion_id
+      WHERE s.formulario_id = ${body.data.id}
+    `;
+    expect(preguntas).toHaveLength(3);
   });
 });

@@ -58,33 +58,75 @@ CREATE TABLE formulario (
 COMMENT ON TABLE formulario IS 'Catálogo de formularios disponibles para asignar a grupos.';
 
 -- ============================================================
--- PREGUNTA
--- imagen_url = imagen del enunciado (no de las opciones).
--- opciones_respuesta = array JSONB con las opciones de texto.
+-- SECCION
+-- Un formulario se divide en secciones (ej. "ítems 1-5", "ítems
+-- 6-11" en el instrumento original en papel). Cada sección tiene
+-- UNA instrucción y UN set de opciones de respuesta compartido
+-- por todas sus preguntas — así se evita repetir el mismo JSONB
+-- de opciones en cada pregunta (antes vivía en pregunta, uno por
+-- fila, siendo casi siempre idéntico dentro de un mismo bloque).
 --
--- Estructura esperada de opciones_respuesta:
+-- La instrucción puede ser texto, una imagen, o ambos — el
+-- instrumento original a veces reemplaza la instrucción por un
+-- dibujo para niños que aún no leen bien (de ahí que las dos
+-- columnas sean nullable con el CHECK de "al menos una").
+--
+-- orden = posición de la sección dentro del formulario.
+--
+-- Estructura esperada de opciones_respuesta (igual que antes):
 -- [
 --   { "valor": 1, "texto": "Nunca"         },
 --   { "valor": 2, "texto": "Casi nunca"    },
 --   { "valor": 3, "texto": "Algunas veces" },
 --   { "valor": 4, "texto": "Casi siempre"  }
 -- ]
+-- ============================================================
+
+CREATE TABLE seccion (
+  id                     UUID  PRIMARY KEY DEFAULT gen_random_uuid(),
+  formulario_id          UUID  NOT NULL REFERENCES formulario(id) ON DELETE CASCADE,
+  orden                  INT   NOT NULL,
+  instruccion_texto      TEXT,
+  instruccion_imagen_url VARCHAR(500),
+  opciones_respuesta     JSONB NOT NULL DEFAULT '[]',
+  UNIQUE (formulario_id, orden),
+  CONSTRAINT seccion_instruccion_requerida CHECK (
+    instruccion_texto IS NOT NULL OR instruccion_imagen_url IS NOT NULL
+  )
+);
+
+COMMENT ON TABLE  seccion                          IS 'Bloque de preguntas de un formulario que comparten instrucción y opciones de respuesta.';
+COMMENT ON COLUMN seccion.instruccion_texto        IS 'Instrucción en texto. Puede ir junto con o reemplazada por instruccion_imagen_url.';
+COMMENT ON COLUMN seccion.instruccion_imagen_url   IS 'Instrucción como imagen (bucket S3), para secciones dirigidas a niños que aún no leen bien.';
+COMMENT ON COLUMN seccion.opciones_respuesta       IS 'Array JSONB compartido por todas las preguntas de la sección: [{ "valor": 1, "texto": "Nunca" }, ...].';
+COMMENT ON COLUMN seccion.orden                    IS 'Posición de la sección dentro del formulario (0-based o 1-based, a elección del código que la crea).';
+
+-- ============================================================
+-- PREGUNTA
+-- imagen_url = imagen del enunciado puntual de ESTE ítem (no de
+-- la instrucción de la sección, que es seccion.instruccion_imagen_url,
+-- ni de las opciones de respuesta — esas viven en seccion).
 --
--- Se elimina campo "orden" ya que el cliente no lo requirió
--- en esta versión. Si se necesita en el futuro se puede agregar.
+-- formulario_id se elimina a propósito: se deriva de
+-- seccion.formulario_id. Mantenerlo denormalizado en pregunta
+-- arriesgaba que una pregunta quedara "huérfana" de su propio
+-- formulario si se movía a otra sección de otro formulario.
+--
+-- orden = posición de la pregunta dentro de su sección.
 -- ============================================================
 
 CREATE TABLE pregunta (
-  id                 UUID      PRIMARY KEY DEFAULT gen_random_uuid(),
-  formulario_id      UUID      NOT NULL REFERENCES formulario(id) ON DELETE CASCADE,
-  texto              TEXT      NOT NULL,
-  imagen_url         VARCHAR(500),
-  opciones_respuesta JSONB     NOT NULL DEFAULT '[]'
+  id         UUID  PRIMARY KEY DEFAULT gen_random_uuid(),
+  seccion_id UUID  NOT NULL REFERENCES seccion(id) ON DELETE CASCADE,
+  orden      INT   NOT NULL,
+  texto      TEXT  NOT NULL,
+  imagen_url VARCHAR(500),
+  UNIQUE (seccion_id, orden)
 );
 
-COMMENT ON TABLE  pregunta                    IS 'Preguntas de cada formulario.';
-COMMENT ON COLUMN pregunta.imagen_url         IS 'Imagen del enunciado, no de las opciones de respuesta.';
-COMMENT ON COLUMN pregunta.opciones_respuesta IS 'Array JSONB: [{ "valor": 1, "texto": "Nunca" }, ...].';
+COMMENT ON TABLE  pregunta            IS 'Preguntas (ítems) de cada sección.';
+COMMENT ON COLUMN pregunta.imagen_url IS 'Imagen del enunciado de este ítem puntual, no de la instrucción de la sección ni de las opciones de respuesta.';
+COMMENT ON COLUMN pregunta.orden      IS 'Posición de la pregunta dentro de su sección.';
 
 -- ============================================================
 -- EVALUACION (antes: analisis)
@@ -253,11 +295,14 @@ CREATE INDEX idx_sesion_estado             ON sesion(estado);
 CREATE INDEX idx_respuesta_sesion          ON respuesta(sesion_id);
 CREATE INDEX idx_respuesta_pregunta        ON respuesta(pregunta_id);
 
--- Preguntas por formulario
-CREATE INDEX idx_pregunta_formulario       ON pregunta(formulario_id);
+-- Secciones por formulario
+CREATE INDEX idx_seccion_formulario        ON seccion(formulario_id);
 
--- Búsqueda dentro del JSONB de opciones
-CREATE INDEX idx_pregunta_opciones         ON pregunta USING GIN(opciones_respuesta);
+-- Preguntas por sección
+CREATE INDEX idx_pregunta_seccion          ON pregunta(seccion_id);
+
+-- Búsqueda dentro del JSONB de opciones (ahora vive en seccion)
+CREATE INDEX idx_seccion_opciones          ON seccion USING GIN(opciones_respuesta);
 
 -- Reportes
 CREATE INDEX idx_reporte_evaluacion        ON reporte(evaluacion_id);
@@ -276,16 +321,18 @@ CREATE INDEX idx_reporte_tipo              ON reporte(tipo);
 --   e.curp,
 --   f.titulo          AS formulario,
 --   f.categoria,
+--   sec.orden         AS seccion_orden,
 --   p.texto           AS pregunta,
 --   r.texto_libre     AS respuesta,
 --   r.respondida_at
 -- FROM respuesta r
--- JOIN sesion     s  ON s.id  = r.sesion_id
--- JOIN estudiante e  ON e.id  = s.estudiante_id
--- JOIN grupo      g  ON g.id  = e.grupo_id
--- JOIN evaluacion ev ON ev.id = s.evaluacion_id
--- JOIN colegio    c  ON c.id  = ev.colegio_id
--- JOIN pregunta   p  ON p.id  = r.pregunta_id
--- JOIN formulario f  ON f.id  = s.formulario_id
+-- JOIN sesion     s   ON s.id   = r.sesion_id
+-- JOIN estudiante e   ON e.id   = s.estudiante_id
+-- JOIN grupo      g   ON g.id   = e.grupo_id
+-- JOIN evaluacion ev  ON ev.id  = s.evaluacion_id
+-- JOIN colegio    c   ON c.id   = ev.colegio_id
+-- JOIN pregunta   p   ON p.id   = r.pregunta_id
+-- JOIN seccion    sec ON sec.id = p.seccion_id
+-- JOIN formulario f   ON f.id   = s.formulario_id
 -- WHERE s.evaluacion_id = '<uuid-de-la-evaluacion>'
--- ORDER BY g.nombre, e.nombre_completo, f.categoria;
+-- ORDER BY g.nombre, e.nombre_completo, f.categoria, sec.orden, p.orden;

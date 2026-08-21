@@ -75,6 +75,17 @@ En producción (Railway) no se usa este `docker-compose.yml` — se reemplazan l
 variables `S3_*` de `.env` por las del bucket S3-compatible de Railway; el código
 (`src/services/storageService.ts`) no cambia.
 
+Este mismo bucket también guarda el catálogo de ilustraciones predefinidas que el
+admin puede elegir para preguntas e instrucciones de sección (ver
+`src/components/SelectorImagen.tsx`). Subilas una sola vez:
+
+```bash
+bun run seed:imagenes
+```
+
+Sube todo `src/assets/form_emociones/**` (instrucciones + preguntas) al bucket bajo
+`assets/form_emociones/...`. Es seguro correrlo de nuevo si se agregan imágenes.
+
 ## 5. Correr el servidor
 
 ```bash

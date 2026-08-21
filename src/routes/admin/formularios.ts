@@ -3,11 +3,15 @@ import sql from "../../db";
 const CATEGORIAS_VALIDAS = ["emociones", "bienestar_psicologico", "aprendizaje"];
 
 // GET  /api/admin/formularios  → catálogo de formularios con su total de preguntas
-// POST /api/admin/formularios  → crea un formulario junto con sus preguntas (atómico)
+// POST /api/admin/formularios  → crea un formulario junto con sus secciones (atómico)
 //
 // Body POST: {
 //   titulo, descripcion, categoria,
-//   preguntas: [{ texto, imagenUrl?, opcionesRespuesta: [{ valor, texto }] }]
+//   secciones: [{
+//     instruccionTexto?, instruccionImagenUrl?,
+//     opcionesRespuesta: [{ valor, texto }],
+//     preguntas: [{ texto, imagenUrl? }]
+//   }]
 // }
 export const formulariosRoutes = {
 
@@ -22,7 +26,8 @@ export const formulariosRoutes = {
           f.created_at,
           COUNT(p.id) AS total_preguntas
         FROM formulario f
-        LEFT JOIN pregunta p ON p.formulario_id = f.id
+        LEFT JOIN seccion  s ON s.formulario_id = f.id
+        LEFT JOIN pregunta p ON p.seccion_id    = s.id
         GROUP BY f.id
         ORDER BY f.created_at DESC
       `;
@@ -36,7 +41,7 @@ export const formulariosRoutes = {
   async POST(req: Request) {
     try {
       const body = await req.json();
-      const { titulo, descripcion, categoria, preguntas } = body;
+      const { titulo, descripcion, categoria, secciones } = body;
 
       if (!titulo || !categoria) {
         return Response.json({ error: "titulo y categoria son requeridos" }, { status: 400 });
@@ -47,19 +52,36 @@ export const formulariosRoutes = {
           { status: 400 }
         );
       }
-      if (!Array.isArray(preguntas) || preguntas.length === 0) {
-        return Response.json({ error: "preguntas debe ser un array con al menos un elemento" }, { status: 400 });
+      if (!Array.isArray(secciones) || secciones.length === 0) {
+        return Response.json({ error: "secciones debe ser un array con al menos un elemento" }, { status: 400 });
       }
-      for (const p of preguntas) {
-        if (!p.texto || !Array.isArray(p.opcionesRespuesta) || p.opcionesRespuesta.length < 2) {
+      for (const s of secciones) {
+        if (!s.instruccionTexto && !s.instruccionImagenUrl) {
           return Response.json(
-            { error: "Cada pregunta requiere texto y al menos 2 opcionesRespuesta" },
+            { error: "Cada sección requiere instruccionTexto o instruccionImagenUrl" },
             { status: 400 }
           );
         }
+        if (!Array.isArray(s.opcionesRespuesta) || s.opcionesRespuesta.length < 2) {
+          return Response.json(
+            { error: "Cada sección requiere al menos 2 opcionesRespuesta" },
+            { status: 400 }
+          );
+        }
+        if (!Array.isArray(s.preguntas) || s.preguntas.length === 0) {
+          return Response.json(
+            { error: "Cada sección requiere al menos una pregunta" },
+            { status: 400 }
+          );
+        }
+        for (const p of s.preguntas) {
+          if (!p.texto) {
+            return Response.json({ error: "Cada pregunta requiere texto" }, { status: 400 });
+          }
+        }
       }
 
-      // Inserta formulario + preguntas en una sola transacción
+      // Inserta formulario + secciones + preguntas en una sola transacción
       const formulario = await sql.begin(async tx => {
         const [nuevoFormulario] = await tx`
           INSERT INTO formulario (titulo, descripcion, categoria)
@@ -67,16 +89,27 @@ export const formulariosRoutes = {
           RETURNING *
         `;
 
-        for (const p of preguntas) {
-          await tx`
-            INSERT INTO pregunta (formulario_id, texto, imagen_url, opciones_respuesta)
+        for (let si = 0; si < secciones.length; si++) {
+          const s = secciones[si];
+          const [nuevaSeccion] = await tx`
+            INSERT INTO seccion (formulario_id, orden, instruccion_texto, instruccion_imagen_url, opciones_respuesta)
             VALUES (
               ${nuevoFormulario.id},
-              ${p.texto.trim()},
-              ${p.imagenUrl ?? null},
-              ${sql.json(p.opcionesRespuesta)}
+              ${si + 1},
+              ${s.instruccionTexto ?? null},
+              ${s.instruccionImagenUrl ?? null},
+              ${sql.json(s.opcionesRespuesta)}
             )
+            RETURNING id
           `;
+
+          for (let pi = 0; pi < s.preguntas.length; pi++) {
+            const p = s.preguntas[pi];
+            await tx`
+              INSERT INTO pregunta (seccion_id, orden, texto, imagen_url)
+              VALUES (${nuevaSeccion.id}, ${pi + 1}, ${p.texto.trim()}, ${p.imagenUrl ?? null})
+            `;
+          }
         }
 
         return nuevoFormulario;

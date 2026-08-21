@@ -42,19 +42,20 @@ export const evaluacionExportarRoutes = {
           r.texto_libre     AS respuesta,
           r.respondida_at
         FROM respuesta r
-        JOIN sesion     s  ON s.id  = r.sesion_id
-        JOIN estudiante e  ON e.id  = s.estudiante_id
-        JOIN grupo      g  ON g.id  = e.grupo_id
-        JOIN evaluacion ev ON ev.id = s.evaluacion_id
-        JOIN colegio    c  ON c.id  = ev.colegio_id
-        JOIN pregunta   p  ON p.id  = r.pregunta_id
-        JOIN formulario f  ON f.id  = s.formulario_id
+        JOIN sesion     s   ON s.id   = r.sesion_id
+        JOIN estudiante e   ON e.id   = s.estudiante_id
+        JOIN grupo      g   ON g.id   = e.grupo_id
+        JOIN evaluacion ev  ON ev.id  = s.evaluacion_id
+        JOIN colegio    c   ON c.id   = ev.colegio_id
+        JOIN pregunta   p   ON p.id   = r.pregunta_id
+        JOIN seccion    sec ON sec.id = p.seccion_id
+        JOIN formulario f   ON f.id   = s.formulario_id
         WHERE s.evaluacion_id = ${id}
           AND (
             ${categoria}::categoria_formulario IS NULL
             OR f.categoria = ${categoria}::categoria_formulario
           )
-        ORDER BY g.nombre, e.nombre_completo, f.categoria
+        ORDER BY g.nombre, e.nombre_completo, f.categoria, sec.orden, p.orden
       `;
 
       if (filas.length === 0) {

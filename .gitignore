@@ -6,6 +6,13 @@ out
 dist
 *.tgz
 
+# Fuente local de las imágenes predefinidas para el selector de admin
+# (pregunta.imagen_url / seccion.instruccion_imagen_url). Se suben al
+# bucket S3 con `bun run seed:imagenes` — eso es lo que la app realmente
+# usa. No se versiona: ~120MB de PNGs, demasiado para el repo.
+src/assets/form_emociones
+src/assets/otros
+
 # code coverage
 coverage
 *.lcov

@@ -1,4 +1,5 @@
 import type {
+  ArchivoBucket,
   Colegio,
   ColegioConTotalEvaluaciones,
   Estudiante,
@@ -7,14 +8,14 @@ import type {
   EvaluacionConProgreso,
   EvaluacionParaFacilitador,
   Formulario,
-  FormularioConPreguntas,
+  FormularioConSecciones,
   FormularioConTotalPreguntas,
-  PreguntaInput,
+  SeccionInput,
   Grupo,
   GrupoConProgreso,
   GrupoRespuestas,
   ImportacionEstudiantes,
-  Pregunta,
+  PreguntaSesion,
   Reporte,
   ReporteConContexto,
   Sesion,
@@ -171,27 +172,38 @@ class DatabaseService {
       titulo: string;
       descripcion?: string;
       categoria: CategoriaFormulario;
-      preguntas: PreguntaInput[];
+      secciones: SeccionInput[];
     }): Promise<Formulario> => {
       const { data } = await this.post<ApiEnvelope<Formulario>>("/api/admin/formularios", input, { conColegio: false });
       return data;
     },
 
-    obtenerFormulario: async (id: string): Promise<FormularioConPreguntas> => {
-      const { data } = await this.get<ApiEnvelope<FormularioConPreguntas>>(
+    obtenerFormulario: async (id: string): Promise<FormularioConSecciones> => {
+      const { data } = await this.get<ApiEnvelope<FormularioConSecciones>>(
         `/api/admin/formularios/${id}`,
         { conColegio: false }
       );
       return data;
     },
 
-    // Si se envía `preguntas`, reemplaza el set completo (409 si alguna
+    // Si se envía `secciones`, reemplaza el set completo (409 si alguna
     // pregunta actual ya tiene respuestas registradas).
     actualizarFormulario: async (
       id: string,
-      cambios: Partial<{ titulo: string; descripcion: string; categoria: CategoriaFormulario; preguntas: PreguntaInput[] }>
+      cambios: Partial<{ titulo: string; descripcion: string; categoria: CategoriaFormulario; secciones: SeccionInput[] }>
     ): Promise<Formulario> => {
       const { data } = await this.patch<ApiEnvelope<Formulario>>(`/api/admin/formularios/${id}`, cambios, { conColegio: false });
+      return data;
+    },
+
+    // Imágenes predefinidas para el selector de imagen de secciones/preguntas
+    // (ver src/components/SelectorImagen.tsx). `carpeta` debe ser uno de los
+    // prefijos que el backend tiene en su allowlist.
+    listarImagenes: async (carpeta: string): Promise<ArchivoBucket[]> => {
+      const { data } = await this.get<ApiEnvelope<ArchivoBucket[]>>(
+        `/api/admin/imagenes${buildQuery({ carpeta })}`,
+        { conColegio: false }
+      );
       return data;
     },
 
@@ -466,8 +478,8 @@ class DatabaseService {
       return data;
     },
 
-    obtenerSesion: async (sesionId: string): Promise<{ sesion: Sesion & { estudianteNombre: string; formularioTitulo: string }; preguntas: Pregunta[] }> => {
-      const { data } = await this.get<ApiEnvelope<{ sesion: Sesion & { estudianteNombre: string; formularioTitulo: string }; preguntas: Pregunta[] }>>(
+    obtenerSesion: async (sesionId: string): Promise<{ sesion: Sesion & { estudianteNombre: string; formularioTitulo: string }; preguntas: PreguntaSesion[] }> => {
+      const { data } = await this.get<ApiEnvelope<{ sesion: Sesion & { estudianteNombre: string; formularioTitulo: string }; preguntas: PreguntaSesion[] }>>(
         `/api/facilitador/sesiones${buildQuery({ sesionId })}`
       );
       return data;
@@ -478,8 +490,8 @@ class DatabaseService {
       estudianteId: string;
       formularioId: string;
       evaluacionId: string;
-    }): Promise<{ sesion: { sesionId: string; estado: string; esNueva: boolean }; preguntas: Pregunta[] }> => {
-      const { data } = await this.post<ApiEnvelope<{ sesion: { sesionId: string; estado: string; esNueva: boolean }; preguntas: Pregunta[] }>>(
+    }): Promise<{ sesion: { sesionId: string; estado: string; esNueva: boolean }; preguntas: PreguntaSesion[] }> => {
+      const { data } = await this.post<ApiEnvelope<{ sesion: { sesionId: string; estado: string; esNueva: boolean }; preguntas: PreguntaSesion[] }>>(
         "/api/facilitador/sesiones",
         input
       );
