@@ -28,6 +28,7 @@ type Seccion =
   | "seleccionarFormulario"
   | "seleccionarAlumno"
   | "confirmacion"
+  | "instruccion"
   | "respondiendo"
   | "completado";
 
@@ -485,6 +486,40 @@ function ConfirmacionStep({ alumno, formulario, iniciando, onIniciar }: {
   );
 }
 
+function InstruccionStep({ pregunta, nombreEstudiante, onContinue }: {
+  pregunta: PreguntaSesion;
+  nombreEstudiante: string;
+  onContinue: () => void;
+}) {
+  const [imagenDisponible, setImagenDisponible] = useState(Boolean(pregunta.instruccionImagenUrl));
+
+  return (
+    <div style={{ ...cardStyle, width: "min(680px, calc(100vw - 32px))" }}>
+      <LogoHeader grupo={nombreEstudiante} />
+      <div style={{ ...cardBodyStyle, textAlign: "center" as const, padding: "32px 24px 24px" }}>
+        <p style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 600, color: COLORS.violeta400, textTransform: "uppercase", letterSpacing: "0.08em" }}>
+          Instrucciones de esta sección
+        </p>
+
+        {pregunta.instruccionImagenUrl && imagenDisponible ? (
+          <img
+            src={pregunta.instruccionImagenUrl}
+            alt="Instrucciones de esta sección"
+            onError={() => setImagenDisponible(false)}
+            style={{ display: "block", width: "100%", maxHeight: "65vh", objectFit: "contain", margin: "0 auto 28px", borderRadius: 12 }}
+          />
+        ) : (
+          <p style={{ margin: "20px 0 28px", fontSize: 20, lineHeight: 1.5, color: COLORS.neutro900 }}>
+            {pregunta.instruccionTexto}
+          </p>
+        )}
+
+        <BtnPrimario label="Siguiente" onClick={onContinue} />
+      </div>
+    </div>
+  );
+}
+
 // ─────────────────────────────────────────────
 // Pantalla final
 // ─────────────────────────────────────────────
@@ -499,7 +534,6 @@ function CompletadoStep({ alumno, onSiguienteAlumno }: { alumno: EstudianteConEs
         <p style={{ margin: "0 0 24px", fontSize: 14, color: COLORS.neutro500 }}>
           Tus respuestas fueron guardadas correctamente.
         </p>
-        <BtnPrimario label="Siguiente alumno" onClick={onSiguienteAlumno} />
       </div>
     </div>
   );
@@ -632,12 +666,30 @@ export default function Encuesta() {
       setSesion({ sesionId: sesionResult.sesionId, preguntas });
       setRespuestasLocal(respuestasPrevias);
       setIndexActual(primerPendiente === -1 ? 0 : primerPendiente);
-      setSeccion("respondiendo");
+      const primeraPregunta = preguntas[primerPendiente === -1 ? 0 : primerPendiente];
+      setSeccion(primeraPregunta?.instruccionImagenUrl || primeraPregunta?.instruccionTexto ? "instruccion" : "respondiendo");
     } catch (err) {
       alert(err instanceof ApiError ? err.message : "No se pudo iniciar la evaluación");
     } finally {
       setIniciando(false);
     }
+  };
+
+  const continuarInstruccion = () => setSeccion("respondiendo");
+
+  const volverPreguntaAnterior = () => {
+    if (indexActual === 0 || !sesion) return;
+
+    const anteriorIndex = indexActual - 1;
+    const anteriorPregunta = sesion.preguntas[anteriorIndex];
+    const preguntaActual = sesion.preguntas[indexActual];
+    setIndexActual(anteriorIndex);
+    setSeccion(
+      anteriorPregunta?.seccionId !== preguntaActual?.seccionId &&
+      (anteriorPregunta?.instruccionImagenUrl || anteriorPregunta?.instruccionTexto)
+        ? "instruccion"
+        : "respondiendo"
+    );
   };
 
   const handleSiguiente = async () => {
@@ -658,7 +710,14 @@ export default function Encuesta() {
 
       const esUltima = indexActual === sesion.preguntas.length - 1;
       if (!esUltima) {
-        setIndexActual(i => i + 1);
+        const siguienteIndex = indexActual + 1;
+        const siguientePregunta = sesion.preguntas[siguienteIndex];
+        setIndexActual(siguienteIndex);
+        if (siguientePregunta?.seccionId !== pregunta.seccionId) {
+          setSeccion(siguientePregunta?.instruccionImagenUrl || siguientePregunta?.instruccionTexto ? "instruccion" : "respondiendo");
+        } else {
+          setSeccion("respondiendo");
+        }
         return;
       }
 
@@ -755,6 +814,9 @@ export default function Encuesta() {
       {seccion === "confirmacion" && alumno && formulario && (
         <ConfirmacionStep alumno={alumno} formulario={formulario} iniciando={iniciando} onIniciar={handleIniciar} />
       )}
+      {seccion === "instruccion" && sesion && preguntaActual && alumno && (
+        <InstruccionStep key={preguntaActual.id} pregunta={preguntaActual} nombreEstudiante={alumno.nombreCompleto} onContinue={continuarInstruccion} />
+      )}
       {seccion === "respondiendo" && sesion && preguntaActual && alumno && (
         <div style={{ width: "100%" }}>
           <Reactivo
@@ -768,7 +830,7 @@ export default function Encuesta() {
             nombreEstudiante={alumno.nombreCompleto}
             valorSeleccionado={respuestasLocal[preguntaActual.id] ?? null}
             onSeleccionar={valor => setRespuestasLocal(prev => ({ ...prev, [preguntaActual.id]: valor }))}
-            onAnterior={indexActual > 0 ? () => setIndexActual(i => i - 1) : undefined}
+            onAnterior={indexActual > 0 ? volverPreguntaAnterior : undefined}
             onSiguiente={enviando ? undefined : handleSiguiente}
             esUltima={indexActual === sesion.preguntas.length - 1}
           />

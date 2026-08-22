@@ -8,10 +8,12 @@
     "start": "NODE_ENV=production bun src/index.ts",
     "build": "bun run build.ts",
     "test": "bun test",
+    "db:init": "bun scripts/init-db.ts",
     "seed:imagenes": "bun scripts/upload-form-emociones-assets.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1110.0",
+    "@aws-sdk/s3-request-presigner": "^3.1116.0",
     "@types/react-router-dom": "^5.3.3",
     "bun-plugin-tailwind": "^0.1.2",
     "exceljs": "^4.4.0",

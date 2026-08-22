@@ -537,10 +537,10 @@ export default function EncuestasBase() {
                         </div>
 
                         <SelectorImagen
-                          carpeta="assets/form_emociones/instrucciones"
+                          carpeta="assets/instrucciones"
                           value={seccion.instruccionImagenUrl}
                           onChange={url => updateSeccionCampo(index, "instruccionImagenUrl", url)}
-                          label="Instrucción (imagen, opcional — usala si preferís reemplazar el texto por un dibujo)"
+                          label="Instrucción (imagen, opcional — usala si prefieres reemplazar el texto por un dibujo)"
                         />
 
                         <div>
@@ -559,6 +559,22 @@ export default function EncuestasBase() {
                               ))}
                             </select>
                           </div>
+                          {(() => {
+                            const presetActual = RESPUESTAS_PRESETS.find(preset =>
+                              preset.respuestas.length === seccion.opcionesRespuesta.length &&
+                              preset.respuestas.every((respuesta, respuestaIndex) => respuesta === seccion.opcionesRespuesta[respuestaIndex])
+                            );
+                            const tieneRespuestas = seccion.opcionesRespuesta.some(respuesta => respuesta.trim());
+
+                            return tieneRespuestas ? (
+                              <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4, fontSize: 12, color: presetActual ? COLORS.violeta600 : COLORS.neutro500 }}>
+                                <i className={`ti ${presetActual ? "ti-check" : "ti-adjustments-horizontal"}`} aria-hidden="true" />
+                                <span>
+                                  {presetActual ? `Opción seleccionada: ${presetActual.label}` : "Respuestas personalizadas"}
+                                </span>
+                              </div>
+                            ) : null;
+                          })()}
                         </div>
 
                         <div style={{ borderTop: `1px solid ${COLORS.neutro100}`, paddingTop: 10 }}>
@@ -578,7 +594,7 @@ export default function EncuestasBase() {
                                   style={{ flex: 1, padding: "9px 12px", border: `1px solid ${COLORS.neutro100}`, borderRadius: 8, fontSize: 14, color: COLORS.neutro900, outline: "none", boxSizing: "border-box" }}
                                 />
                                 <SelectorImagen
-                                  carpeta="assets/form_emociones/preguntas"
+                                  carpeta="assets/preguntas"
                                   value={pregunta.imagenUrl}
                                   onChange={url => updatePreguntaImagen(index, preguntaIndex, url)}
                                 />

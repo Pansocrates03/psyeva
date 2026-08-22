@@ -141,36 +141,6 @@ export default function Reactivo({
         width: "100%",
       }}>
 
-        {/* Instrucción de la sección — se repite en cada pregunta de la
-            sección a propósito, así el alumno la tiene siempre a la vista
-            aunque haya retomado la encuesta a mitad de la sección. */}
-        {(instruccionTexto || instruccionImagenUrl) && (
-          <div style={{
-            width: "100%",
-            padding: "14px 16px",
-            borderRadius: 12,
-            background: COLORS.azul50,
-            border: `1px solid ${COLORS.azul100}`,
-            marginBottom: 20,
-            display: "flex",
-            flexDirection: "column",
-            gap: 10,
-          }}>
-            {instruccionTexto && (
-              <p style={{ margin: 0, fontSize: 14, color: COLORS.azul600, lineHeight: 1.5 }}>
-                {instruccionTexto}
-              </p>
-            )}
-            {instruccionImagenUrl && (
-              <img
-                src={instruccionImagenUrl}
-                alt="Instrucción de esta sección"
-                style={{ maxWidth: "100%", maxHeight: 160, borderRadius: 8, objectFit: "contain", alignSelf: "flex-start" }}
-              />
-            )}
-          </div>
-        )}
-
         {/* Indicador de pregunta */}
         <p style={{
           fontSize: 12,

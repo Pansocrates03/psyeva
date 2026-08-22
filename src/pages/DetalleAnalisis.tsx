@@ -18,6 +18,7 @@ import type {
   GrupoRespuestas,
   ImportacionEstudiantes,
   Reporte,
+  ResultadoReporteBulk,
 } from "../utils/types";
 
 // ── Tipos locales del formulario de grupo ───────────────────────
@@ -122,6 +123,11 @@ export default function DetalleAnalisis() {
   const [showImportModal, setShowImportModal] = useState(false);
   const [importando, setImportando] = useState(false);
   const [importResultado, setImportResultado] = useState<ImportacionEstudiantes | null>(null);
+  const [subiendoReportesBulk, setSubiendoReportesBulk] = useState(false);
+  const [resultadoReportesBulk, setResultadoReportesBulk] = useState<{
+    resultados: ResultadoReporteBulk[];
+    asignados: number;
+  } | null>(null);
 
   const cargarEvaluacion = () => {
     if (!evaluacionId) return;
@@ -406,6 +412,25 @@ export default function DetalleAnalisis() {
     }
   };
 
+  const handleUploadReportesBulk = async (event: ChangeEvent<HTMLInputElement>) => {
+    const archivos = Array.from(event.target.files ?? []);
+    event.target.value = "";
+    if (!evaluacionId || archivos.length === 0) return;
+
+    setSubiendoReportesBulk(true);
+    setResultadoReportesBulk(null);
+    try {
+      const resultado = await databaseService.admin.subirReportesBulk(evaluacionId, archivos);
+      setResultadoReportesBulk(resultado);
+      cargarEvaluacion();
+      setEstudiantesTabla(null);
+    } catch (err) {
+      alert(err instanceof ApiError ? err.message : "No se pudieron subir los reportes");
+    } finally {
+      setSubiendoReportesBulk(false);
+    }
+  };
+
   const handleUploadReporteGrupal = async (event: ChangeEvent<HTMLInputElement>) => {
     const archivo = event.target.files?.[0];
     if (!archivo || !evaluacionId || !grupoEditandoId) return;
@@ -541,6 +566,8 @@ export default function DetalleAnalisis() {
             loading={loadingEstudiantes}
             onClose={() => setLayout("grupos")}
             onUploadReporte={handleUploadReporteEstudiante}
+            onUploadReportesBulk={handleUploadReportesBulk}
+            bulkUploading={subiendoReportesBulk}
           />
         ) : (
           <DetalleAnalisisDatos
@@ -783,6 +810,36 @@ export default function DetalleAnalisis() {
               )}
             </div>
           )}
+        </Modal>
+      )}
+
+      {resultadoReportesBulk && (
+        <Modal title="Resultado de reportes bulk" onClose={() => setResultadoReportesBulk(null)} width="min(680px, calc(100vw - 32px))">
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <p style={{ margin: 0, fontSize: 14, color: COLORS.neutro900 }}>
+              {resultadoReportesBulk.asignados} de {resultadoReportesBulk.resultados.length} archivo{resultadoReportesBulk.resultados.length === 1 ? "" : "s"} asignado{resultadoReportesBulk.asignados === 1 ? "" : "s"} correctamente.
+            </p>
+            <div style={{ maxHeight: 420, overflowY: "auto", border: `1px solid ${COLORS.neutro100}`, borderRadius: 8 }}>
+              {resultadoReportesBulk.resultados.map(resultado => {
+                const asignado = resultado.estado === "asignado";
+                return (
+                  <div key={`${resultado.archivo}-${resultado.estudianteId ?? resultado.estado}`} style={{ padding: "9px 12px", borderBottom: `1px solid ${COLORS.neutro50}`, fontSize: 12 }}>
+                    <div style={{ color: COLORS.neutro900, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{resultado.archivo}</div>
+                    <div style={{ color: asignado ? COLORS.verde600 : COLORS.rojo600, marginTop: 3 }}>
+                      {asignado
+                        ? `Asignado a ${resultado.estudianteNombre} (${resultado.porcentaje}%)`
+                        : `${resultado.motivo ?? "No asignado"}${resultado.porcentaje !== undefined ? ` (${resultado.porcentaje}%)` : ""}`}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <div style={{ display: "flex", justifyContent: "flex-end" }}>
+              <button type="button" onClick={() => setResultadoReportesBulk(null)} style={{ padding: "8px 14px", borderRadius: 8, border: `1px solid ${COLORS.neutro100}`, background: "#fff", color: COLORS.neutro700, cursor: "pointer" }}>
+                Cerrar
+              </button>
+            </div>
+          </div>
         </Modal>
       )}
     </div>

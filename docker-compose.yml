@@ -11,6 +11,24 @@
 # S3_BUCKET) y lo deja en modo público de lectura la primera vez que se
 # levanta — no hace falta ningún paso manual en la consola.
 services:
+  postgres:
+    image: postgres:16
+    container_name: psyeva-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: psyeva1
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: admin
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./db/procedures.sql:/docker-entrypoint-initdb.d/02-procedures.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d psyeva1"]
+      interval: 2s
+      retries: 20
+
   minio:
     image: minio/minio:latest
     container_name: psyeva-minio
@@ -47,4 +65,5 @@ services:
       "
 
 volumes:
+  postgres-data:
   minio-data:

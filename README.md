@@ -13,8 +13,7 @@ de PDFs en un bucket **S3-compatible** (MinIO en local, bucket de Railway en pro
 ## Requisitos
 
 - [Bun](https://bun.com) ≥ 1.3
-- PostgreSQL corriendo localmente (no lo levanta `bun dev`)
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/) — para el bucket S3 local (MinIO)
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) — para PostgreSQL y el bucket S3 local (MinIO)
 
 ## 1. Instalar dependencias
 
@@ -34,14 +33,17 @@ Ajustalos solo si tu Postgres local tiene otro usuario/puerto.
 
 ## 3. Base de datos
 
-Postgres corre aparte — hay que crear la base y aplicar el schema a mano (no hay
-migraciones, `db/schema.sql` y `db/procedures.sql` son la fuente de verdad):
+El servicio `postgres` de Docker crea la base y aplica automáticamente el schema y
+las funciones al inicializar un volumen nuevo (no hay migraciones; `db/schema.sql`
+y `db/procedures.sql` son la fuente de verdad):
 
 ```bash
-createdb -U postgres psyeva1
-psql -U postgres -d psyeva1 -f db/schema.sql
-psql -U postgres -d psyeva1 -f db/procedures.sql
+docker compose up -d
+bun run db:init
 ```
+
+`db:init` espera a que PostgreSQL acepte conexiones y aplica `db/schema.sql` y
+`db/procedures.sql` en ese orden.
 
 Para tener datos de prueba (colegios, evaluaciones, grupos, estudiantes, reportes de
 ejemplo con IDs fijos — ver `tests/factories.ts`):

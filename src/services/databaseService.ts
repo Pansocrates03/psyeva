@@ -420,6 +420,21 @@ class DatabaseService {
       const { data } = await this.post<ApiEnvelope<Reporte>>("/api/admin/reportes", form, { conColegio: false });
       return data;
     },
+
+    subirReportesBulk: async (evaluacionId: string, archivos: File[]): Promise<{
+      resultados: import("../utils/types").ResultadoReporteBulk[];
+      asignados: number;
+    }> => {
+      const form = new FormData();
+      form.set("evaluacionId", evaluacionId);
+      archivos.forEach(archivo => form.append("archivos", archivo));
+
+      const { data } = await this.post<ApiEnvelope<{
+        resultados: import("../utils/types").ResultadoReporteBulk[];
+        asignados: number;
+      }>>("/api/admin/reportes/bulk", form, { conColegio: false });
+      return data;
+    },
   };
 
   // ── Facilitador ──────────────────────────────────────────────

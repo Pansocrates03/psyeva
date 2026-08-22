@@ -10,8 +10,8 @@ import { listFiles } from "../../services/storageService";
 // (p. ej. los PDFs de reportes, que viven bajo "reportes/" en el mismo
 // bucket). Agregar un set nuevo de imágenes = agregar su prefijo acá.
 const CARPETAS_PERMITIDAS = new Set([
-  "assets/form_emociones/instrucciones",
-  "assets/form_emociones/preguntas",
+  "assets/instrucciones",
+  "assets/preguntas",
 ]);
 
 export const imagenesRoutes = {

@@ -118,6 +118,15 @@ export interface ReporteConContexto extends Reporte {
   estudianteNombre: string | null;
 }
 
+export type ResultadoReporteBulk = {
+  archivo: string;
+  estado: "asignado" | "sin_coincidencia" | "duplicado" | "invalido";
+  estudianteId?: string;
+  estudianteNombre?: string;
+  porcentaje?: number;
+  motivo?: string;
+};
+
 export interface Respuesta {
   id: string;
   sesionId: string;
