@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "../index.css";
+import { ApiError, databaseService } from "../services/databaseService";
 
 export default function Login() {
   const [username, setUsername] = useState("");
@@ -8,20 +9,19 @@ export default function Login() {
   const [error, setError] = useState("");
   const navigate = useNavigate();
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!username.trim() || !password.trim()) {
       setError("Ingresa usuario y contraseña");
       return;
     }
 
-    // Aquí se podría llamar a un API para validar credenciales.
-    // Por ahora guardamos el usuario localmente y redirigimos.
     try {
-      localStorage.setItem("psyeva_user", username);
-    } catch {}
-
-    navigate("/admin/evaluaciones");
+      await databaseService.admin.iniciarSesion(password);
+      navigate("/admin/evaluaciones");
+    } catch (error) {
+      setError(error instanceof ApiError ? error.message : "No se pudo iniciar sesión");
+    }
   }
 
   return (

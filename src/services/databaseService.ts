@@ -108,7 +108,7 @@ class DatabaseService {
       headers.set("X-Colegio-Id", this.colegioId);
     }
 
-    const res = await fetch(path, { ...init, headers });
+    const res = await fetch(path, { ...init, headers, credentials: "same-origin" });
     const isJson = res.headers.get("Content-Type")?.includes("application/json") ?? false;
     const body = isJson ? await res.json().catch(() => null) : null;
 
@@ -142,6 +142,22 @@ class DatabaseService {
   // ── Admin ─────────────────────────────────────────────────────
   // Las rutas /api/admin/* no requieren X-Colegio-Id.
   admin = {
+    iniciarSesion: async (password: string): Promise<void> => {
+      await this.post<ApiEnvelope<{ autenticado: true }>>("/api/admin/login", { password }, { conColegio: false });
+    },
+
+    verificarSesion: async (): Promise<boolean> => {
+      const { data } = await this.get<ApiEnvelope<{ autenticado: boolean }>>(
+        "/api/admin/sesion",
+        { conColegio: false }
+      );
+      return data.autenticado;
+    },
+
+    cerrarSesion: async (): Promise<void> => {
+      await this.post<ApiEnvelope<{ autenticado: false }>>("/api/admin/logout", {}, { conColegio: false });
+    },
+
     listarColegios: async (): Promise<ColegioConTotalEvaluaciones[]> => {
       const { data } = await this.get<ApiEnvelope<ColegioConTotalEvaluaciones[]>>(
         "/api/admin/colegios",

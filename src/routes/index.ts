@@ -1,4 +1,5 @@
 // ── Admin ─────────────────────────────────────────────────────
+export { adminAuthRoutes, adminLogoutRoutes, adminSesionRoutes, withAdminAuth } from "./admin/auth";
 export { colegiosRoutes }           from "./admin/colegios";
 export { colegiosIdRoutes }         from "./admin/colegiosId";
 export { formulariosRoutes }        from "./admin/formularios";
