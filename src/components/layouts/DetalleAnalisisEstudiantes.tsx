@@ -31,7 +31,6 @@ export default function DetalleAnalisisEstudiantes({
           <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: COLORS.neutro900 }}>Estudiantes de la evaluación</h3>
           <div style={{ fontSize: 12, color: COLORS.neutro500, marginTop: 2 }}>{estudiantes.length} estudiantes registrados</div>
         </div>
-        <ActionButton onClick={onClose} label="Volver a grupos" />
       </div>
 
       <div style={{ overflowX: "auto" }}>

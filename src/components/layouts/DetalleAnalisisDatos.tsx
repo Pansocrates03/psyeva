@@ -27,7 +27,6 @@ export default function DetalleAnalisisDatos({
         </div>
         <div style={{ display: "flex", gap: 8 }}>
           <ActionButton label="Exportar a Excel" onClick={onExportar} />
-          <ActionButton label="Volver a grupos" onClick={onClose} />
         </div>
       </div>
 

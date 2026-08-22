@@ -242,9 +242,6 @@ export default function EncuestasBase() {
 
     const seccion = form.secciones[seccionIndex];
     const hasContent = seccion?.opcionesRespuesta.some(r => r.trim()) ?? false;
-    if (hasContent && !confirm("Esto va a reemplazar las respuestas actuales de esta sección. ¿Continuar?")) {
-      return;
-    }
 
     setForm(prev => ({
       ...prev,
@@ -562,26 +559,6 @@ export default function EncuestasBase() {
                               ))}
                             </select>
                           </div>
-                          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                            {seccion.opcionesRespuesta.map((opcion, opcionIndex) => (
-                              <div key={opcionIndex} style={{ display: "flex", gap: 6 }}>
-                                <input
-                                  value={opcion}
-                                  onChange={event => updateOpcion(index, opcionIndex, event.target.value)}
-                                  placeholder={`Opción ${opcionIndex + 1}`}
-                                  style={{ flex: 1, padding: "9px 12px", border: `1px solid ${COLORS.neutro100}`, borderRadius: 8, fontSize: 14, color: COLORS.neutro900, outline: "none", boxSizing: "border-box" }}
-                                />
-                                {seccion.opcionesRespuesta.length > 2 && (
-                                  <button type="button" onClick={() => removeOpcion(index, opcionIndex)} style={{ border: "none", background: "transparent", color: COLORS.neutro400, cursor: "pointer" }} aria-label="Eliminar opción">
-                                    <i className="ti ti-x" />
-                                  </button>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                          <button type="button" onClick={() => addOpcion(index)} style={{ marginTop: 8, border: "none", background: "transparent", color: COLORS.violeta600, cursor: "pointer", fontSize: 12, fontWeight: 600, padding: 0 }}>
-                            + Añadir opción
-                          </button>
                         </div>
 
                         <div style={{ borderTop: `1px solid ${COLORS.neutro100}`, paddingTop: 10 }}>

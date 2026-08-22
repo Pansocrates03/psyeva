@@ -50,11 +50,9 @@ export function App() {
         <Route path="/admin/escuelas" element={<AdminGuard><Colegios /></AdminGuard>} />
         <Route path="/admin/encuestas" element={<AdminGuard><EncuestasBase /></AdminGuard>} />
         <Route path="/admin/configuracion" element={<AdminGuard><WIP /></AdminGuard>} />
-        <Route path="/test-encuesta" element={<Encuesta />} />
         <Route path="/evaluacion/:id" element={<Encuesta />} />
         <Route path="/reportes/:id" element={<Reportes />} />
-        <Route path="/test-reactivo" element={<Reactivo pregunta="¿Cuál es la capital de Francia?" opciones={[{"label": "Madrid", "value": 1}, {"label": "París", "value": 2}, {"label": "Berlín", "value": 3}]} numeroPregunta={1}
-          totalPreguntas={3} />} />
+  
       </Routes>
     </BrowserRouter>
   );

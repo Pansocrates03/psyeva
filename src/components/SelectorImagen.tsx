@@ -82,7 +82,7 @@ export default function SelectorImagen({ carpeta, value, onChange, label }: Sele
       )}
 
       {open && (
-        <Modal title="Elegir imagen" onClose={() => setOpen(false)}>
+        <Modal title="Elegir imagen" onClose={() => setOpen(false)} width="min(900px, calc(100vw - 32px))">
           {loading ? (
             <p style={{ fontSize: 13, color: COLORS.neutro500, margin: 0 }}>Cargando imágenes...</p>
           ) : error ? (
@@ -94,10 +94,11 @@ export default function SelectorImagen({ carpeta, value, onChange, label }: Sele
           ) : (
             <div style={{
               display: "grid",
-              gridTemplateColumns: "repeat(3, 1fr)",
-              gap: 8,
-              maxHeight: 360,
+              gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))",
+              gap: 12,
+              maxHeight: "65vh",
               overflowY: "auto",
+              padding: 2,
             }}>
               {imagenes.map(img => {
                 const seleccionada = img.url === value;
@@ -120,7 +121,7 @@ export default function SelectorImagen({ carpeta, value, onChange, label }: Sele
                       src={img.url}
                       alt=""
                       loading="lazy"
-                      style={{ width: "100%", height: 90, objectFit: "cover", display: "block" }}
+                      style={{ width: "100%", height: 160, objectFit: "cover", display: "block" }}
                     />
                   </button>
                 );

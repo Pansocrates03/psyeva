@@ -684,7 +684,7 @@ export default function Encuesta() {
   return (
     <div style={{
       display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-      minHeight: "100vh", padding: "24px",
+      minHeight: "100vh",
       background: `linear-gradient(135deg, ${COLORS.violeta50} 0%, ${COLORS.neutro50} 60%, ${COLORS.azul50} 100%)`,
       fontFamily: "system-ui, -apple-system, sans-serif",
     }}>

@@ -201,15 +201,16 @@ export default function Reactivo({
           <div style={{
             width: "100%",
             borderRadius: 12,
-            overflow: "hidden",
             marginBottom: 28,
             border: `1px solid ${COLORS.neutro100}`,
-            maxHeight: 240,
+            background: "#fff",
+            display: "flex",
+            justifyContent: "center",
           }}>
             <img
               src={imagenUrl}
               alt="Imagen de apoyo para la pregunta"
-              style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+              style={{ maxWidth: "100%", maxHeight: 420, width: "auto", height: "auto", objectFit: "contain", display: "block" }}
             />
           </div>
         )}

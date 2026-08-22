@@ -599,7 +599,22 @@ export default function DetalleAnalisis() {
               <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: COLORS.neutro700, marginBottom: 6 }}>
                 Reporte grupal
               </label>
-              <input type="file" accept="application/pdf" onChange={handleUploadReporteGrupal} style={{ width: "100%", fontSize: 13, color: COLORS.neutro700 }} />
+              <label style={{
+                display: "inline-flex", alignItems: "center", gap: 7,
+                padding: "9px 13px", borderRadius: 8,
+                border: `1px solid ${COLORS.neutro100}`, background: "#fff",
+                color: COLORS.neutro700, fontSize: 13, fontWeight: 600,
+                cursor: "pointer",
+              }}>
+                <i className="ti ti-upload" style={{ fontSize: 15 }} aria-hidden="true" />
+                Subir reporte PDF
+                <input
+                  type="file"
+                  accept="application/pdf"
+                  onChange={handleUploadReporteGrupal}
+                  style={{ display: "none" }}
+                />
+              </label>
             </div>
           )}
 

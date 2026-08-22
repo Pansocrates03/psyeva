@@ -5,9 +5,10 @@ interface ModalProps {
   onClose: () => void;
   title?: string;
   children: React.ReactNode;
+  width?: number | string;
 }
 
-export default function Modal({ onClose, title, children }: ModalProps) {
+export default function Modal({ onClose, title, children, width = 420 }: ModalProps) {
   // Cerrar con Escape
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -42,7 +43,8 @@ export default function Modal({ onClose, title, children }: ModalProps) {
           background: "#fff",
           borderRadius: 16,
           padding: "28px 32px",
-          width: 420,
+          width,
+          maxWidth: "calc(100vw - 32px)",
           boxShadow: "0 8px 32px rgba(0,0,0,0.12)",
         }}
       >
