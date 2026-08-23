@@ -1,8 +1,10 @@
 // Sube de una sola vez el catálogo de ilustraciones predefinidas
-// (src/assets/form_emociones/**) al bucket S3-compatible configurado en
-// .env, bajo el prefijo "assets/form_emociones/...". Después de correr
-// esto, el selector de imágenes del admin (SelectorImagen.tsx →
-// GET /api/admin/imagenes) las puede listar y usar.
+// (src/assets/form_emociones/**, el origen local) al bucket S3-compatible
+// configurado en .env, bajo los prefijos planos "assets/instrucciones/" y
+// "assets/preguntas/" — únicos que acepta el allowlist de imagenes.ts, no
+// hay subcarpeta por set. Después de correr esto, el selector de imágenes
+// del admin (SelectorImagen.tsx → GET /api/admin/imagenes) las puede
+// listar y usar.
 //
 // Uso (necesita MinIO local corriendo — `docker compose up -d` — o
 // apuntar S3_* en .env al bucket de Railway):
@@ -40,11 +42,11 @@ async function main() {
     console.log(`\n${subcarpeta}/ — ${archivos.length} archivos`);
 
     for (const archivo of archivos) {
-      const key = `assets/form_emociones/${subcarpeta}/${slugify(archivo)}`;
+      const key = `assets/${subcarpeta}/${slugify(archivo)}`;
       const file = Bun.file(path.join(dir, archivo));
       const bytes = await file.arrayBuffer();
 
-      const url = await uploadFile(key, bytes, "image/png");
+      await uploadFile(key, bytes, "image/png");
       console.log(`  ✓ ${archivo} → ${key}`);
       total++;
     }

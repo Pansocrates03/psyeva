@@ -39,6 +39,10 @@ export interface Pregunta {
   seccionId: string;
   orden: number;
   texto: string;
+  // imagenKey es lo que hay guardado en BD (key del bucket) — se manda de
+  // vuelta tal cual al guardar el formulario si la imagen no cambió.
+  // imagenUrl es una URL firmada de vida corta, solo para mostrarla.
+  imagenKey: string | null;
   imagenUrl: string | null;
 }
 
@@ -47,6 +51,7 @@ export interface Seccion {
   formularioId: string;
   orden: number;
   instruccionTexto: string | null;
+  instruccionImagenKey: string | null;
   instruccionImagenUrl: string | null;
   opcionesRespuesta: OpcionRespuesta[];
 }
@@ -204,15 +209,17 @@ export interface FormularioConSecciones extends Formulario {
   secciones: SeccionConPreguntas[];
 }
 
-// Formas que espera el backend al crear/reemplazar las secciones de un formulario
+// Formas que espera el backend al crear/reemplazar las secciones de un
+// formulario — llevan el key del bucket, no una URL (una URL firmada
+// expira y no puede guardarse tal cual).
 export interface PreguntaInput {
   texto: string;
-  imagenUrl?: string | null;
+  imagenKey?: string | null;
 }
 
 export interface SeccionInput {
   instruccionTexto?: string | null;
-  instruccionImagenUrl?: string | null;
+  instruccionImagenKey?: string | null;
   opcionesRespuesta: OpcionRespuesta[];
   preguntas: PreguntaInput[];
 }

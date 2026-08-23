@@ -8,10 +8,12 @@ const CATEGORIAS_VALIDAS = ["emociones", "bienestar_psicologico", "aprendizaje"]
 // Body POST: {
 //   titulo, descripcion, categoria,
 //   secciones: [{
-//     instruccionTexto?, instruccionImagenUrl?,
+//     instruccionTexto?, instruccionImagenKey?,
 //     opcionesRespuesta: [{ valor, texto }],
-//     preguntas: [{ texto, imagenUrl? }]
+//     preguntas: [{ texto, imagenKey? }]
 //   }]
+// instruccionImagenKey/imagenKey son el key del bucket (no una URL — ver
+// src/services/storageService.ts), tal como los devuelve GET /api/admin/imagenes.
 // }
 export const formulariosRoutes = {
 
@@ -56,9 +58,9 @@ export const formulariosRoutes = {
         return Response.json({ error: "secciones debe ser un array con al menos un elemento" }, { status: 400 });
       }
       for (const s of secciones) {
-        if (!s.instruccionTexto && !s.instruccionImagenUrl) {
+        if (!s.instruccionTexto && !s.instruccionImagenKey) {
           return Response.json(
-            { error: "Cada sección requiere instruccionTexto o instruccionImagenUrl" },
+            { error: "Cada sección requiere instruccionTexto o instruccionImagenKey" },
             { status: 400 }
           );
         }
@@ -97,7 +99,7 @@ export const formulariosRoutes = {
               ${nuevoFormulario.id},
               ${si + 1},
               ${s.instruccionTexto ?? null},
-              ${s.instruccionImagenUrl ?? null},
+              ${s.instruccionImagenKey ?? null},
               ${sql.json(s.opcionesRespuesta)}
             )
             RETURNING id
@@ -107,7 +109,7 @@ export const formulariosRoutes = {
             const p = s.preguntas[pi];
             await tx`
               INSERT INTO pregunta (seccion_id, orden, texto, imagen_url)
-              VALUES (${nuevaSeccion.id}, ${pi + 1}, ${p.texto.trim()}, ${p.imagenUrl ?? null})
+              VALUES (${nuevaSeccion.id}, ${pi + 1}, ${p.texto.trim()}, ${p.imagenKey ?? null})
             `;
           }
         }

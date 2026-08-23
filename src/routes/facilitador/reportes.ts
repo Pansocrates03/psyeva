@@ -1,4 +1,5 @@
 import sql from "../../db";
+import { resolveUrl } from "../../services/storageService";
 
 // GET /api/facilitador/reportes
 // Devuelve los reportes del colegio del facilitador,
@@ -56,11 +57,19 @@ export const facilitadorReportesRoutes = {
         ORDER BY r.created_at DESC
       `;
 
+      // archivo_url guarda el key del bucket — se firma recién acá, al leer.
+      const reportesFirmados = await Promise.all(
+        reportes.map(async (r): Promise<typeof r> => {
+          r.archivoUrl = await resolveUrl(r.archivoUrl);
+          return r;
+        })
+      );
+
       // Agrupa por tipo para facilitar el renderizado en el frontend
       const agrupado = {
-        general:    reportes.filter(r => r.tipo === "general"),
-        grupal:     reportes.filter(r => r.tipo === "grupal"),
-        individual: reportes.filter(r => r.tipo === "individual"),
+        general:    reportesFirmados.filter(r => r.tipo === "general"),
+        grupal:     reportesFirmados.filter(r => r.tipo === "grupal"),
+        individual: reportesFirmados.filter(r => r.tipo === "individual"),
       };
 
       return Response.json({

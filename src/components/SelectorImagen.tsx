@@ -7,9 +7,14 @@ import type { ArchivoBucket } from "../utils/types";
 interface SelectorImagenProps {
   /** Prefijo del bucket a listar — debe estar en el allowlist del backend */
   carpeta: string;
-  /** URL actualmente elegida, o "" si no hay ninguna */
+  /** URL (firmada) de la imagen actualmente elegida, para mostrarla — "" si no hay ninguna */
   value: string;
-  onChange: (url: string) => void;
+  /**
+   * key + url de la imagen elegida (el bucket es privado: se guarda el
+   * key, la url firmada es solo para la vista previa inmediata y expira).
+   * Al quitar la imagen se llama con key y url vacíos.
+   */
+  onChange: (seleccion: { key: string; url: string }) => void;
   /** Si se omite, no se renderiza el <label> (para usarlo inline en una fila) */
   label?: string;
 }
@@ -59,7 +64,7 @@ export default function SelectorImagen({ carpeta, value, onChange, label }: Sele
           </button>
           <button
             type="button"
-            onClick={() => onChange("")}
+            onClick={() => onChange({ key: "", url: "" })}
             style={{ padding: "7px 12px", borderRadius: 8, border: "none", background: "transparent", color: COLORS.neutro500, fontSize: 13, cursor: "pointer" }}
           >
             Quitar
@@ -106,7 +111,7 @@ export default function SelectorImagen({ carpeta, value, onChange, label }: Sele
                   <button
                     key={img.key}
                     type="button"
-                    onClick={() => { onChange(img.url); setOpen(false); }}
+                    onClick={() => { onChange({ key: img.key, url: img.url }); setOpen(false); }}
                     style={{
                       padding: 0,
                       border: `2px solid ${seleccionada ? COLORS.violeta400 : "transparent"}`,

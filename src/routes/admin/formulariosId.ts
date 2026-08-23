@@ -1,4 +1,5 @@
 import sql from "../../db";
+import { resolveUrl } from "../../services/storageService";
 
 const CATEGORIAS_VALIDAS = ["emociones", "bienestar_psicologico", "aprendizaje"];
 
@@ -35,9 +36,12 @@ export const formulariosIdRoutes = {
         ORDER BY s.orden, p.orden
       `;
 
+      // instruccion_imagen_url / imagen_url guardan el key del bucket, no
+      // una URL — se firman recién acá, al leer.
       const seccionesPorId = new Map<string, {
         id: string; orden: number;
-        instruccionTexto: string | null; instruccionImagenUrl: string | null;
+        instruccionTexto: string | null;
+        instruccionImagenKey: string | null; instruccionImagenUrl: string | null;
         opcionesRespuesta: unknown; preguntas: unknown[];
       }>();
       for (const fila of filas) {
@@ -46,7 +50,12 @@ export const formulariosIdRoutes = {
             id: fila.seccionId,
             orden: fila.seccionOrden,
             instruccionTexto: fila.instruccionTexto,
-            instruccionImagenUrl: fila.instruccionImagenUrl,
+            // instruccionImagenKey es el valor crudo de BD (key del bucket
+            // o, para filas viejas, una URL completa heredada) — se manda
+            // de vuelta tal cual al guardar si la imagen no cambió.
+            // instruccionImagenUrl es la versión firmada, solo para mostrar.
+            instruccionImagenKey: fila.instruccionImagenUrl,
+            instruccionImagenUrl: await resolveUrl(fila.instruccionImagenUrl),
             opcionesRespuesta: fila.opcionesRespuesta,
             preguntas: [],
           });
@@ -56,7 +65,8 @@ export const formulariosIdRoutes = {
             id: fila.preguntaId,
             orden: fila.preguntaOrden,
             texto: fila.preguntaTexto,
-            imagenUrl: fila.preguntaImagenUrl,
+            imagenKey: fila.preguntaImagenUrl,
+            imagenUrl: await resolveUrl(fila.preguntaImagenUrl),
           });
         }
       }
@@ -85,9 +95,9 @@ export const formulariosIdRoutes = {
           return Response.json({ error: "secciones debe ser un array con al menos un elemento" }, { status: 400 });
         }
         for (const s of secciones) {
-          if (!s.instruccionTexto && !s.instruccionImagenUrl) {
+          if (!s.instruccionTexto && !s.instruccionImagenKey) {
             return Response.json(
-              { error: "Cada sección requiere instruccionTexto o instruccionImagenUrl" },
+              { error: "Cada sección requiere instruccionTexto o instruccionImagenKey" },
               { status: 400 }
             );
           }
@@ -138,7 +148,7 @@ export const formulariosIdRoutes = {
                 ${id},
                 ${si + 1},
                 ${s.instruccionTexto ?? null},
-                ${s.instruccionImagenUrl ?? null},
+                ${s.instruccionImagenKey ?? null},
                 ${sql.json(s.opcionesRespuesta)}
               )
               RETURNING id
@@ -148,7 +158,7 @@ export const formulariosIdRoutes = {
               const p = s.preguntas[pi];
               await tx`
                 INSERT INTO pregunta (seccion_id, orden, texto, imagen_url)
-                VALUES (${nuevaSeccion.id}, ${pi + 1}, ${p.texto.trim()}, ${p.imagenUrl ?? null})
+                VALUES (${nuevaSeccion.id}, ${pi + 1}, ${p.texto.trim()}, ${p.imagenKey ?? null})
               `;
             }
           }

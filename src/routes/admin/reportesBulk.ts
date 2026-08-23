@@ -138,13 +138,15 @@ export const reportesBulkRoutes = {
         }
 
         const key = `reportes/evaluaciones/${evaluacionId}/estudiantes/${mejor.estudiante.id}/${Date.now()}_${nombreSeguro(archivo.name)}`;
-        const archivoUrl = await uploadFile(key, await archivo.arrayBuffer(), "application/pdf");
+        await uploadFile(key, await archivo.arrayBuffer(), "application/pdf");
         // Un reporte "individual" no lleva grupo_id — el constraint
         // reporte_individual_sin_grupo (db/schema.sql) lo exige NULL, el
         // grupo del alumno ya se puede derivar vía estudiante_id.
+        // archivo_url guarda el key del bucket, no una URL (bucket
+        // privado + URL firmada expira — no puede quedar grabada).
         await sql`
           INSERT INTO reporte (tipo, evaluacion_id, estudiante_id, archivo_url)
-          VALUES ('individual', ${evaluacionId}::uuid, ${mejor.estudiante.id}::uuid, ${archivoUrl})
+          VALUES ('individual', ${evaluacionId}::uuid, ${mejor.estudiante.id}::uuid, ${key})
         `;
 
         usados.add(mejor.estudiante.id);
