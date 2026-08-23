@@ -1,6 +1,6 @@
 import { listFiles } from "../../services/storageService";
 
-// GET /api/admin/imagenes?carpeta=assets/form_emociones/preguntas
+// GET /api/admin/imagenes?carpeta=assets/preguntas
 // Lista las imágenes predefinidas disponibles en el bucket para que el
 // admin las elija como imagen de una pregunta o instrucción de sección,
 // en vez de subir/pegar una URL a mano.

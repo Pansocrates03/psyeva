@@ -86,7 +86,8 @@ bun run seed:imagenes
 ```
 
 Sube todo `src/assets/form_emociones/**` (instrucciones + preguntas) al bucket bajo
-`assets/form_emociones/...`. Es seguro correrlo de nuevo si se agregan imágenes.
+`assets/instrucciones/` y `assets/preguntas/` — planas, sin subcarpeta por set. Es
+seguro correrlo de nuevo si se agregan imágenes.
 
 ## 5. Correr el servidor
 

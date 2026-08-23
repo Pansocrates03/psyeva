@@ -13,12 +13,16 @@ import type { CategoriaFormulario, FormularioConTotalPreguntas } from "../utils/
 interface PreguntaForm {
   id: number;
   texto: string;
+  // imagenKey es lo que se manda al backend; imagenUrl es solo para la
+  // vista previa (firmada, de vida corta — nunca se guarda tal cual).
+  imagenKey: string;
   imagenUrl: string;
 }
 
 interface SeccionForm {
   id: number;
   instruccionTexto: string;
+  instruccionImagenKey: string;
   instruccionImagenUrl: string;
   opcionesRespuesta: string[];
   preguntas: PreguntaForm[];
@@ -40,12 +44,14 @@ const CATEGORIA_META: Record<CategoriaFormulario, { bg: string; color: string; b
 const createPregunta = (): PreguntaForm => ({
   id: Date.now() + Math.random(),
   texto: "",
+  imagenKey: "",
   imagenUrl: "",
 });
 
 const createSeccion = (): SeccionForm => ({
   id: Date.now() + Math.random(),
   instruccionTexto: "",
+  instruccionImagenKey: "",
   instruccionImagenUrl: "",
   opcionesRespuesta: ["", "", "", ""],
   preguntas: [createPregunta()],
@@ -120,11 +126,13 @@ export default function EncuestasBase() {
         secciones: detalle.secciones.map(s => ({
           id: Date.now() + Math.random(),
           instruccionTexto: s.instruccionTexto ?? "",
+          instruccionImagenKey: s.instruccionImagenKey ?? "",
           instruccionImagenUrl: s.instruccionImagenUrl ?? "",
           opcionesRespuesta: s.opcionesRespuesta.map(o => o.texto),
           preguntas: s.preguntas.map(p => ({
             id: Date.now() + Math.random(),
             texto: p.texto,
+            imagenKey: p.imagenKey ?? "",
             imagenUrl: p.imagenUrl ?? "",
           })),
         })),
@@ -146,17 +154,17 @@ export default function EncuestasBase() {
 
     const secciones = form.secciones.map(seccion => ({
       instruccionTexto: seccion.instruccionTexto.trim() || null,
-      instruccionImagenUrl: seccion.instruccionImagenUrl.trim() || null,
+      instruccionImagenKey: seccion.instruccionImagenKey.trim() || null,
       opcionesRespuesta: seccion.opcionesRespuesta
         .map(texto => texto.trim())
         .filter(texto => texto.length > 0)
         .map((texto, index) => ({ valor: index + 1, texto })),
       preguntas: seccion.preguntas
-        .map(p => ({ texto: p.texto.trim(), imagenUrl: p.imagenUrl.trim() || null }))
+        .map(p => ({ texto: p.texto.trim(), imagenKey: p.imagenKey.trim() || null }))
         .filter(p => p.texto.length > 0),
     }));
 
-    if (secciones.some(s => (!s.instruccionTexto && !s.instruccionImagenUrl) || s.opcionesRespuesta.length < 2 || s.preguntas.length === 0)) {
+    if (secciones.some(s => (!s.instruccionTexto && !s.instruccionImagenKey) || s.opcionesRespuesta.length < 2 || s.preguntas.length === 0)) {
       setFormError("Cada sección necesita una instrucción (texto o imagen), al menos 2 respuestas y al menos una pregunta.");
       return;
     }
@@ -217,10 +225,19 @@ export default function EncuestasBase() {
     }
   };
 
-  const updateSeccionCampo = (index: number, campo: "instruccionTexto" | "instruccionImagenUrl", value: string) => {
+  const updateSeccionCampo = (index: number, campo: "instruccionTexto", value: string) => {
     setForm(prev => ({
       ...prev,
       secciones: prev.secciones.map((seccion, i) => i === index ? { ...seccion, [campo]: value } : seccion),
+    }));
+  };
+
+  const updateSeccionImagen = (index: number, seleccion: { key: string; url: string }) => {
+    setForm(prev => ({
+      ...prev,
+      secciones: prev.secciones.map((seccion, i) => i === index
+        ? { ...seccion, instruccionImagenKey: seleccion.key, instruccionImagenUrl: seleccion.url }
+        : seccion),
     }));
   };
 
@@ -279,14 +296,16 @@ export default function EncuestasBase() {
     }));
   };
 
-  const updatePreguntaImagen = (seccionIndex: number, preguntaIndex: number, url: string) => {
+  const updatePreguntaImagen = (seccionIndex: number, preguntaIndex: number, seleccion: { key: string; url: string }) => {
     setForm(prev => ({
       ...prev,
       secciones: prev.secciones.map((seccion, i) => {
         if (i !== seccionIndex) return seccion;
         return {
           ...seccion,
-          preguntas: seccion.preguntas.map((p, pi) => pi === preguntaIndex ? { ...p, imagenUrl: url } : p),
+          preguntas: seccion.preguntas.map((p, pi) => pi === preguntaIndex
+            ? { ...p, imagenKey: seleccion.key, imagenUrl: seleccion.url }
+            : p),
         };
       }),
     }));
@@ -539,7 +558,7 @@ export default function EncuestasBase() {
                         <SelectorImagen
                           carpeta="assets/instrucciones"
                           value={seccion.instruccionImagenUrl}
-                          onChange={url => updateSeccionCampo(index, "instruccionImagenUrl", url)}
+                          onChange={seleccion => updateSeccionImagen(index, seleccion)}
                           label="Instrucción (imagen, opcional — usala si prefieres reemplazar el texto por un dibujo)"
                         />
 
@@ -596,7 +615,7 @@ export default function EncuestasBase() {
                                 <SelectorImagen
                                   carpeta="assets/preguntas"
                                   value={pregunta.imagenUrl}
-                                  onChange={url => updatePreguntaImagen(index, preguntaIndex, url)}
+                                  onChange={seleccion => updatePreguntaImagen(index, preguntaIndex, seleccion)}
                                 />
                                 {seccion.preguntas.length > 1 && (
                                   <button type="button" onClick={() => removePregunta(index, preguntaIndex)} style={{ border: "none", background: "transparent", color: COLORS.neutro400, cursor: "pointer", flexShrink: 0 }} aria-label="Eliminar pregunta">

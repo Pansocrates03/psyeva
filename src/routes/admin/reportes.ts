@@ -1,5 +1,5 @@
 import sql from "../../db";
-import { uploadFile } from "../../services/storageService";
+import { uploadFile, getObjectUrl, resolveUrl } from "../../services/storageService";
 
 // GET  /api/admin/reportes  → lista reportes con filtros opcionales
 // POST /api/admin/reportes  → sube un nuevo reporte (PDF)
@@ -45,7 +45,17 @@ export const reportesRoutes = {
         ORDER BY r.created_at DESC
       `;
 
-      return Response.json({ data: rows });
+      // archivo_url guarda el key del bucket, no una URL — se firma recién
+      // acá, al leer (resolveUrl deja pasar sin tocar las filas viejas que
+      // todavía tengan la URL pública completa de antes de esta migración).
+      const data = await Promise.all(
+        rows.map(async (row): Promise<typeof row> => {
+          row.archivoUrl = await resolveUrl(row.archivoUrl);
+          return row;
+        })
+      );
+
+      return Response.json({ data });
     } catch (err) {
       console.error("[GET /api/admin/reportes]", err);
       return Response.json({ error: "Error al obtener reportes" }, { status: 500 });
@@ -117,9 +127,11 @@ export const reportesRoutes = {
       const filename  = `${tipo}_${timestamp}_${archivo.name.replace(/\s+/g, "_")}`;
       const key       = `reportes/${filename}`;
 
-      const archivoUrl = await uploadFile(key, await archivo.arrayBuffer(), archivo.type);
+      await uploadFile(key, await archivo.arrayBuffer(), archivo.type);
 
-      // Inserta en BD — sin campo publicado
+      // Inserta en BD — sin campo publicado. archivo_url guarda el key,
+      // no una URL: el bucket es privado y una URL firmada expira, así
+      // que no puede quedar grabada como valor final permanente.
       const [nuevo] = await sql`
         INSERT INTO reporte (tipo, evaluacion_id, grupo_id, estudiante_id, archivo_url)
         VALUES (
@@ -127,12 +139,12 @@ export const reportesRoutes = {
           ${evaluacionId}::uuid,
           ${grupoId      ?? null}::uuid,
           ${estudianteId ?? null}::uuid,
-          ${archivoUrl}
+          ${key}
         )
         RETURNING *
       `;
 
-      return Response.json({ data: nuevo }, { status: 201 });
+      return Response.json({ data: { ...nuevo, archivoUrl: await getObjectUrl(key) } }, { status: 201 });
     } catch (err) {
       console.error("[POST /api/admin/reportes]", err);
       return Response.json({ error: "Error al subir el reporte" }, { status: 500 });

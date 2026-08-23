@@ -1,4 +1,20 @@
 import sql from "../../db";
+import { resolveUrl } from "../../services/storageService";
+
+// p.imagen_url / sec.instruccion_imagen_url guardan el key del bucket, no
+// una URL — se firman recién acá, al leer (mismo tratamiento en GET y en
+// POST/iniciar, que devuelven el mismo shape de preguntas). `preguntas` es
+// el resultado crudo de `sql` (RowList) — igual que el resto de las rutas
+// de este proyecto, sus columnas no están tipadas estáticamente.
+async function firmarImagenesPreguntas(preguntas: any[]): Promise<any[]> {
+  return Promise.all(
+    preguntas.map(async p => {
+      p.imagenUrl = await resolveUrl(p.imagenUrl);
+      p.instruccionImagenUrl = await resolveUrl(p.instruccionImagenUrl);
+      return p;
+    })
+  );
+}
 
 // Maneja el flujo completo de la encuesta usando las functions de PostgreSQL:
 //
@@ -74,7 +90,7 @@ export const sesionesRoutes = {
         ORDER BY sec.orden, p.orden
       `;
 
-      return Response.json({ data: { sesion, preguntas } });
+      return Response.json({ data: { sesion, preguntas: await firmarImagenesPreguntas(preguntas) } });
     } catch (err) {
       console.error("[GET /api/facilitador/sesiones]", err);
       return Response.json({ error: "Error al obtener la sesión" }, { status: 500 });
@@ -170,7 +186,7 @@ export const sesionesRoutes = {
 
       const status = sesionResult.esNueva ? 201 : 200;
       return Response.json(
-        { data: { sesion: sesionResult, preguntas } },
+        { data: { sesion: sesionResult, preguntas: await firmarImagenesPreguntas(preguntas) } },
         { status }
       );
     } catch (err) {
