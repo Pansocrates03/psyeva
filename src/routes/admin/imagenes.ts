@@ -1,20 +1,29 @@
 import { deleteFile, getObjectUrl, listFiles, uploadFile } from "../../services/storageService";
 
-// GET    /api/admin/imagenes?carpeta=assets/preguntas
+// GET    /api/admin/imagenes?carpeta=assets/preguntas_emociones
 //   → lista las imágenes del catálogo (usado por SelectorImagen.tsx)
 // POST   /api/admin/imagenes
 //   → sube una imagen nueva al catálogo — FormData: { carpeta, archivo }
 //   → usado por la sección "Imágenes de formularios" en Configuración
-// DELETE /api/admin/imagenes?carpeta=assets/preguntas&key=assets/preguntas/123_foo.png
+// DELETE /api/admin/imagenes?carpeta=assets/preguntas_emociones&key=assets/preguntas_emociones/123_foo.png
 //   → borra una imagen del catálogo
 //
 // `carpeta` está restringida a un allowlist a propósito: es la única
 // forma de que este endpoint no termine listando/tocando archivos que no
 // debería (p. ej. los PDFs de reportes, que viven bajo "reportes/" en el
-// mismo bucket). Agregar un set nuevo de imágenes = agregar su prefijo acá.
+// mismo bucket). Una carpeta de "preguntas" por categoría (en vez de una
+// sola compartida) para que el selector de un formulario de Emociones no
+// muestre imágenes de Aprendizaje, etc. — "instrucciones" en cambio es
+// una sola carpeta global, misma idea en ambos lados: ver
+// CARPETA_INSTRUCCIONES / CARPETA_PREGUNTAS_POR_CATEGORIA en
+// src/utils/categorias.ts (ese archivo es la fuente de verdad del lado
+// del frontend; acá se repite literal porque las rutas de este proyecto
+// no importan de src/utils/ — mantener ambos lados en sync a mano).
 const CARPETAS_PERMITIDAS = new Set([
   "assets/instrucciones",
-  "assets/preguntas",
+  "assets/preguntas_emociones",
+  "assets/preguntas_aprendizaje",
+  "assets/preguntas_psico",
 ]);
 
 const TIPOS_PERMITIDOS = new Set(["image/png", "image/jpeg", "image/webp"]);

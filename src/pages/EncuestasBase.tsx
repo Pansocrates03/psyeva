@@ -6,7 +6,7 @@ import SelectorImagen from "../components/SelectorImagen";
 import COLORS from "../utils/Colors";
 import StatCard from "@/components/StatCard";
 import { databaseService, ApiError } from "../services/databaseService";
-import { CATEGORIA_LABELS, CATEGORIAS } from "../utils/categorias";
+import { CARPETA_INSTRUCCIONES, CARPETA_PREGUNTAS_POR_CATEGORIA, CATEGORIA_LABELS, CATEGORIAS } from "../utils/categorias";
 import { RESPUESTAS_PRESETS } from "../utils/respuestasPreset";
 import type { CategoriaFormulario, FormularioConTotalPreguntas } from "../utils/types";
 
@@ -556,7 +556,7 @@ export default function EncuestasBase() {
                         </div>
 
                         <SelectorImagen
-                          carpeta="assets/instrucciones"
+                          carpeta={CARPETA_INSTRUCCIONES}
                           value={seccion.instruccionImagenUrl}
                           onChange={seleccion => updateSeccionImagen(index, seleccion)}
                           label="Instrucción (imagen, opcional — usala si prefieres reemplazar el texto por un dibujo)"
@@ -613,7 +613,7 @@ export default function EncuestasBase() {
                                   style={{ flex: 1, padding: "9px 12px", border: `1px solid ${COLORS.neutro100}`, borderRadius: 8, fontSize: 14, color: COLORS.neutro900, outline: "none", boxSizing: "border-box" }}
                                 />
                                 <SelectorImagen
-                                  carpeta="assets/preguntas"
+                                  carpeta={CARPETA_PREGUNTAS_POR_CATEGORIA[form.categoria]}
                                   value={pregunta.imagenUrl}
                                   onChange={seleccion => updatePreguntaImagen(index, preguntaIndex, seleccion)}
                                 />
