@@ -1,18 +1,39 @@
-import { listFiles } from "../../services/storageService";
+import { deleteFile, getObjectUrl, listFiles, uploadFile } from "../../services/storageService";
 
-// GET /api/admin/imagenes?carpeta=assets/preguntas
-// Lista las imágenes predefinidas disponibles en el bucket para que el
-// admin las elija como imagen de una pregunta o instrucción de sección,
-// en vez de subir/pegar una URL a mano.
+// GET    /api/admin/imagenes?carpeta=assets/preguntas
+//   → lista las imágenes del catálogo (usado por SelectorImagen.tsx)
+// POST   /api/admin/imagenes
+//   → sube una imagen nueva al catálogo — FormData: { carpeta, archivo }
+//   → usado por la sección "Imágenes de formularios" en Configuración
+// DELETE /api/admin/imagenes?carpeta=assets/preguntas&key=assets/preguntas/123_foo.png
+//   → borra una imagen del catálogo
 //
 // `carpeta` está restringida a un allowlist a propósito: es la única
-// forma de que este endpoint no termine listando archivos que no debería
-// (p. ej. los PDFs de reportes, que viven bajo "reportes/" en el mismo
-// bucket). Agregar un set nuevo de imágenes = agregar su prefijo acá.
+// forma de que este endpoint no termine listando/tocando archivos que no
+// debería (p. ej. los PDFs de reportes, que viven bajo "reportes/" en el
+// mismo bucket). Agregar un set nuevo de imágenes = agregar su prefijo acá.
 const CARPETAS_PERMITIDAS = new Set([
   "assets/instrucciones",
   "assets/preguntas",
 ]);
+
+const TIPOS_PERMITIDOS = new Set(["image/png", "image/jpeg", "image/webp"]);
+
+// Evita nombres con espacios/acentos/caracteres raros en el key del
+// bucket (mismo criterio que scripts/upload-form-emociones-assets.ts).
+function sanitizarNombre(nombreOriginal: string): string {
+  const puntoIndex = nombreOriginal.lastIndexOf(".");
+  const base = puntoIndex > 0 ? nombreOriginal.slice(0, puntoIndex) : nombreOriginal;
+  const ext  = puntoIndex > 0 ? nombreOriginal.slice(puntoIndex).toLowerCase() : "";
+
+  const diacriticos = new RegExp("[\\u0300-\\u036f]", "g");
+  const limpio = base
+    .normalize("NFD").replace(diacriticos, "")
+    .replace(/\s+/g, "_")
+    .replace(/[^a-zA-Z0-9._-]/g, "");
+
+  return `${limpio || "imagen"}${ext}`;
+}
 
 export const imagenesRoutes = {
 
@@ -32,6 +53,69 @@ export const imagenesRoutes = {
     } catch (err) {
       console.error("[GET /api/admin/imagenes]", err);
       return Response.json({ error: "Error al listar imágenes" }, { status: 500 });
+    }
+  },
+
+  async POST(req: Request) {
+    try {
+      const form    = await req.formData();
+      const carpeta = form.get("carpeta") as string | null;
+      const archivo = form.get("archivo") as File | null;
+
+      if (!carpeta || !CARPETAS_PERMITIDAS.has(carpeta)) {
+        return Response.json(
+          { error: `carpeta debe ser una de: ${[...CARPETAS_PERMITIDAS].join(", ")}` },
+          { status: 400 }
+        );
+      }
+      if (!archivo) {
+        return Response.json({ error: "archivo es requerido" }, { status: 400 });
+      }
+      if (!TIPOS_PERMITIDOS.has(archivo.type)) {
+        return Response.json(
+          { error: "El archivo debe ser una imagen (PNG, JPEG o WEBP)" },
+          { status: 400 }
+        );
+      }
+
+      const key = `${carpeta}/${Date.now()}_${sanitizarNombre(archivo.name)}`;
+      await uploadFile(key, await archivo.arrayBuffer(), archivo.type);
+      const url = await getObjectUrl(key);
+
+      return Response.json({ data: { key, url } }, { status: 201 });
+    } catch (err) {
+      console.error("[POST /api/admin/imagenes]", err);
+      return Response.json({ error: "Error al subir la imagen" }, { status: 500 });
+    }
+  },
+
+  async DELETE(req: Request) {
+    try {
+      const url     = new URL(req.url);
+      const carpeta = url.searchParams.get("carpeta");
+      const key     = url.searchParams.get("key");
+
+      if (!carpeta || !CARPETAS_PERMITIDAS.has(carpeta)) {
+        return Response.json(
+          { error: `carpeta debe ser una de: ${[...CARPETAS_PERMITIDAS].join(", ")}` },
+          { status: 400 }
+        );
+      }
+      // El key tiene que pertenecer a la carpeta indicada — si no, cualquiera
+      // con acceso a este endpoint podría borrar objetos fuera del catálogo
+      // de imágenes (p. ej. un PDF de reportes) con solo cambiar el query param.
+      if (!key || !key.startsWith(`${carpeta}/`)) {
+        return Response.json(
+          { error: "key es requerido y debe pertenecer a la carpeta indicada" },
+          { status: 400 }
+        );
+      }
+
+      await deleteFile(key);
+      return Response.json({ data: { key, eliminado: true } });
+    } catch (err) {
+      console.error("[DELETE /api/admin/imagenes]", err);
+      return Response.json({ error: "Error al eliminar la imagen" }, { status: 500 });
     }
   },
 };

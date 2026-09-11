@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import COLORS from "@/utils/Colors";
 import Reactivo from "./Reactivo";
@@ -162,63 +162,6 @@ function LogoHeader({ escuela, grupo }: { escuela?: string; grupo?: string }) {
 }
 
 // ─────────────────────────────────────────────
-// Paso 1 — Verificación de código
-// ─────────────────────────────────────────────
-function VerificacionStep({ onContinue }: {
-  onContinue: (colegioNombre: string, evaluacion: EvaluacionActiva) => void;
-}) {
-  const [codigo, setCodigo] = useState("");
-  const [focused, setFocused] = useState(false);
-  const [error, setError] = useState("");
-  const [verificando, setVerificando] = useState(false);
-
-  const handleContinue = async () => {
-    if (codigo.trim().length < 3) { setError("Ingresa un código válido."); return; }
-
-    setVerificando(true);
-    setError("");
-    try {
-      const { colegio, evaluaciones } = await databaseService.facilitador.verificar(codigo.trim());
-      const activa = evaluaciones.find(e => e.aceptaRespuestas);
-      if (!activa) {
-        setError("Esta escuela no tiene una evaluación abierta en este momento.");
-        return;
-      }
-      onContinue(colegio.nombre, activa);
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "No se pudo verificar el código.");
-    } finally {
-      setVerificando(false);
-    }
-  };
-
-  return (
-    <div style={cardStyle}>
-      <LogoHeader />
-      <div style={cardBodyStyle}>
-        <h2 style={{ margin: "0 0 4px", fontSize: 17, fontWeight: 600, color: COLORS.neutro900 }}>
-          Ingresa el código de tu escuela
-        </h2>
-        <p style={{ margin: "0 0 20px", fontSize: 13, color: COLORS.neutro500 }}>
-          Tu facilitador te compartió este código para iniciar la evaluación.
-        </p>
-        <label style={labelStyle}>Código de acceso</label>
-        <input
-          type="text" placeholder="Ej. san-jose-2026" value={codigo}
-          onChange={e => { setCodigo(e.target.value); setError(""); }}
-          onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
-          onKeyDown={e => e.key === "Enter" && handleContinue()}
-          style={{ ...inputStyle(focused), fontFamily: "monospace", letterSpacing: "0.06em", marginBottom: error ? 6 : 20 }}
-          autoFocus
-        />
-        {error && <p style={{ margin: "0 0 14px", fontSize: 12, color: COLORS.rojo400 }}>{error}</p>}
-        <BtnPrimario label={verificando ? "Verificando..." : "Continuar"} onClick={handleContinue} disabled={verificando || codigo.trim().length === 0} />
-      </div>
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────
 // Paso 2 — Seleccionar grupo
 // ─────────────────────────────────────────────
 function SeleccionarGrupoStep({ escuela, grupos, onBack, onContinue }: {
@@ -280,8 +223,6 @@ function SeleccionarGrupoStep({ escuela, grupos, onBack, onContinue }: {
             ))}
           </div>
         )}
-
-        <BtnSecundario label="Atrás" onClick={onBack} />
       </div>
     </div>
   );
@@ -300,7 +241,7 @@ function SeleccionarFormularioStep({ escuela, grupo, onBack, onContinue }: {
       <LogoHeader escuela={escuela} grupo={grupo.grupoNombre} />
       <div style={cardBodyStyle}>
         <h2 style={{ margin: "0 0 4px", fontSize: 17, fontWeight: 600, color: COLORS.neutro900 }}>
-          ¿Qué tipo de evaluación?
+          Área a evaluar
         </h2>
         <p style={{ margin: "0 0 18px", fontSize: 13, color: COLORS.neutro500 }}>
           Toca el formulario que van a responder hoy.
@@ -561,6 +502,12 @@ export default function Encuesta() {
   const [respuestasLocal, setRespuestasLocal] = useState<Record<string, number>>({});
   const [iniciando, setIniciando] = useState(false);
   const [enviando, setEnviando] = useState(false);
+  // true durante la breve pausa entre seleccionar una opción y avanzar de
+  // verdad — le da tiempo a la animación de "opción elegida" antes de que
+  // cambie la pregunta, y bloquea las opciones para que un doble click no
+  // dispare dos avances.
+  const [avanzando, setAvanzando] = useState(false);
+  const avanceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [pasoError, setPasoError] = useState<string | null>(null);
 
   const [resolviendoLink, setResolviendoLink] = useState(Boolean(evaluacionIdParam));
@@ -692,11 +639,23 @@ export default function Encuesta() {
     );
   };
 
-  const handleSiguiente = async () => {
+  // Limpia cualquier avance pendiente si el índice cambia por otra vía
+  // (p. ej. "Anterior") o al desmontar, para que un timeout viejo no
+  // dispare sobre la pregunta equivocada.
+  useEffect(() => {
+    return () => {
+      if (avanceTimeoutRef.current) {
+        clearTimeout(avanceTimeoutRef.current);
+        avanceTimeoutRef.current = null;
+      }
+      setAvanzando(false);
+    };
+  }, [indexActual]);
+
+  const avanzarConRespuesta = async (valor: number) => {
     if (!sesion) return;
     const pregunta = sesion.preguntas[indexActual];
     if (!pregunta) return;
-    const valor = respuestasLocal[pregunta.id];
     const opcion = pregunta.opcionesRespuesta.find(o => o.valor === valor);
     if (!opcion) return;
 
@@ -736,6 +695,22 @@ export default function Encuesta() {
     } finally {
       setEnviando(false);
     }
+  };
+
+  // Al tocar una opción: la marca seleccionada al toque (feedback
+  // inmediato) y, tras una pausa breve para que se vea la animación de
+  // "elegida", guarda la respuesta y avanza sola — sin botón "Siguiente".
+  const handleSeleccionarOpcion = (valor: number) => {
+    if (!preguntaActual || enviando || avanzando) return;
+
+    setRespuestasLocal(prev => ({ ...prev, [preguntaActual.id]: valor }));
+
+    if (avanceTimeoutRef.current) clearTimeout(avanceTimeoutRef.current);
+    setAvanzando(true);
+    avanceTimeoutRef.current = setTimeout(() => {
+      setAvanzando(false);
+      void avanzarConRespuesta(valor);
+    }, 450);
   };
 
   const preguntaActual = sesion?.preguntas[indexActual];
@@ -795,9 +770,6 @@ export default function Encuesta() {
         <p style={{ marginBottom: 12, fontSize: 13, color: COLORS.rojo400, textAlign: "center" }}>{pasoError}</p>
       )}
 
-      {seccion === "verificacion" && (
-        <VerificacionStep onContinue={handleVerificado} />
-      )}
       {seccion === "seleccionarGrupo" && (
         <SeleccionarGrupoStep escuela={escuela} grupos={grupos} onBack={reiniciar} onContinue={handleSeleccionarGrupo} />
       )}
@@ -829,9 +801,9 @@ export default function Encuesta() {
             totalPreguntas={sesion.preguntas.length}
             nombreEstudiante={alumno.nombreCompleto}
             valorSeleccionado={respuestasLocal[preguntaActual.id] ?? null}
-            onSeleccionar={valor => setRespuestasLocal(prev => ({ ...prev, [preguntaActual.id]: valor }))}
+            onSeleccionar={handleSeleccionarOpcion}
             onAnterior={indexActual > 0 ? volverPreguntaAnterior : undefined}
-            onSiguiente={enviando ? undefined : handleSiguiente}
+            avanzando={avanzando || enviando}
             esUltima={indexActual === sesion.preguntas.length - 1}
           />
         </div>

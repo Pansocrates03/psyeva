@@ -9,7 +9,8 @@
     "build": "bun run build.ts",
     "test": "bun test",
     "db:init": "bun scripts/init-db.ts",
-    "seed:imagenes": "bun scripts/upload-form-emociones-assets.ts"
+    "seed:imagenes": "bun scripts/upload-form-emociones-assets.ts",
+    "seed:carga": "bun scripts/seed-carga.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1116.0",

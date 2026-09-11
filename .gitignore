@@ -13,6 +13,10 @@ dist
 src/assets/form_emociones
 src/assets/otros
 
+# Datos generados por scripts/seed-carga.ts (IDs de una corrida local
+# puntual) — los scripts de k6 los leen, pero no tiene sentido versionarlos.
+k6/carga-data.json
+
 # code coverage
 coverage
 *.lcov
