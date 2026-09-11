@@ -10,7 +10,7 @@
 // tampoco se usa ACL por objeto (PutObjectCommand sin `ACL`): no aplica
 // cuando no hay lectura pública, y además varios proveedores S3-compatible
 // (R2, buckets de Railway) ni siquiera soportan ese header.
-import { GetObjectCommand, ListObjectsV2Command, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { DeleteObjectCommand, GetObjectCommand, ListObjectsV2Command, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 let client: S3Client | null = null;
@@ -108,6 +108,12 @@ export async function uploadFile(
       ContentType: contentType,
     })
   );
+}
+
+/** Borra un objeto del bucket. Usado al eliminar una imagen del catálogo
+ *  de "Configuración" — ver src/routes/admin/imagenes.ts. */
+export async function deleteFile(key: string): Promise<void> {
+  await getClient().send(new DeleteObjectCommand({ Bucket: getBucket(), Key: key }));
 }
 
 /** Firma una URL de lectura de vida corta para `key`. */

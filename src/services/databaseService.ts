@@ -223,6 +223,24 @@ class DatabaseService {
       return data;
     },
 
+    // Sube una imagen nueva al catálogo (sección "Imágenes de formularios"
+    // de Configuración). `carpeta` debe ser uno de los prefijos permitidos.
+    subirImagen: async (input: { carpeta: string; archivo: File }): Promise<ArchivoBucket> => {
+      const form = new FormData();
+      form.set("carpeta", input.carpeta);
+      form.set("archivo", input.archivo);
+      const { data } = await this.post<ApiEnvelope<ArchivoBucket>>("/api/admin/imagenes", form, { conColegio: false });
+      return data;
+    },
+
+    eliminarImagen: async (carpeta: string, key: string): Promise<{ key: string; eliminado: boolean }> => {
+      const { data } = await this.del<ApiEnvelope<{ key: string; eliminado: boolean }>>(
+        `/api/admin/imagenes${buildQuery({ carpeta, key })}`,
+        { conColegio: false }
+      );
+      return data;
+    },
+
     eliminarFormulario: async (id: string): Promise<{ id: string; eliminado: boolean }> => {
       const { data } = await this.del<ApiEnvelope<{ id: string; eliminado: boolean }>>(
         `/api/admin/formularios/${id}`,

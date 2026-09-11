@@ -7,7 +7,7 @@ import MisAnalisis from "./pages/MisAnalisis";
 import DetalleAnalisis from "./pages/DetalleAnalisis";
 import Colegios from "./pages/Colegios";
 import EncuestasBase from "./pages/EncuestasBase";
-import WIP from "./pages/WIP";
+import Configuracion from "./pages/Configuracion";
 import Reactivo from "./pages/Reactivo";
 import Encuesta from "./pages/Encuesta";
 import Reportes from "./pages/Reportes";
@@ -49,7 +49,7 @@ export function App() {
         <Route path="/admin/colegios" element={<AdminGuard><Colegios /></AdminGuard>} />
         <Route path="/admin/escuelas" element={<AdminGuard><Colegios /></AdminGuard>} />
         <Route path="/admin/encuestas" element={<AdminGuard><EncuestasBase /></AdminGuard>} />
-        <Route path="/admin/configuracion" element={<AdminGuard><WIP /></AdminGuard>} />
+        <Route path="/admin/configuracion" element={<AdminGuard><Configuracion /></AdminGuard>} />
         <Route path="/evaluacion/:id" element={<Encuesta />} />
         <Route path="/reportes/:id" element={<Reportes />} />
   
