@@ -127,6 +127,37 @@ Los tests corren contra la misma Postgres y el mismo bucket de MinIO configurado
 `.env` (no hay entornos de test separados) — necesitás los pasos 3 y 4 hechos antes de
 correrlos. Cada archivo resetea la BD a un estado conocido en `beforeEach`.
 
+## Pruebas de carga (k6)
+
+Simulan el requisito de "hasta 500 alumnos respondiendo a la vez" con dos escenarios
+distintos — miden cosas diferentes, correr los dos:
+
+- **`k6/pico.js`** — 500 clicks simultáneos (todos los alumnos tocando "Siguiente" en
+  el mismo instante). Mide si el sistema aguanta una ráfaga.
+- **`k6/sostenido.js`** — 500 alumnos independientes navegando a ritmos random durante
+  ~10 minutos (arranque escalonado, pausas de 20-60s entre pregunta y pregunta). Mide
+  fugas de conexiones/memoria y si el autovacuum de Postgres da abasto con volumen
+  sostenido — cosas que un pico de segundos no llega a mostrar.
+
+Instalar k6 (una vez): `winget install GrafanaLabs.k6` (o `choco install k6`).
+
+```bash
+bun run seed:carga     # crea "Colegio Carga" + 500 estudiantes + sesiones iniciadas
+k6 run k6/pico.js      # repetible sin volver a sembrar
+k6 run k6/sostenido.js # completa las sesiones — volver a correr seed:carga antes de repetir
+```
+
+Contra Railway ya deployado, en vez de local: `k6 run -e BASE_URL=https://tu-app.up.railway.app k6/pico.js`.
+
+**Hallazgo real de la primera corrida (Windows, local):** el pico de 500 conexiones
+simultáneas tuvo una tasa de error variable entre corridas (5%-47%) por conexiones TCP
+rechazadas por el sistema operativo antes de llegar a la app — no por Postgres ni por
+el pool de conexiones (las que sí conectaron respondieron en 45-180ms, rápido). Esto
+huele a comportamiento de la cola de aceptación TCP de Windows ante una ráfaga
+instantánea, no necesariamente algo que reproduzca igual en el contenedor Linux de
+Railway — hay que volver a correr `k6/pico.js` contra Railway ya deployado para
+confirmar si el problema persiste ahí o era específico de este entorno de desarrollo.
+
 ## Chequeo de tipos (manual, no hay script de lint)
 
 ```bash
