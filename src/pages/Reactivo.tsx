@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import COLORS from "@/utils/Colors";
 
 // ── Tipos ─────────────────────────────────────────────────────
@@ -26,13 +26,14 @@ interface ReactivoProps {
   nombreEstudiante?: string;
   /** Valor actualmente seleccionado (controlled) */
   valorSeleccionado?: number | null;
-  /** Callback al seleccionar una opción */
+  /** Callback al seleccionar una opción — avanza solo, no hace falta un botón "Siguiente" */
   onSeleccionar?: (valor: number) => void;
   /** Callback al presionar "Anterior" */
   onAnterior?: () => void;
-  /** Callback al presionar "Siguiente" / "Terminar" */
-  onSiguiente?: () => void;
-  /** Si es la última pregunta, cambia "Siguiente" por "Terminar" */
+  /** true mientras se guarda la respuesta y se transiciona a la siguiente pregunta —
+   *  bloquea las opciones para que un doble click no dispare dos avances */
+  avanzando?: boolean;
+  /** Si es la última pregunta, cambia el mensaje de "avanzando" */
   esUltima?: boolean;
 }
 
@@ -49,10 +50,21 @@ export default function Reactivo({
   valorSeleccionado = null,
   onSeleccionar,
   onAnterior,
-  onSiguiente,
+  avanzando = false,
   esUltima = false,
 }: ReactivoProps) {
   const [hovered, setHovered] = useState<number | null>(null);
+
+  // Animación de entrada: cada vez que cambia la pregunta (numeroPregunta),
+  // el contenido arranca desplazado/transparente y "entra" en el siguiente
+  // frame — un fundido + deslizamiento corto que deja claro que se avanzó
+  // a una pregunta nueva, sin depender de ninguna librería de animación.
+  const [entrando, setEntrando] = useState(false);
+  useEffect(() => {
+    setEntrando(false);
+    const raf = requestAnimationFrame(() => setEntrando(true));
+    return () => cancelAnimationFrame(raf);
+  }, [numeroPregunta]);
 
   const progreso = ((numeroPregunta - 1) / totalPreguntas) * 100;
   const puedeAvanzar = valorSeleccionado !== null;
@@ -141,148 +153,160 @@ export default function Reactivo({
         width: "100%",
       }}>
 
-        {/* Indicador de pregunta */}
-        <p style={{
-          fontSize: 12,
-          fontWeight: 500,
-          textTransform: "uppercase",
-          letterSpacing: "0.08em",
-          color: COLORS.violeta400,
-          margin: "0 0 16px",
-          alignSelf: "flex-start",
-        }}>
-          Pregunta {numeroPregunta}
-        </p>
-
-        {/* Texto de la pregunta */}
-        <h2 style={{
-          fontSize: 22,
-          fontWeight: 500,
-          color: COLORS.neutro900,
-          lineHeight: 1.45,
-          margin: "0 0 24px",
-          alignSelf: "flex-start",
-        }}>
-          {pregunta}
-        </h2>
-
-        {/* Imagen opcional del enunciado */}
-        {imagenUrl && (
-          <div style={{
-            width: "100%",
-            borderRadius: 12,
-            marginBottom: 28,
-            border: `1px solid ${COLORS.neutro100}`,
-            background: "#fff",
-            display: "flex",
-            justifyContent: "center",
-          }}>
-            <img
-              src={imagenUrl}
-              alt="Imagen de apoyo para la pregunta"
-              style={{ maxWidth: "100%", maxHeight: 420, width: "auto", height: "auto", objectFit: "contain", display: "block" }}
-            />
-          </div>
-        )}
-
-        {/* Opciones de respuesta */}
+        {/* Bloque que se anima al cambiar de pregunta (fundido + deslizamiento) */}
         <div style={{
+          width: "100%",
           display: "flex",
           flexDirection: "column",
-          gap: 10,
-          width: "100%",
-          marginBottom: 40,
+          alignItems: "flex-start",
+          opacity: entrando ? 1 : 0,
+          transform: entrando ? "translateY(0)" : "translateY(14px)",
+          transition: "opacity 0.32s ease, transform 0.32s ease",
         }}>
-          {opciones.map(opcion => {
-            const seleccionada = valorSeleccionado === opcion.value;
-            const enHover = hovered === opcion.value;
+          {/* Indicador de pregunta */}
+          <p style={{
+            fontSize: 12,
+            fontWeight: 500,
+            textTransform: "uppercase",
+            letterSpacing: "0.08em",
+            color: COLORS.violeta400,
+            margin: "0 0 16px",
+          }}>
+            Pregunta {numeroPregunta}
+          </p>
 
-            return (
-              <button
-                key={opcion.value}
-                onClick={() => onSeleccionar?.(opcion.value)}
-                onMouseEnter={() => setHovered(opcion.value)}
-                onMouseLeave={() => setHovered(null)}
-                style={{
-                  width: "100%",
-                  padding: "16px 20px",
-                  borderRadius: 12,
-                  border: `2px solid ${
-                    seleccionada
-                      ? COLORS.violeta400
+          {/* Texto de la pregunta */}
+          <h2 style={{
+            fontSize: 22,
+            fontWeight: 500,
+            color: COLORS.neutro900,
+            lineHeight: 1.45,
+            margin: "0 0 24px",
+          }}>
+            {pregunta}
+          </h2>
+
+          {/* Imagen opcional del enunciado */}
+          {imagenUrl && (
+            <div style={{
+              width: "100%",
+              borderRadius: 12,
+              marginBottom: 28,
+              border: `1px solid ${COLORS.neutro100}`,
+              background: "#fff",
+              display: "flex",
+              justifyContent: "center",
+            }}>
+              <img
+                src={imagenUrl}
+                alt="Imagen de apoyo para la pregunta"
+                style={{ maxWidth: "100%", maxHeight: 420, width: "auto", height: "auto", objectFit: "contain", display: "block" }}
+              />
+            </div>
+          )}
+
+          {/* Opciones de respuesta */}
+          <div style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 10,
+            width: "100%",
+            marginBottom: 24,
+          }}>
+            {opciones.map(opcion => {
+              const seleccionada = valorSeleccionado === opcion.value;
+              const enHover = hovered === opcion.value;
+              const atenuada = avanzando && !seleccionada;
+
+              return (
+                <button
+                  key={opcion.value}
+                  onClick={() => { if (!avanzando) onSeleccionar?.(opcion.value); }}
+                  onMouseEnter={() => setHovered(opcion.value)}
+                  onMouseLeave={() => setHovered(null)}
+                  disabled={avanzando}
+                  style={{
+                    width: "100%",
+                    padding: "16px 20px",
+                    borderRadius: 12,
+                    border: `2px solid ${
+                      seleccionada
+                        ? COLORS.violeta400
+                        : enHover
+                        ? COLORS.violeta200
+                        : COLORS.neutro100
+                    }`,
+                    background: seleccionada
+                      ? COLORS.violeta50
                       : enHover
-                      ? COLORS.violeta200
-                      : COLORS.neutro100
-                  }`,
-                  background: seleccionada
-                    ? COLORS.violeta50
-                    : enHover
-                    ? "#fafafe"
-                    : "#fff",
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 14,
-                  transition: "border-color 0.15s, background 0.15s",
-                  textAlign: "left",
-                }}
-              >
-                {/* Indicador circular */}
-                <div style={{
-                  width: 22,
-                  height: 22,
-                  borderRadius: "50%",
-                  flexShrink: 0,
-                  border: `2px solid ${seleccionada ? COLORS.violeta400 : COLORS.neutro400}`,
-                  background: seleccionada ? COLORS.violeta400 : "transparent",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  transition: "all 0.15s",
-                }}>
-                  {seleccionada && (
-                    <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
-                      <path d="M1 4L3.5 6.5L9 1" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  )}
-                </div>
+                      ? "#fafafe"
+                      : "#fff",
+                    cursor: avanzando ? "default" : "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 14,
+                    opacity: atenuada ? 0.45 : 1,
+                    transition: "border-color 0.15s, background 0.15s, opacity 0.25s, transform 0.15s",
+                    transform: seleccionada && avanzando ? "scale(1.015)" : "scale(1)",
+                    textAlign: "left",
+                  }}
+                >
+                  {/* Indicador circular */}
+                  <div style={{
+                    width: 22,
+                    height: 22,
+                    borderRadius: "50%",
+                    flexShrink: 0,
+                    border: `2px solid ${seleccionada ? COLORS.violeta400 : COLORS.neutro400}`,
+                    background: seleccionada ? COLORS.violeta400 : "transparent",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    transition: "all 0.15s",
+                  }}>
+                    {seleccionada && (
+                      <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+                        <path d="M1 4L3.5 6.5L9 1" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    )}
+                  </div>
 
-                {/* Etiqueta */}
-                <span style={{
-                  fontSize: 16,
-                  fontWeight: seleccionada ? 500 : 400,
-                  color: seleccionada ? COLORS.violeta600 : COLORS.neutro900,
-                  transition: "color 0.15s, font-weight 0.15s",
-                }}>
-                  {opcion.label}
-                </span>
-              </button>
-            );
-          })}
+                  {/* Etiqueta */}
+                  <span style={{
+                    fontSize: 16,
+                    fontWeight: seleccionada ? 500 : 400,
+                    color: seleccionada ? COLORS.violeta600 : COLORS.neutro900,
+                    transition: "color 0.15s, font-weight 0.15s",
+                  }}>
+                    {opcion.label}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
         </div>
 
-        {/* Navegación */}
+        {/* Navegación — solo "Anterior": seleccionar una opción ya avanza solo */}
         <div style={{
           display: "flex",
-          gap: 10,
+          gap: 12,
           width: "100%",
           alignItems: "center",
         }}>
-          {/* Anterior */}
           <button
             onClick={onAnterior}
-            disabled={esPrimera}
+            disabled={esPrimera || avanzando}
             style={{
               display: "flex", alignItems: "center", gap: 6,
               padding: "13px 20px",
               borderRadius: 10,
-              border: `1.5px solid ${esPrimera ? COLORS.neutro100 : COLORS.neutro100}`,
+              border: `1.5px solid ${COLORS.neutro100}`,
               background: "#fff",
-              color: esPrimera ? COLORS.neutro400 : COLORS.neutro700,
+              color: COLORS.neutro700,
               fontSize: 15,
               fontWeight: 500,
-              cursor: esPrimera ? "not-allowed" : "pointer",
-              opacity: esPrimera ? 0.5 : 1,
+              cursor: (esPrimera || avanzando) ? "not-allowed" : "pointer",
+              opacity: (esPrimera || avanzando) ? 0.5 : 1,
               transition: "opacity 0.15s",
               flexShrink: 0,
             }}
@@ -293,43 +317,27 @@ export default function Reactivo({
             Anterior
           </button>
 
-          {/* Siguiente / Terminar */}
-          <button
-            onClick={onSiguiente}
-            disabled={!puedeAvanzar}
-            style={{
-              flex: 1,
-              display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-              padding: "14px 20px",
-              borderRadius: 10,
-              border: "none",
-              background: puedeAvanzar
-                ? (esUltima ? COLORS.verde600 : COLORS.violeta400)
-                : COLORS.neutro100,
-              color: puedeAvanzar ? "#fff" : COLORS.neutro400,
-              fontSize: 16,
-              fontWeight: 600,
-              cursor: puedeAvanzar ? "pointer" : "not-allowed",
-              transition: "background 0.2s, color 0.2s",
-              letterSpacing: "0.01em",
-            }}
-          >
-            {esUltima ? "Terminar" : "Siguiente"}
-            {!esUltima && (
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                <path d="M6 4L10 8L6 12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            )}
-            {esUltima && (
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                <path d="M2 8L6 12L14 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            )}
-          </button>
+          {avanzando && (
+            <span style={{
+              fontSize: 13,
+              fontWeight: 500,
+              color: COLORS.violeta600,
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+            }}>
+              <span style={{
+                width: 6, height: 6, borderRadius: "50%",
+                background: COLORS.violeta400,
+                animation: "psyeva-pulso 0.9s ease-in-out infinite",
+              }} />
+              {esUltima ? "Finalizando..." : "Pasando a la siguiente..."}
+            </span>
+          )}
         </div>
 
         {/* Hint cuando no hay respuesta seleccionada */}
-        {!puedeAvanzar && (
+        {!puedeAvanzar && !avanzando && (
           <p style={{
             marginTop: 12,
             fontSize: 12,
@@ -340,6 +348,15 @@ export default function Reactivo({
           </p>
         )}
       </main>
+
+      {/* Keyframe del puntito animado de "avanzando" — inline porque el
+          resto del proyecto no usa hojas de estilo, solo estilos inline. */}
+      <style>{`
+        @keyframes psyeva-pulso {
+          0%, 100% { opacity: 0.3; transform: scale(0.85); }
+          50%      { opacity: 1;   transform: scale(1); }
+        }
+      `}</style>
     </div>
   );
 }
