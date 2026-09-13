@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import Modal from "./Modal";
+import ImagenThumbnail from "./ImagenThumbnail";
 import COLORS from "../utils/Colors";
 import { databaseService, ApiError } from "../services/databaseService";
 import type { ArchivoBucket } from "../utils/types";
@@ -108,27 +109,14 @@ export default function SelectorImagen({ carpeta, value, onChange, label }: Sele
               {imagenes.map(img => {
                 const seleccionada = img.url === value;
                 return (
-                  <button
+                  <ImagenThumbnail
                     key={img.key}
-                    type="button"
+                    src={img.url}
+                    name={img.key.split("/").pop() ?? img.key}
+                    selected={seleccionada}
                     onClick={() => { onChange({ key: img.key, url: img.url }); setOpen(false); }}
-                    style={{
-                      padding: 0,
-                      border: `2px solid ${seleccionada ? COLORS.violeta400 : "transparent"}`,
-                      borderRadius: 8,
-                      overflow: "hidden",
-                      cursor: "pointer",
-                      background: COLORS.neutro50,
-                      lineHeight: 0,
-                    }}
-                  >
-                    <img
-                      src={img.url}
-                      alt=""
-                      loading="lazy"
-                      style={{ width: "100%", height: 160, objectFit: "cover", display: "block" }}
-                    />
-                  </button>
+                    size="md"
+                  />
                 );
               })}
             </div>

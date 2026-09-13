@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import Sidebar from "../components/Sidebar";
+import ImagenThumbnail from "../components/ImagenThumbnail";
 import COLORS from "../utils/Colors";
 import { databaseService, ApiError } from "../services/databaseService";
+import { CARPETA_INSTRUCCIONES, CARPETA_PREGUNTAS_POR_CATEGORIA, CATEGORIA_LABELS, CATEGORIAS } from "../utils/categorias";
 import type { ArchivoBucket } from "../utils/types";
 
 interface CarpetaConfig {
@@ -10,20 +12,22 @@ interface CarpetaConfig {
   descripcion: string;
 }
 
-// Mismas dos carpetas del allowlist de src/routes/admin/imagenes.ts —
-// planas y compartidas entre todos los formularios, no una por set.
-const CARPETAS: CarpetaConfig[] = [
-  {
-    carpeta: "assets/instrucciones",
-    titulo: "Instrucciones de sección",
-    descripcion: "Imágenes que reemplazan (o acompañan) el texto de instrucción de una sección.",
-  },
-  {
-    carpeta: "assets/preguntas",
-    titulo: "Imágenes de preguntas",
-    descripcion: "Imágenes de apoyo para el enunciado de una pregunta puntual.",
-  },
-];
+// Misma idea que src/routes/admin/imagenes.ts (CARPETAS_PERMITIDAS) y
+// src/utils/categorias.ts (fuente de verdad de estos valores): una
+// carpeta global para instrucciones + una carpeta de preguntas por cada
+// categoría, para que el selector de un formulario de Emociones no
+// termine mostrando imágenes pensadas para Aprendizaje, etc.
+const CARPETA_INSTRUCCIONES_CONFIG: CarpetaConfig = {
+  carpeta: CARPETA_INSTRUCCIONES,
+  titulo: "Instrucciones de sección",
+  descripcion: "Imágenes que reemplazan (o acompañan) el texto de instrucción de una sección — compartidas por las 3 categorías de formulario.",
+};
+
+const CARPETAS_PREGUNTAS_CONFIG: CarpetaConfig[] = CATEGORIAS.map(categoria => ({
+  carpeta: CARPETA_PREGUNTAS_POR_CATEGORIA[categoria],
+  titulo: `Preguntas — ${CATEGORIA_LABELS[categoria]}`,
+  descripcion: `Imágenes de apoyo para el enunciado de una pregunta de formularios de ${CATEGORIA_LABELS[categoria]}.`,
+}));
 
 function GaleriaImagenes({ carpeta, titulo, descripcion }: CarpetaConfig) {
   const [imagenes, setImagenes] = useState<ArchivoBucket[]>([]);
@@ -44,13 +48,13 @@ function GaleriaImagenes({ carpeta, titulo, descripcion }: CarpetaConfig) {
   useEffect(cargar, [carpeta]);
 
   const handleArchivoElegido = async (event: ChangeEvent<HTMLInputElement>) => {
-    const archivo = event.target.files?.[0];
+    const archivos = Array.from(event.target.files ?? []);
     event.target.value = ""; // permite volver a elegir el mismo archivo después
-    if (!archivo) return;
+    if (archivos.length === 0) return;
 
     setSubiendo(true);
     try {
-      await databaseService.admin.subirImagen({ carpeta, archivo });
+      await databaseService.admin.subirImagen({ carpeta, archivos });
       cargar();
     } catch (err) {
       alert(err instanceof ApiError ? err.message : "No se pudo subir la imagen");
@@ -83,6 +87,7 @@ function GaleriaImagenes({ carpeta, titulo, descripcion }: CarpetaConfig) {
           <input
             ref={inputRef}
             type="file"
+            multiple
             accept="image/png,image/jpeg,image/webp"
             style={{ display: "none" }}
             onChange={handleArchivoElegido}
@@ -117,29 +122,12 @@ function GaleriaImagenes({ carpeta, titulo, descripcion }: CarpetaConfig) {
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: 12 }}>
           {imagenes.map(img => (
-            <div
+            <ImagenThumbnail
               key={img.key}
-              style={{
-                position: "relative", borderRadius: 10, overflow: "hidden",
-                border: `1px solid ${COLORS.neutro100}`, background: COLORS.neutro50,
-              }}
-            >
-              <img src={img.url} alt="" loading="lazy" style={{ width: "100%", height: 120, objectFit: "cover", display: "block" }} />
-              <button
-                type="button"
-                onClick={() => eliminar(img)}
-                aria-label="Eliminar imagen"
-                style={{
-                  position: "absolute", top: 6, right: 6,
-                  width: 26, height: 26, borderRadius: "50%",
-                  border: "none", background: "rgba(0,0,0,0.55)", color: "#fff",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  cursor: "pointer",
-                }}
-              >
-                <i className="ti ti-trash" style={{ fontSize: 13 }} aria-hidden="true" />
-              </button>
-            </div>
+              src={img.url}
+              name={img.key.split("/").pop() ?? img.key}
+              onDelete={() => eliminar(img)}
+            />
           ))}
         </div>
       )}
@@ -169,8 +157,22 @@ export default function Configuracion() {
           </p>
         </div>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: 20, maxWidth: 900 }}>
-          {CARPETAS.map(c => <GaleriaImagenes key={c.carpeta} {...c} />)}
+        <div style={{ display: "flex", flexDirection: "column", gap: 28, maxWidth: 900 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <h3 style={{ margin: 0, fontSize: 13, fontWeight: 700, color: COLORS.neutro500, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+              Instrucciones (todas las categorías)
+            </h3>
+            <GaleriaImagenes {...CARPETA_INSTRUCCIONES_CONFIG} />
+          </div>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <h3 style={{ margin: 0, fontSize: 13, fontWeight: 700, color: COLORS.neutro500, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+              Preguntas por categoría
+            </h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              {CARPETAS_PREGUNTAS_CONFIG.map(c => <GaleriaImagenes key={c.carpeta} {...c} />)}
+            </div>
+          </div>
         </div>
       </main>
     </div>

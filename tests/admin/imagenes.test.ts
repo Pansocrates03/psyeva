@@ -23,14 +23,26 @@ const subir = (carpeta: string, archivo: File) => {
   return fetch(`${server.url}/api/admin/imagenes`, { method: "POST", body: form });
 };
 
+const subirMultiples = (carpeta: string, archivos: File[]) => {
+  const form = new FormData();
+  form.set("carpeta", carpeta);
+  archivos.forEach(archivo => form.append("archivo", archivo));
+  return fetch(`${server.url}/api/admin/imagenes`, { method: "POST", body: form });
+};
+
 describe("GET /api/admin/imagenes", () => {
   test("400 si la carpeta no está en el allowlist", async () => {
     const res = await fetch(`${server.url}/api/admin/imagenes?carpeta=reportes`);
     expect(res.status).toBe(400);
   });
 
-  test("200 y devuelve un array para una carpeta permitida", async () => {
-    const res = await fetch(`${server.url}/api/admin/imagenes?carpeta=assets/preguntas`);
+  test.each([
+    "assets/instrucciones",
+    "assets/preguntas_emociones",
+    "assets/preguntas_aprendizaje",
+    "assets/preguntas_psico",
+  ])("200 y devuelve un array para %s", async carpeta => {
+    const res = await fetch(`${server.url}/api/admin/imagenes?carpeta=${carpeta}`);
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(Array.isArray(body.data)).toBe(true);
@@ -45,35 +57,86 @@ describe("POST /api/admin/imagenes", () => {
 
   test("400 si falta el archivo", async () => {
     const form = new FormData();
-    form.set("carpeta", "assets/preguntas");
+    form.set("carpeta", "assets/preguntas_emociones");
     const res = await fetch(`${server.url}/api/admin/imagenes`, { method: "POST", body: form });
     expect(res.status).toBe(400);
   });
 
   test("400 si el archivo no es una imagen permitida", async () => {
     const archivo = new File([new Uint8Array([0x25])], "no-imagen.pdf", { type: "application/pdf" });
-    const res = await subir("assets/preguntas", archivo);
+    const res = await subir("assets/preguntas_emociones", archivo);
     expect(res.status).toBe(400);
   });
 
   test("201, sube la imagen al bucket y la deja lista para listarse", async () => {
-    const res = await subir("assets/preguntas", pngFile("subida-test.png"));
+    const res = await subir("assets/preguntas_emociones", pngFile("subida-test.png"));
     expect(res.status).toBe(201);
 
     const body = await res.json();
-    expect(body.data.key).toStartWith("assets/preguntas/");
+    expect(body.data.key).toStartWith("assets/preguntas_emociones/");
     expect(body.data.key).toContain("subida-test.png");
     expect(body.data.url).toContain(body.data.key);
 
-    const listado = await fetch(`${server.url}/api/admin/imagenes?carpeta=assets/preguntas`);
+    const listado = await fetch(`${server.url}/api/admin/imagenes?carpeta=assets/preguntas_emociones`);
     const listadoBody = await listado.json();
     expect(listadoBody.data.some((img: { key: string }) => img.key === body.data.key)).toBe(true);
 
     // limpieza
     await fetch(
-      `${server.url}/api/admin/imagenes?carpeta=assets/preguntas&key=${encodeURIComponent(body.data.key)}`,
+      `${server.url}/api/admin/imagenes?carpeta=assets/preguntas_emociones&key=${encodeURIComponent(body.data.key)}`,
       { method: "DELETE" }
     );
+  });
+
+  test("201, conserva el nombre original del archivo", async () => {
+    const nombreOriginal = "nombre-original.png";
+    const res = await subir("assets/preguntas_emociones", pngFile(nombreOriginal));
+    expect(res.status).toBe(201);
+
+    const body = await res.json();
+    expect(body.data.key).toBe(`assets/preguntas_emociones/${nombreOriginal}`);
+
+    await fetch(
+      `${server.url}/api/admin/imagenes?carpeta=assets/preguntas_emociones&key=${encodeURIComponent(body.data.key)}`,
+      { method: "DELETE" }
+    );
+  });
+
+  test("201, evita sobreescribir archivos con el mismo nombre", async () => {
+    const primer = await subir("assets/preguntas_emociones", pngFile("duplicado.png"));
+    const segundo = await subir("assets/preguntas_emociones", pngFile("duplicado.png"));
+
+    expect(primer.status).toBe(201);
+    expect(segundo.status).toBe(201);
+
+    const primera = await primer.json();
+    const segunda = await segundo.json();
+
+    expect(primera.data.key).toBe("assets/preguntas_emociones/duplicado.png");
+    expect(segunda.data.key).toBe("assets/preguntas_emociones/duplicado-1.png");
+
+    await fetch(`${server.url}/api/admin/imagenes?carpeta=assets/preguntas_emociones&key=${encodeURIComponent(primera.data.key)}`, { method: "DELETE" });
+    await fetch(`${server.url}/api/admin/imagenes?carpeta=assets/preguntas_emociones&key=${encodeURIComponent(segunda.data.key)}`, { method: "DELETE" });
+  });
+
+  test("201, acepta múltiples archivos en una sola solicitud", async () => {
+    const res = await subirMultiples("assets/preguntas_emociones", [
+      pngFile("multi-1.png"),
+      pngFile("multi-2.png"),
+    ]);
+    expect(res.status).toBe(201);
+
+    const body = await res.json();
+    expect(Array.isArray(body.data)).toBe(true);
+    expect(body.data).toHaveLength(2);
+    expect(body.data.every((img: { key: string }) => img.key.startsWith("assets/preguntas_emociones/") )).toBe(true);
+
+    for (const img of body.data) {
+      await fetch(
+        `${server.url}/api/admin/imagenes?carpeta=assets/preguntas_emociones&key=${encodeURIComponent(img.key)}`,
+        { method: "DELETE" }
+      );
+    }
   });
 });
 
@@ -85,23 +148,23 @@ describe("DELETE /api/admin/imagenes", () => {
 
   test("400 si el key no pertenece a la carpeta indicada", async () => {
     const res = await fetch(
-      `${server.url}/api/admin/imagenes?carpeta=assets/preguntas&key=assets/instrucciones/otra.png`,
+      `${server.url}/api/admin/imagenes?carpeta=assets/preguntas_emociones&key=assets/instrucciones/otra.png`,
       { method: "DELETE" }
     );
     expect(res.status).toBe(400);
   });
 
   test("200 y borra la imagen — deja de aparecer en el listado", async () => {
-    const subida = await subir("assets/preguntas", pngFile("borrar-test.png"));
+    const subida = await subir("assets/preguntas_emociones", pngFile("borrar-test.png"));
     const { data } = await subida.json();
 
     const res = await fetch(
-      `${server.url}/api/admin/imagenes?carpeta=assets/preguntas&key=${encodeURIComponent(data.key)}`,
+      `${server.url}/api/admin/imagenes?carpeta=assets/preguntas_emociones&key=${encodeURIComponent(data.key)}`,
       { method: "DELETE" }
     );
     expect(res.status).toBe(200);
 
-    const listado = await fetch(`${server.url}/api/admin/imagenes?carpeta=assets/preguntas`);
+    const listado = await fetch(`${server.url}/api/admin/imagenes?carpeta=assets/preguntas_emociones`);
     const listadoBody = await listado.json();
     expect(listadoBody.data.some((img: { key: string }) => img.key === data.key)).toBe(false);
   });
