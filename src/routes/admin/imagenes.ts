@@ -28,20 +28,27 @@ const CARPETAS_PERMITIDAS = new Set([
 
 const TIPOS_PERMITIDOS = new Set(["image/png", "image/jpeg", "image/webp"]);
 
-// Evita nombres con espacios/acentos/caracteres raros en el key del
-// bucket (mismo criterio que scripts/upload-form-emociones-assets.ts).
-function sanitizarNombre(nombreOriginal: string): string {
-  const puntoIndex = nombreOriginal.lastIndexOf(".");
-  const base = puntoIndex > 0 ? nombreOriginal.slice(0, puntoIndex) : nombreOriginal;
-  const ext  = puntoIndex > 0 ? nombreOriginal.slice(puntoIndex).toLowerCase() : "";
+// Debe preservarse el nombre original del archivo tal como lo sube el usuario
+// para evitar cambios silenciosos al momento de elegir imágenes o hacer la
+// referencia desde un formulario. Si ya existe ese nombre en la carpeta, se
+// agrega un sufijo incremental (`nombre-1.png`) para evitar sobreescribir.
+function crearKeyUnico(carpeta: string, nombreOriginal: string, usados: Set<string>): string {
+  const nombre = nombreOriginal.trim();
+  const baseNombre = nombre || "imagen";
+  const indiceExtension = baseNombre.lastIndexOf(".");
+  const nombreSinExtension = indiceExtension > 0 ? baseNombre.slice(0, indiceExtension) : baseNombre;
+  const extension = indiceExtension > 0 ? baseNombre.slice(indiceExtension) : "";
 
-  const diacriticos = new RegExp("[\\u0300-\\u036f]", "g");
-  const limpio = base
-    .normalize("NFD").replace(diacriticos, "")
-    .replace(/\s+/g, "_")
-    .replace(/[^a-zA-Z0-9._-]/g, "");
+  let clave = `${carpeta}/${baseNombre}`;
+  let contador = 1;
 
-  return `${limpio || "imagen"}${ext}`;
+  while (usados.has(clave)) {
+    clave = `${carpeta}/${nombreSinExtension}-${contador}${extension}`;
+    contador += 1;
+  }
+
+  usados.add(clave);
+  return clave;
 }
 
 export const imagenesRoutes = {
@@ -67,9 +74,9 @@ export const imagenesRoutes = {
 
   async POST(req: Request) {
     try {
-      const form    = await req.formData();
+      const form = await req.formData();
       const carpeta = form.get("carpeta") as string | null;
-      const archivo = form.get("archivo") as File | null;
+      const archivos = form.getAll("archivo").filter((file): file is File => file instanceof File);
 
       if (!carpeta || !CARPETAS_PERMITIDAS.has(carpeta)) {
         return Response.json(
@@ -77,21 +84,29 @@ export const imagenesRoutes = {
           { status: 400 }
         );
       }
-      if (!archivo) {
+      if (archivos.length === 0) {
         return Response.json({ error: "archivo es requerido" }, { status: 400 });
       }
-      if (!TIPOS_PERMITIDOS.has(archivo.type)) {
+
+      const archivosInvalidos = archivos.filter(archivo => !TIPOS_PERMITIDOS.has(archivo.type));
+      if (archivosInvalidos.length > 0) {
         return Response.json(
           { error: "El archivo debe ser una imagen (PNG, JPEG o WEBP)" },
           { status: 400 }
         );
       }
 
-      const key = `${carpeta}/${Date.now()}_${sanitizarNombre(archivo.name)}`;
-      await uploadFile(key, await archivo.arrayBuffer(), archivo.type);
-      const url = await getObjectUrl(key);
+      const keysExistentes = new Set((await listFiles(`${carpeta}/`)).map(archivo => archivo.key));
+      const subidas = [] as Array<{ key: string; url: string }>;
 
-      return Response.json({ data: { key, url } }, { status: 201 });
+      for (const archivo of archivos) {
+        const key = crearKeyUnico(carpeta, archivo.name, keysExistentes);
+        await uploadFile(key, await archivo.arrayBuffer(), archivo.type);
+        const url = await getObjectUrl(key);
+        subidas.push({ key, url });
+      }
+
+      return Response.json({ data: subidas.length === 1 ? subidas[0] : subidas }, { status: 201 });
     } catch (err) {
       console.error("[POST /api/admin/imagenes]", err);
       return Response.json({ error: "Error al subir la imagen" }, { status: 500 });

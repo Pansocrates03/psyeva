@@ -23,6 +23,13 @@ const subir = (carpeta: string, archivo: File) => {
   return fetch(`${server.url}/api/admin/imagenes`, { method: "POST", body: form });
 };
 
+const subirMultiples = (carpeta: string, archivos: File[]) => {
+  const form = new FormData();
+  form.set("carpeta", carpeta);
+  archivos.forEach(archivo => form.append("archivo", archivo));
+  return fetch(`${server.url}/api/admin/imagenes`, { method: "POST", body: form });
+};
+
 describe("GET /api/admin/imagenes", () => {
   test("400 si la carpeta no está en el allowlist", async () => {
     const res = await fetch(`${server.url}/api/admin/imagenes?carpeta=reportes`);
@@ -79,6 +86,57 @@ describe("POST /api/admin/imagenes", () => {
       `${server.url}/api/admin/imagenes?carpeta=assets/preguntas_emociones&key=${encodeURIComponent(body.data.key)}`,
       { method: "DELETE" }
     );
+  });
+
+  test("201, conserva el nombre original del archivo", async () => {
+    const nombreOriginal = "nombre-original.png";
+    const res = await subir("assets/preguntas_emociones", pngFile(nombreOriginal));
+    expect(res.status).toBe(201);
+
+    const body = await res.json();
+    expect(body.data.key).toBe(`assets/preguntas_emociones/${nombreOriginal}`);
+
+    await fetch(
+      `${server.url}/api/admin/imagenes?carpeta=assets/preguntas_emociones&key=${encodeURIComponent(body.data.key)}`,
+      { method: "DELETE" }
+    );
+  });
+
+  test("201, evita sobreescribir archivos con el mismo nombre", async () => {
+    const primer = await subir("assets/preguntas_emociones", pngFile("duplicado.png"));
+    const segundo = await subir("assets/preguntas_emociones", pngFile("duplicado.png"));
+
+    expect(primer.status).toBe(201);
+    expect(segundo.status).toBe(201);
+
+    const primera = await primer.json();
+    const segunda = await segundo.json();
+
+    expect(primera.data.key).toBe("assets/preguntas_emociones/duplicado.png");
+    expect(segunda.data.key).toBe("assets/preguntas_emociones/duplicado-1.png");
+
+    await fetch(`${server.url}/api/admin/imagenes?carpeta=assets/preguntas_emociones&key=${encodeURIComponent(primera.data.key)}`, { method: "DELETE" });
+    await fetch(`${server.url}/api/admin/imagenes?carpeta=assets/preguntas_emociones&key=${encodeURIComponent(segunda.data.key)}`, { method: "DELETE" });
+  });
+
+  test("201, acepta múltiples archivos en una sola solicitud", async () => {
+    const res = await subirMultiples("assets/preguntas_emociones", [
+      pngFile("multi-1.png"),
+      pngFile("multi-2.png"),
+    ]);
+    expect(res.status).toBe(201);
+
+    const body = await res.json();
+    expect(Array.isArray(body.data)).toBe(true);
+    expect(body.data).toHaveLength(2);
+    expect(body.data.every((img: { key: string }) => img.key.startsWith("assets/preguntas_emociones/") )).toBe(true);
+
+    for (const img of body.data) {
+      await fetch(
+        `${server.url}/api/admin/imagenes?carpeta=assets/preguntas_emociones&key=${encodeURIComponent(img.key)}`,
+        { method: "DELETE" }
+      );
+    }
   });
 });
 

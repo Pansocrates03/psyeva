@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import Sidebar from "../components/Sidebar";
+import ImagenThumbnail from "../components/ImagenThumbnail";
 import COLORS from "../utils/Colors";
 import { databaseService, ApiError } from "../services/databaseService";
 import { CARPETA_INSTRUCCIONES, CARPETA_PREGUNTAS_POR_CATEGORIA, CATEGORIA_LABELS, CATEGORIAS } from "../utils/categorias";
@@ -47,13 +48,13 @@ function GaleriaImagenes({ carpeta, titulo, descripcion }: CarpetaConfig) {
   useEffect(cargar, [carpeta]);
 
   const handleArchivoElegido = async (event: ChangeEvent<HTMLInputElement>) => {
-    const archivo = event.target.files?.[0];
+    const archivos = Array.from(event.target.files ?? []);
     event.target.value = ""; // permite volver a elegir el mismo archivo después
-    if (!archivo) return;
+    if (archivos.length === 0) return;
 
     setSubiendo(true);
     try {
-      await databaseService.admin.subirImagen({ carpeta, archivo });
+      await databaseService.admin.subirImagen({ carpeta, archivos });
       cargar();
     } catch (err) {
       alert(err instanceof ApiError ? err.message : "No se pudo subir la imagen");
@@ -86,6 +87,7 @@ function GaleriaImagenes({ carpeta, titulo, descripcion }: CarpetaConfig) {
           <input
             ref={inputRef}
             type="file"
+            multiple
             accept="image/png,image/jpeg,image/webp"
             style={{ display: "none" }}
             onChange={handleArchivoElegido}
@@ -120,29 +122,12 @@ function GaleriaImagenes({ carpeta, titulo, descripcion }: CarpetaConfig) {
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: 12 }}>
           {imagenes.map(img => (
-            <div
+            <ImagenThumbnail
               key={img.key}
-              style={{
-                position: "relative", borderRadius: 10, overflow: "hidden",
-                border: `1px solid ${COLORS.neutro100}`, background: COLORS.neutro50,
-              }}
-            >
-              <img src={img.url} alt="" loading="lazy" style={{ width: "100%", height: 120, objectFit: "cover", display: "block" }} />
-              <button
-                type="button"
-                onClick={() => eliminar(img)}
-                aria-label="Eliminar imagen"
-                style={{
-                  position: "absolute", top: 6, right: 6,
-                  width: 26, height: 26, borderRadius: "50%",
-                  border: "none", background: "rgba(0,0,0,0.55)", color: "#fff",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  cursor: "pointer",
-                }}
-              >
-                <i className="ti ti-trash" style={{ fontSize: 13 }} aria-hidden="true" />
-              </button>
-            </div>
+              src={img.url}
+              name={img.key.split("/").pop() ?? img.key}
+              onDelete={() => eliminar(img)}
+            />
           ))}
         </div>
       )}

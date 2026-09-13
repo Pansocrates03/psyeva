@@ -223,13 +223,14 @@ class DatabaseService {
       return data;
     },
 
-    // Sube una imagen nueva al catálogo (sección "Imágenes de formularios"
+    // Sube una o varias imágenes nuevas al catálogo (sección "Imágenes de formularios"
     // de Configuración). `carpeta` debe ser uno de los prefijos permitidos.
-    subirImagen: async (input: { carpeta: string; archivo: File }): Promise<ArchivoBucket> => {
+    subirImagen: async (input: { carpeta: string; archivo: File } | { carpeta: string; archivos: File[] }): Promise<ArchivoBucket | ArchivoBucket[]> => {
+      const archivos = "archivo" in input ? [input.archivo] : input.archivos;
       const form = new FormData();
       form.set("carpeta", input.carpeta);
-      form.set("archivo", input.archivo);
-      const { data } = await this.post<ApiEnvelope<ArchivoBucket>>("/api/admin/imagenes", form, { conColegio: false });
+      archivos.forEach(archivo => form.append("archivo", archivo));
+      const { data } = await this.post<ApiEnvelope<ArchivoBucket | ArchivoBucket[]>>("/api/admin/imagenes", form, { conColegio: false });
       return data;
     },
 
