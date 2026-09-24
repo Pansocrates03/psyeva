@@ -2,7 +2,7 @@ import sql from "../../db";
 
 // GET /api/facilitador/evaluaciones/:id
 // Punto de entrada para el link que se comparte con los maestros
-// (/evaluacion/:id en el frontend) — reemplaza la clave de acceso:
+// (/e/:id en el frontend) — reemplaza la clave de acceso:
 // el propio id de la evaluación (un UUID) funciona como el "secreto"
 // del link. No requiere X-Colegio-Id porque es justo lo que resuelve.
 export const facilitadorEvaluacionIdRoutes = {

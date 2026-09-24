@@ -212,7 +212,7 @@ export default function Encuesta() {
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "100vh", background: `linear-gradient(135deg, ${COLORS.violeta50} 0%, ${COLORS.neutro50} 60%, ${COLORS.azul50} 100%)`, fontFamily: "system-ui, -apple-system, sans-serif" }}>
       {evaluacionIdParam && (resolviendoLink || linkError) ? (
         <div style={cardStyle}><LogoHeader /><div style={{ ...cardBodyStyle, textAlign: "center" as const, padding: "36px 24px" }}>
-          {linkError ? <><div style={{ fontSize: 40, marginBottom: 12 }}>⚠️</div><p style={{ margin: 0, fontSize: 14, color: COLORS.rojo400 }}>{linkError}</p></> : <p style={{ margin: 0, fontSize: 14, color: COLORS.neutro500 }}>Cargando evaluación...</p>}
+          {linkError ? <><div style={{ fontSize: 40, marginBottom: 12 }}>⚠️</div><p style={{ margin: 0, fontSize: 14, color: COLORS.rojo400 }}>{linkError}</p></> : <p style={{ margin: 0, fontSize: 14, color: COLORS.neutro500 }}>Cargando...</p>}
         </div></div>
       ) : <>
         {(seccion === "verificacion" || seccion === "seleccionarGrupo" || seccion === "seleccionarFormulario" || seccion === "seleccionarAlumno") && <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 24 }}>

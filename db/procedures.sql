@@ -13,7 +13,7 @@
 -- ------------------------------------------------------------
 -- V1: vista_progreso_grupo
 -- Usada en:
---   GET /api/admin/evaluacion/:id  (grid de tarjetas de grupos)
+--   GET /api/admin/e/:id  (grid de tarjetas de grupos)
 --   GET /api/facilitador/grupos    (misma vista para facilitador)
 -- Evita repetir el COUNT con FILTER en cada endpoint.
 -- ------------------------------------------------------------

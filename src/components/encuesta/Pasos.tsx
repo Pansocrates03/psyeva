@@ -284,7 +284,7 @@ export function ConfirmacionStep({ alumno, formulario, iniciando, onIniciar }: {
       <div style={{ ...cardBodyStyle, textAlign: "center" as const, padding: "36px 24px" }}>
         <div style={{ fontSize: 48, marginBottom: 12 }}>📋</div>
         <h2 style={{ margin: "0 0 6px", fontSize: 18, fontWeight: 600, color: COLORS.neutro900 }}>¡Listo, {alumno.nombreCompleto.split(" ")[0]}!</h2>
-        <p style={{ margin: "0 0 24px", fontSize: 14, color: COLORS.neutro500 }}>Vas a responder la evaluación de <strong>{CATEGORIA_LABELS[formulario.categoria]}</strong>.<br />Toca "Comenzar" cuando estés listo.</p>
+        <p style={{ margin: "0 0 24px", fontSize: 14, color: COLORS.neutro500 }}>Vas a responder unas preguntas de <strong>{CATEGORIA_LABELS[formulario.categoria]}</strong>.<br />Toca "Comenzar" cuando estés listo.</p>
         <BtnPrimario label={iniciando ? "Cargando..." : "Comenzar"} onClick={onIniciar} disabled={iniciando} />
       </div>
     </div>

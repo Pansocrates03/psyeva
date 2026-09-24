@@ -50,7 +50,7 @@ export function App() {
         <Route path="/admin/escuelas" element={<AdminGuard><Colegios /></AdminGuard>} />
         <Route path="/admin/encuestas" element={<AdminGuard><EncuestasBase /></AdminGuard>} />
         <Route path="/admin/configuracion" element={<AdminGuard><Configuracion /></AdminGuard>} />
-        <Route path="/evaluacion/:id" element={<Encuesta />} />
+        <Route path="/e/:id" element={<Encuesta />} />
         <Route path="/reportes/:id" element={<Reportes />} />
   
       </Routes>

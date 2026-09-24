@@ -160,7 +160,7 @@ export interface EvaluacionConProgreso {
 }
 
 // Respuesta de GET /api/facilitador/evaluaciones/:id — lo mínimo para
-// resolver el link /evaluacion/:id sin pedir clave de acceso.
+// resolver el link /e/:id sin pedir clave de acceso.
 export interface EvaluacionParaFacilitador {
   evaluacionId: string;
   nombre: string;

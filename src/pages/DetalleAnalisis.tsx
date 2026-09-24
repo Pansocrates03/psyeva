@@ -20,6 +20,7 @@ import type {
   Reporte,
   ResultadoReporteBulk,
 } from "../utils/types";
+import ClipboardCopy from "@/components/ClipboardCopy";
 
 // ── Tipos locales del formulario de grupo ───────────────────────
 interface AlumnoFormRow {
@@ -77,18 +78,18 @@ function formatFecha(fecha: string) {
   return new Date(iso).toLocaleDateString("es-ES", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
 }
 
-type EstadoEvaluacionUI = "configuracion" | "aceptando" | "publicada";
+type EstadoEvaluacionUI = "cerrado" | "abierto" | "publico";
 
 function estadoEvaluacionUI(evaluacion: EvaluacionConProgreso): EstadoEvaluacionUI {
-  if (evaluacion.reportesPublicados) return "publicada";
-  if (evaluacion.aceptaRespuestas) return "aceptando";
-  return "configuracion";
+  if (evaluacion.reportesPublicados) return "publico";
+  if (evaluacion.aceptaRespuestas) return "abierto";
+  return "cerrado";
 }
 
 const ESTADO_UI_LABELS: Record<EstadoEvaluacionUI, string> = {
-  configuracion: "Configurando",
-  aceptando: "Aceptando respuestas",
-  publicada: "Reportes publicados",
+  cerrado: "Cerrado",
+  abierto: "Abierto",
+  publico: "Público",
 };
 
 // ── Página principal ──────────────────────────────────────────
@@ -119,7 +120,6 @@ export default function DetalleAnalisis() {
   const [formularios, setFormularios] = useState<FormularioConTotalPreguntas[]>([]);
   const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [enlaceCopiado, setEnlaceCopiado] = useState<"evaluacion" | "reportes" | null>(null);
   const [showImportModal, setShowImportModal] = useState(false);
   const [importando, setImportando] = useState(false);
   const [importResultado, setImportResultado] = useState<ImportacionEstudiantes | null>(null);
@@ -217,25 +217,13 @@ export default function DetalleAnalisis() {
   const gruposCard = useMemo(() => grupos.map(mapGrupoParaCard), [grupos]);
 
   // ── Fase de la evaluación ─────────────────────────────────────
-  const cambiarFase = async (campo: "aceptaRespuestas" | "reportesPublicados", valor: boolean) => {
+  const cambiarFase = async (campo: "cerrado" | "abierto" | "publico", valor: boolean) => {
     if (!evaluacionId) return;
     try {
       await databaseService.admin.cambiarEstadoEvaluacion(evaluacionId, campo, valor);
       cargarEvaluacion();
     } catch (err) {
       alert(err instanceof ApiError ? err.message : "No se pudo cambiar el estado de la evaluación");
-    }
-  };
-
-  const copiarEnlace = async (tipo: "evaluacion" | "reportes") => {
-    if (!evaluacionId) return;
-    const url = `${window.location.origin}/${tipo}/${evaluacionId}`;
-    try {
-      await navigator.clipboard.writeText(url);
-      setEnlaceCopiado(tipo);
-      setTimeout(() => setEnlaceCopiado(null), 2000);
-    } catch {
-      alert(`No se pudo copiar automáticamente. Enlace:\n${url}`);
     }
   };
 
@@ -296,6 +284,46 @@ export default function DetalleAnalisis() {
   const removeAlumnoRow = (index: number) => setGrupoForm(prev => ({
     ...prev, alumnosNuevos: prev.alumnosNuevos.filter((_, i) => i !== index),
   }));
+
+  const handlePasteAlumnos = (event: React.ClipboardEvent<HTMLDivElement>) => {
+    const target = event.target as HTMLElement;
+    const cell = target.closest<HTMLInputElement>("input[data-alumno-index][data-alumno-field]");
+    if (!cell) return;
+
+    const texto = event.clipboardData.getData("text/plain");
+    if (!texto.includes("\t") && !texto.includes("\n")) return;
+
+    event.preventDefault();
+    const filaInicial = Number(cell.dataset.alumnoIndex);
+    const campoInicial = cell.dataset.alumnoField === "curp" ? 1 : 0;
+    let filasPegadas = texto
+      .replace(/\r/g, "")
+      .split("\n")
+      .map(fila => fila.split("\t").map(valor => valor.trim()))
+      .filter(fila => fila.some(valor => valor.length > 0));
+
+    const primeraFila = filasPegadas[0]?.map(valor => valor.toLowerCase());
+    if (primeraFila?.some(valor => valor.includes("nombre")) && primeraFila.some(valor => valor.includes("curp"))) {
+      filasPegadas = filasPegadas.slice(1);
+    }
+
+    setGrupoForm(prev => {
+      const alumnosNuevos = [...prev.alumnosNuevos];
+      filasPegadas.forEach((fila, filaOffset) => {
+        const indice = filaInicial + filaOffset;
+        while (!alumnosNuevos[indice]) alumnosNuevos.push(createAlumnoRow());
+        const alumno = alumnosNuevos[indice]!;
+        const actualizados = { ...alumno };
+        fila.forEach((valor, columnaOffset) => {
+          const columna = campoInicial + columnaOffset;
+          if (columna === 0) actualizados.nombreCompleto = valor;
+          if (columna === 1) actualizados.curp = valor;
+        });
+        alumnosNuevos[indice] = actualizados;
+      });
+      return { ...prev, alumnosNuevos };
+    });
+  };
 
   const handleGuardarGrupo = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -500,46 +528,30 @@ export default function DetalleAnalisis() {
           <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8 }}>
             <span style={{
               padding: "6px 14px", borderRadius: 999, fontSize: 13, fontWeight: 600,
-              background: estado === "publicada" ? COLORS.verde50 : estado === "aceptando" ? COLORS.violeta50 : COLORS.neutro100,
-              color: estado === "publicada" ? COLORS.verde600 : estado === "aceptando" ? COLORS.violeta600 : COLORS.neutro700,
+              background: estado === "publico" ? COLORS.verde50 : estado === "abierto" ? COLORS.violeta50 : COLORS.neutro100,
+              color: estado === "publico" ? COLORS.verde600 : estado === "abierto" ? COLORS.violeta600 : COLORS.neutro700,
             }}>
               {ESTADO_UI_LABELS[estado]}
             </span>
             <div style={{ display: "flex", gap: 8 }}>
-              <button onClick={() => copiarEnlace("evaluacion")} style={{
-                display: "flex", alignItems: "center", gap: 6,
-                padding: "7px 12px", borderRadius: 8, border: `1px solid ${COLORS.neutro100}`,
-                background: "#fff", color: COLORS.neutro700, fontSize: 12, cursor: "pointer",
-              }}>
-                <i className={`ti ${enlaceCopiado === "evaluacion" ? "ti-check" : "ti-link"}`} style={{ fontSize: 13 }} aria-hidden="true" />
-                {enlaceCopiado === "evaluacion" ? "¡Copiado!" : "Link de encuesta"}
-              </button>
-              <button onClick={() => copiarEnlace("reportes")} style={{
-                display: "flex", alignItems: "center", gap: 6,
-                padding: "7px 12px", borderRadius: 8, border: `1px solid ${COLORS.neutro100}`,
-                background: "#fff", color: COLORS.neutro700, fontSize: 12, cursor: "pointer",
-              }}>
-                <i className={`ti ${enlaceCopiado === "reportes" ? "ti-check" : "ti-file-download"}`} style={{ fontSize: 13 }} aria-hidden="true" />
-                {enlaceCopiado === "reportes" ? "¡Copiado!" : "Link de reportes"}
-              </button>
-              {estado !== "aceptando" && (
-                <button onClick={() => cambiarFase("aceptaRespuestas", true)} style={{ padding: "7px 12px", borderRadius: 8, border: `1px solid ${COLORS.neutro100}`, background: "#fff", color: COLORS.neutro700, fontSize: 12, cursor: "pointer" }}>
-                  Abrir para respuestas
+              <ClipboardCopy label="Encuesta:" copyText={`${window.location.origin}/e/${evaluacionId}`} />
+              <ClipboardCopy label="Reportes:" copyText={`${window.location.origin}/reportes/${evaluacionId}`} />
+
+              {estado === "cerrado" && (
+                <button onClick={() => cambiarFase("abierto", true)} style={{ padding: "7px 12px", borderRadius: 8, border: "none", background: COLORS.azul400, color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                  Abrir evaluación
                 </button>
               )}
-              {estado === "aceptando" && (
-                <button onClick={() => cambiarFase("aceptaRespuestas", false)} style={{ padding: "7px 12px", borderRadius: 8, border: `1px solid ${COLORS.neutro100}`, background: "#fff", color: COLORS.neutro700, fontSize: 12, cursor: "pointer" }}>
+
+              {estado === "abierto" && (
+                <button onClick={() => cambiarFase("publico", true)} style={{ padding: "7px 12px", borderRadius: 8, border: "none", background: COLORS.verde400, color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                  Publicar evaluación
+                </button>
+              )}
+              
+              {estado === "publico" && (
+                <button onClick={() => cambiarFase("cerrado", false)} style={{ padding: "7px 12px", borderRadius: 8, border: "none", background: COLORS.violeta400, color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
                   Cerrar evaluación
-                </button>
-              )}
-              {estado === "configuracion" && (
-                <button onClick={() => cambiarFase("reportesPublicados", true)} style={{ padding: "7px 12px", borderRadius: 8, border: "none", background: COLORS.verde400, color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
-                  Publicar reportes
-                </button>
-              )}
-              {estado === "publicada" && (
-                <button onClick={() => cambiarFase("reportesPublicados", false)} style={{ padding: "7px 12px", borderRadius: 8, border: `1px solid ${COLORS.neutro100}`, background: "#fff", color: COLORS.neutro700, fontSize: 12, cursor: "pointer" }}>
-                  Despublicar
                 </button>
               )}
             </div>
@@ -550,7 +562,7 @@ export default function DetalleAnalisis() {
         <div style={{ display: "flex", gap: 12, marginBottom: 28 }}>
           <StatCard label="Grupos" value={grupos.length} active={layout === "grupos"} onClick={() => setLayout("grupos")} />
           <StatCard label="Estudiantes" value={totalAlumnos} active={layout === "estudiantes"} onClick={() => setLayout("estudiantes")} />
-          <StatCard label="Datos" value={porcentajeCompletado + "%"} active={layout === "datos"} sub="de las sesiones posibles completadas" onClick={() => setLayout("datos")} />
+          <StatCard label="Resultados" value={porcentajeCompletado + "%"} active={layout === "datos"} sub="de las preguntas respondidas" onClick={() => setLayout("datos")} />
         </div>
 
         {/* Layout principal */}
@@ -645,68 +657,71 @@ export default function DetalleAnalisis() {
             </div>
           )}
 
-          {grupoEditandoId && grupoEditandoEstudiantes.length > 0 && (
-            <div style={{ border: `1px solid ${COLORS.neutro100}`, borderRadius: 12, padding: 12, background: COLORS.neutro50 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: COLORS.neutro900, marginBottom: 8 }}>
-                Alumnos actuales ({grupoEditandoEstudiantes.length})
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: 180, overflowY: "auto" }}>
-                {grupoEditandoEstudiantes.map(estudiante => (
-                  <div key={estudiante.estudianteId} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "#fff", border: `1px solid ${COLORS.neutro100}`, borderRadius: 8, padding: "6px 10px" }}>
-                    <span style={{ fontSize: 13, color: COLORS.neutro900 }}>{estudiante.nombreCompleto}</span>
-                    <button type="button" onClick={() => eliminarEstudianteExistente(estudiante.estudianteId)} style={{ border: "none", background: "transparent", color: COLORS.rojo600, cursor: "pointer", fontSize: 12 }}>
-                      Quitar
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
           <div style={{ border: `1px solid ${COLORS.neutro100}`, borderRadius: 12, padding: 12, background: COLORS.neutro50 }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
               <div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: COLORS.neutro900 }}>
-                  {grupoEditandoId ? "Agregar alumnos nuevos" : "Alumnos"}
-                </div>
-                <div style={{ fontSize: 12, color: COLORS.neutro500 }}>Agrega nombre y CURP de cada alumno.</div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: COLORS.neutro900 }}>Alumnos</div>
+                <div style={{ fontSize: 12, color: COLORS.neutro500 }}>Agrega filas o pega directamente una tabla desde Excel.</div>
               </div>
-              <div style={{ display: "flex", gap: 6 }}>
-                <button type="button" onClick={() => setShowImportModal(true)} style={{ padding: "8px 10px", borderRadius: 8, border: `1px solid ${COLORS.neutro100}`, background: "#fff", color: COLORS.neutro700, fontSize: 13, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 5 }}>
-                  <i className="ti ti-file-spreadsheet" style={{ fontSize: 14 }} aria-hidden="true" />
-                  Importar Excel
-                </button>
-                <button type="button" onClick={addAlumnoRow} style={{ padding: "8px 10px", borderRadius: 8, border: `1px solid ${COLORS.violeta100}`, background: COLORS.violeta50, color: COLORS.violeta600, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
-                  + Añadir
-                </button>
-              </div>
+              <button type="button" onClick={addAlumnoRow} style={{ padding: "8px 10px", borderRadius: 8, border: `1px solid ${COLORS.violeta100}`, background: COLORS.violeta50, color: COLORS.violeta600, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                + Añadir fila
+              </button>
             </div>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {grupoForm.alumnosNuevos.map((alumno, index) => (
-                <div key={alumno.id} style={{ display: "flex", flexDirection: "column", gap: 8, background: "#fff", border: `1px solid ${COLORS.neutro100}`, borderRadius: 10, padding: 10 }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: COLORS.neutro900 }}>Alumno {index + 1}</div>
-                    {grupoForm.alumnosNuevos.length > 1 && (
-                      <button type="button" onClick={() => removeAlumnoRow(index)} style={{ border: "none", background: "transparent", color: COLORS.neutro500, cursor: "pointer", fontSize: 14 }} aria-label="Eliminar alumno">
-                        <i className="ti ti-trash" />
-                      </button>
-                    )}
-                  </div>
-                  <input
-                    value={alumno.nombreCompleto}
-                    onChange={event => updateAlumno(index, "nombreCompleto", event.target.value)}
-                    placeholder="Nombre completo"
-                    style={{ width: "100%", padding: "9px 12px", border: `1px solid ${COLORS.neutro100}`, borderRadius: 8, fontSize: 14, color: COLORS.neutro900, outline: "none", boxSizing: "border-box" }}
-                  />
-                  <input
-                    value={alumno.curp}
-                    onChange={event => updateAlumno(index, "curp", event.target.value)}
-                    placeholder="CURP"
-                    style={{ width: "100%", padding: "9px 12px", border: `1px solid ${COLORS.neutro100}`, borderRadius: 8, fontSize: 14, color: COLORS.neutro900, outline: "none", boxSizing: "border-box" }}
-                  />
-                </div>
-              ))}
+            <div onPaste={handlePasteAlumnos} style={{ overflowX: "auto", background: "#fff", border: `1px solid ${COLORS.neutro100}`, borderRadius: 10 }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 420 }}>
+                <thead>
+                  <tr style={{ background: COLORS.neutro50 }}>
+                    <th style={{ padding: "9px 10px", textAlign: "left", fontSize: 12, color: COLORS.neutro500, borderBottom: `1px solid ${COLORS.neutro100}` }}>Nombre</th>
+                    <th style={{ padding: "9px 10px", textAlign: "left", fontSize: 12, color: COLORS.neutro500, borderBottom: `1px solid ${COLORS.neutro100}` }}>CURP</th>
+                    <th style={{ width: 38, borderBottom: `1px solid ${COLORS.neutro100}` }} />
+                  </tr>
+                </thead>
+                <tbody>
+                  {grupoEditandoEstudiantes.map(estudiante => (
+                    <tr key={estudiante.estudianteId}>
+                      <td style={{ padding: "8px 10px", borderBottom: `1px solid ${COLORS.neutro50}`, fontSize: 13, color: COLORS.neutro900 }}>{estudiante.nombreCompleto}</td>
+                      <td style={{ padding: "8px 10px", borderBottom: `1px solid ${COLORS.neutro50}`, fontSize: 13, color: COLORS.neutro500 }}>{estudiante.curp ?? ""}</td>
+                      <td style={{ padding: 6, textAlign: "center", borderBottom: `1px solid ${COLORS.neutro50}` }}>
+                        <button type="button" onClick={() => eliminarEstudianteExistente(estudiante.estudianteId)} style={{ border: "none", background: "transparent", color: COLORS.rojo600, cursor: "pointer", fontSize: 14 }} aria-label="Quitar alumno">
+                          <i className="ti ti-trash" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {grupoForm.alumnosNuevos.map((alumno, index) => (
+                    <tr key={alumno.id}>
+                      <td style={{ padding: 6, borderBottom: `1px solid ${COLORS.neutro50}` }}>
+                        <input
+                          data-alumno-index={index}
+                          data-alumno-field="nombreCompleto"
+                          value={alumno.nombreCompleto}
+                          onChange={event => updateAlumno(index, "nombreCompleto", event.target.value)}
+                          placeholder="Nombre completo"
+                          style={{ width: "100%", padding: "8px 9px", border: `1px solid ${COLORS.neutro100}`, borderRadius: 6, fontSize: 13, color: COLORS.neutro900, outline: "none", boxSizing: "border-box" }}
+                        />
+                      </td>
+                      <td style={{ padding: 6, borderBottom: `1px solid ${COLORS.neutro50}` }}>
+                        <input
+                          data-alumno-index={index}
+                          data-alumno-field="curp"
+                          value={alumno.curp}
+                          onChange={event => updateAlumno(index, "curp", event.target.value)}
+                          placeholder="CURP"
+                          style={{ width: "100%", padding: "8px 9px", border: `1px solid ${COLORS.neutro100}`, borderRadius: 6, fontSize: 13, color: COLORS.neutro900, outline: "none", boxSizing: "border-box" }}
+                        />
+                      </td>
+                      <td style={{ padding: 6, textAlign: "center", borderBottom: `1px solid ${COLORS.neutro50}` }}>
+                        {grupoForm.alumnosNuevos.length > 1 && (
+                          <button type="button" onClick={() => removeAlumnoRow(index)} style={{ border: "none", background: "transparent", color: COLORS.neutro500, cursor: "pointer", fontSize: 14 }} aria-label="Eliminar alumno">
+                            <i className="ti ti-trash" />
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
 

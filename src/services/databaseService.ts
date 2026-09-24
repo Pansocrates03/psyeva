@@ -298,7 +298,7 @@ class DatabaseService {
     // campo="aceptaRespuestas"|"reportesPublicados"; sin `valor` hace toggle
     cambiarEstadoEvaluacion: async (
       id: string,
-      campo: "aceptaRespuestas" | "reportesPublicados",
+      campo: "cerrado" | "abierto" | "publico",
       valor?: boolean
     ): Promise<{ evaluacion: Evaluacion; mensaje: string }> => {
       const { data, mensaje } = await this.patch<ApiEnvelope<Evaluacion>>(
@@ -485,7 +485,7 @@ class DatabaseService {
       return data;
     },
 
-    // Entra directo con el link /evaluacion/:id (sin clave de acceso) —
+    // Entra directo con el link /e/:id (sin clave de acceso) —
     // el propio id de la evaluación funciona como el "secreto" del link.
     // Se usa para APLICAR la encuesta.
     entrarPorEvaluacion: async (evaluacionId: string): Promise<EvaluacionParaFacilitador> => {

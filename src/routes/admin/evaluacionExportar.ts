@@ -27,38 +27,52 @@ export const evaluacionExportarRoutes = {
         return Response.json({ error: "Evaluación no encontrada" }, { status: 404 });
       }
 
-      // Query de exportación completa
-      const filas = await sql`
-        SELECT
-          c.nombre          AS colegio,
-          ev.nombre         AS evaluacion,
-          ev.fecha,
-          g.nombre          AS grupo,
-          e.nombre_completo AS alumno,
-          e.curp,
-          f.titulo          AS formulario,
+      const preguntas = await sql`
+        SELECT DISTINCT
+          p.id,
+          p.texto,
           f.categoria,
-          p.texto           AS pregunta,
-          r.texto_libre     AS respuesta,
-          r.respondida_at
-        FROM respuesta r
-        JOIN sesion     s   ON s.id   = r.sesion_id
-        JOIN estudiante e   ON e.id   = s.estudiante_id
-        JOIN grupo      g   ON g.id   = e.grupo_id
-        JOIN evaluacion ev  ON ev.id  = s.evaluacion_id
-        JOIN colegio    c   ON c.id   = ev.colegio_id
-        JOIN pregunta   p   ON p.id   = r.pregunta_id
-        JOIN seccion    sec ON sec.id = p.seccion_id
-        JOIN formulario f   ON f.id   = s.formulario_id
-        WHERE s.evaluacion_id = ${id}
+          sec.orden AS seccion_orden,
+          p.orden AS pregunta_orden
+        FROM grupo g
+        JOIN evaluacion ev ON ev.id = g.evaluacion_id
+        JOIN formulario f ON f.id IN (g.form_emociones_id, g.form_bienpsic_id, g.form_aprendizaje_id)
+        JOIN seccion sec ON sec.formulario_id = f.id
+        JOIN pregunta p ON p.seccion_id = sec.id
+        WHERE ev.id = ${id}
           AND (
             ${categoria}::categoria_formulario IS NULL
             OR f.categoria = ${categoria}::categoria_formulario
           )
-        ORDER BY g.nombre, e.nombre_completo, f.categoria, sec.orden, p.orden
+        ORDER BY f.categoria, sec.orden, p.orden
       `;
 
-      if (filas.length === 0) {
+      const filas = await sql`
+        SELECT
+          e.id              AS estudiante_id,
+          e.nombre_completo AS alumno,
+          p.id              AS pregunta_id,
+          r.texto_libre    AS respuesta
+        FROM estudiante e
+        JOIN grupo g ON g.id = e.grupo_id
+        JOIN evaluacion ev ON ev.id = g.evaluacion_id
+        LEFT JOIN sesion s
+          ON s.estudiante_id = e.id
+         AND s.evaluacion_id = ev.id
+        LEFT JOIN respuesta r ON r.sesion_id = s.id
+        LEFT JOIN pregunta p ON p.id = r.pregunta_id
+        LEFT JOIN formulario f ON f.id = s.formulario_id
+        WHERE ev.id = ${id}
+          AND (
+            ${categoria}::categoria_formulario IS NULL
+            OR f.categoria = ${categoria}::categoria_formulario
+            OR f.id IS NULL
+          )
+        ORDER BY g.nombre, e.nombre_completo
+      `;
+
+      const tieneRespuestas = filas.some(fila => fila.preguntaId && fila.respuesta !== null);
+      if (preguntas.length === 0 || !tieneRespuestas) {
         return Response.json(
           { error: "No hay respuestas registradas para esta evaluación" },
           { status: 404 }
@@ -70,19 +84,12 @@ export const evaluacionExportarRoutes = {
       const wb      = new ExcelJS.default.Workbook();
       const ws      = wb.addWorksheet("Respuestas");
 
-      ws.columns = [
-        { header: "Colegio",       key: "colegio",       width: 28 },
-        { header: "Evaluación",    key: "evaluacion",    width: 24 },
-        { header: "Fecha",         key: "fecha",         width: 14 },
-        { header: "Grupo",         key: "grupo",         width: 12 },
-        { header: "Alumno",        key: "alumno",        width: 30 },
-        { header: "CURP",          key: "curp",          width: 20 },
-        { header: "Formulario",    key: "formulario",    width: 28 },
-        { header: "Categoría",     key: "categoria",     width: 22 },
-        { header: "Pregunta",      key: "pregunta",      width: 50 },
-        { header: "Respuesta",     key: "respuesta",     width: 20 },
-        { header: "Respondida en", key: "respondidaAt",  width: 22 },
-      ];
+      const encabezados = ["Estudiante", ...preguntas.map((pregunta, index) => `${index + 1}. ${pregunta.texto}`)];
+      ws.columns = encabezados.map((header, index) => ({
+        header,
+        key: index === 0 ? "estudiante" : `pregunta${index}`,
+        width: index === 0 ? 30 : 44,
+      }));
 
       // Estilo de encabezado con color PSYEVA
       ws.getRow(1).eachCell(cell => {
@@ -92,20 +99,22 @@ export const evaluacionExportarRoutes = {
       });
       ws.getRow(1).height = 22;
 
-      filas.forEach(f => {
-        ws.addRow({
-          colegio:      f.colegio,
-          evaluacion:   f.evaluacion,
-          fecha:        f.fecha,
-          grupo:        f.grupo,
-          alumno:       f.alumno,
-          curp:         f.curp ?? "",
-          formulario:   f.formulario,
-          categoria:    f.categoria,
-          pregunta:     f.pregunta,
-          respuesta:    f.respuesta,
-          respondidaAt: f.respondidaAt,
-        });
+      const respuestasPorEstudiante = new Map<string, Map<string, string>>();
+      filas.forEach(fila => {
+        if (!fila.preguntaId) return;
+        const respuestas = respuestasPorEstudiante.get(fila.estudianteId) ?? new Map<string, string>();
+        respuestas.set(fila.preguntaId, fila.respuesta ?? "");
+        respuestasPorEstudiante.set(fila.estudianteId, respuestas);
+      });
+
+      const estudiantes = new Map<string, string>();
+      filas.forEach(fila => estudiantes.set(fila.estudianteId, fila.alumno));
+      estudiantes.forEach((nombre, estudianteId) => {
+        const respuestas = respuestasPorEstudiante.get(estudianteId);
+        ws.addRow([
+          nombre,
+          ...preguntas.map(pregunta => respuestas?.get(pregunta.id) ?? ""),
+        ]);
       });
 
       // Filas alternas con color suave

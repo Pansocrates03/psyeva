@@ -99,7 +99,7 @@ export default function MisAnalisis() {
 
   const cerrarEvaluacion = async (id: string) => {
     try {
-      await databaseService.admin.cambiarEstadoEvaluacion(id, "aceptaRespuestas", false);
+      await databaseService.admin.cambiarEstadoEvaluacion(id, "abierto", false);
       cargarEvaluaciones();
     } catch (err) {
       alert(err instanceof ApiError ? err.message : "No se pudo cerrar la evaluación");
@@ -150,8 +150,8 @@ export default function MisAnalisis() {
 
         <div style={{ display: "flex", gap: 12, marginBottom: 28 }}>
           <StatCard label="Todas" value={evaluaciones.length} onClick={() => setFiltro("todos")} accent={filtro === "todos"} />
-          <StatCard label="Aceptando respuestas" value={aceptando.length} onClick={() => setFiltro("aceptando")} accent={filtro === "aceptando"} />
-          <StatCard label="Reportes publicados" value={publicadas.length} onClick={() => setFiltro("publicadas")} accent={filtro === "publicadas"} />
+          <StatCard label="Evaluaciones abiertas" value={aceptando.length} onClick={() => setFiltro("aceptando")} accent={filtro === "aceptando"} />
+          <StatCard label="Evaluaciones publicadas" value={publicadas.length} onClick={() => setFiltro("publicadas")} accent={filtro === "publicadas"} />
         </div>
 
         <div style={{

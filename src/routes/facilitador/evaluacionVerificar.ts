@@ -1,7 +1,7 @@
 import sql from "../../db";
 
 // POST /api/facilitador/evaluaciones/:id/verificar
-// Usado en /reportes/:id — a diferencia de /evaluacion/:id (aplicar la
+// Usado en /reportes/:id — a diferencia de /e/:id (aplicar la
 // encuesta), aquí SÍ se pide la clave de acceso del colegio: el link
 // solo indica de qué evaluación se quieren ver los reportes, la clave
 // sigue siendo la que autentica al director/facilitador.

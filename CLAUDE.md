@@ -93,7 +93,7 @@ formulario ──< pregunta ──────┘             (sesion.formulario
 
 ### Dos flujos de facilitador con seguridad distinta, a propósito
 
-- **`/evaluacion/:id`** (aplicar encuesta): el link *es* el secreto — no pide clave de acceso. `GET /api/facilitador/evaluaciones/:id` es público y resuelve el colegio dueño de esa evaluación directamente.
+- **`/e/:id`** (aplicar encuesta): el link *es* el secreto — no pide clave de acceso. `GET /api/facilitador/evaluaciones/:id` es público y resuelve el colegio dueño de esa evaluación directamente.
 - **`/reportes/:id`** (ver/descargar reportes, para directores): sí pide clave de acceso, pero **escopeada a esa evaluación puntual** — `POST /api/facilitador/evaluaciones/:id/verificar` valida que la clave pertenezca justo al colegio dueño de esa evaluación (no a cualquier colegio), y solo si `reportes_publicados = true`.
 
 Ambos flujos, al validar, guardan la sesión facilitador (`X-Colegio-Id`) en `databaseService` para las siguientes llamadas (listar grupos, estudiantes, reportes, etc.).

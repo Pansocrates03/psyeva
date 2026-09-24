@@ -24,7 +24,7 @@ describe("GET /api/admin/evaluaciones/:id/exportar", () => {
     expect(res.status).toBe(404);
   });
 
-  test("200 y genera un .xlsx real con una fila por respuesta", async () => {
+  test("200 y genera un .xlsx con una fila por estudiante y una columna por pregunta", async () => {
     const res = await fetch(`${server.url}/api/admin/evaluaciones/${mock.evaluacionSanJose}/exportar`);
     expect(res.status).toBe(200);
     expect(res.headers.get("Content-Type")).toBe(
@@ -39,23 +39,20 @@ describe("GET /api/admin/evaluaciones/:id/exportar", () => {
     const ws = wb.getWorksheet("Respuestas")!;
     expect(ws).toBeTruthy();
 
-    // mock-data.sql tiene 4 respuestas registradas para evaluacionSanJose
-    // (fila 1 es el encabezado)
-    expect(ws.rowCount).toBe(5);
+    // El exportador pivotea las respuestas: una fila por alumno + encabezado.
+    expect(ws.rowCount).toBeGreaterThan(1);
 
     const headerValues = ws.getRow(1).values as unknown[];
-    expect(headerValues).toContain("Alumno");
-    expect(headerValues).toContain("Respuesta");
+    expect(headerValues[1]).toBe("Estudiante");
+    expect(headerValues.filter(value => /^\d+\. /.test(String(value))).length).toBeGreaterThan(0);
 
-    const bodyRows = [] as Record<string, unknown>[];
+    const bodyRows = [] as unknown[][];
     ws.eachRow((row, idx) => {
       if (idx === 1) return;
-      bodyRows.push({
-        alumno: row.getCell(5).value,
-        respuesta: row.getCell(10).value,
-      });
+      bodyRows.push(row.values as unknown[]);
     });
-    expect(bodyRows.some(r => r.alumno === "Ana López García" && r.respuesta === "Bien")).toBe(true);
+    expect(bodyRows.some(row => row[1] === "Ana López García" && row.includes("Bien"))).toBe(true);
+    expect(bodyRows.some(row => row[1] === "Carmen Ruiz Sol")).toBe(true);
   });
 
   test("filtra por categoría cuando se pasa ?categoria=", async () => {
