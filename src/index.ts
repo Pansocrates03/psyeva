@@ -37,6 +37,7 @@ import {
 
 const server = serve({
   routes: {
+    "/assets/eva_2.png": Bun.file("./src/assets/eva_2.png"),
     "/*": index,
 
     // ── Admin ───────────────────────────────────────────────

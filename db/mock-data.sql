@@ -49,9 +49,24 @@ INSERT INTO grupo (id, evaluacion_id, form_emociones_id, form_bienpsic_id, form_
 
 -- ESTUDIANTES
 INSERT INTO estudiante (id, grupo_id, nombre_completo, curp, created_at) VALUES
-  ('10101010-1010-1010-1010-101010101010', 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', 'Ana López García', 'LOGA960101HDFLPN01', '2026-02-03 10:00:00'),
-  ('20202020-2020-2020-2020-202020202020', 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', 'Bruno Pérez Cruz', 'PECB950505HDFRZR02', '2026-02-03 10:05:00'),
-  ('30303030-3030-3030-3030-303030303030', 'ffffffff-ffff-ffff-ffff-ffffffffffff', 'Carmen Ruiz Sol', 'RUSC980707MDFRRL03', '2026-02-03 10:10:00');
+  ('10101010-1010-1010-1010-101010101010', 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', 'Ana Belén Cárdenas Moncayo', 'LOGA960101HDFLPN01', '2026-02-03 10:00:00'),
+  ('20202020-2020-2020-2020-202020202020', 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', 'André Rogelio Montemayor Salazar', 'PECB950505HDFRZR02', '2026-02-03 10:05:00'),
+  ('30303030-3030-3030-3030-303030303030', 'ffffffff-ffff-ffff-ffff-ffffffffffff', 'Carmen Ruiz Sol', 'RUSC980707MDFRRL03', '2026-02-03 10:10:00'),
+  ('12121212-1212-1212-1212-121212121212', 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', 'Ángel Leonardo Cruz Villanueva', NULL, '2026-02-03 10:15:00'),
+  ('13131313-1313-1313-1313-131313131313', 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', 'Ariana Sophia Sánchez Camacho', NULL, '2026-02-03 10:20:00'),
+  ('14141414-1414-1414-1414-141414141414', 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', 'Carolina Sarahí Flores Esquivel', NULL, '2026-02-03 10:25:00'),
+  ('15151515-1515-1515-1515-151515151515', 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', 'Emma Catalina Castillo Bañuelos', NULL, '2026-02-03 10:30:00'),
+  ('16161616-1616-1616-1616-161616161616', 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', 'Emma Sofía López Villarreal', NULL, '2026-02-03 10:35:00'),
+  ('17171717-1717-1717-1717-171717171717', 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', 'Ferran Darío Obregón Vázquez', NULL, '2026-02-03 10:40:00'),
+  ('18181818-1818-1818-1818-181818181818', 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', 'Gael Díaz Aguirre', NULL, '2026-02-03 10:45:00'),
+  ('19191919-1919-1919-1919-191919191919', 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', 'Lucy Carolina González Rojas', NULL, '2026-02-03 10:50:00'),
+  ('1a1a1a1a-1a1a-1a1a-1a1a-1a1a1a1a1a1a', 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', 'Mario Daniel Hernánez Rojas', NULL, '2026-02-03 10:55:00'),
+  ('1b1b1b1b-1b1b-1b1b-1b1b-1b1b1b1b1b1b', 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', 'Pablo Nicolás Gacía Pérez', NULL, '2026-02-03 11:00:00'),
+  ('1c1c1c1c-1c1c-1c1c-1c1c-1c1c1c1c1c1c', 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', 'Paulina Sandoval Ubilla', NULL, '2026-02-03 11:05:00'),
+  ('1d1d1d1d-1d1d-1d1d-1d1d-1d1d1d1d1d1d', 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', 'Sahily Alejandra Ungsec Guevara', NULL, '2026-02-03 11:10:00'),
+  ('1e1e1e1e-1e1e-1e1e-1e1e-1e1e1e1e1e1e', 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', 'Samantha Pinales Preciado', NULL, '2026-02-03 11:15:00'),
+  ('1f1f1f1f-1f1f-1f1f-1f1f-1f1f1f1f1f1f', 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', 'Samuel Dominguez Espinosa', NULL, '2026-02-03 11:20:00'),
+  ('2a2a2a2a-2a2a-2a2a-2a2a-2a2a2a2a2a2a', 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', 'Sofía Mata Mendoza', NULL, '2026-02-03 11:25:00');
 
 -- SESIONES
 INSERT INTO sesion (id, estudiante_id, formulario_id, evaluacion_id, estado, iniciada_at, completada_at) VALUES

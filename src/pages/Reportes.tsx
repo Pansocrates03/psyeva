@@ -100,57 +100,123 @@ function CentroPagina({ children }: { children: React.ReactNode }) {
 }
 
 // ─────────────────────────────────────────────
-// Lista de reportes ya verificados
+// Vista de archivos estilo Google Drive
 // ─────────────────────────────────────────────
-const TIPO_META: Record<TipoReporte, { titulo: string; icono: string }> = {
-  general: { titulo: "Reporte general", icono: "📊" },
-  grupal: { titulo: "Reportes por grupo", icono: "👥" },
-  individual: { titulo: "Reportes individuales", icono: "🧑‍🎓" },
-};
+type CarpetaReportes = "individual" | "grupal" | "general";
 
-function nombreDeReporte(reporte: ReporteConContexto) {
-  if (reporte.tipo === "grupal") return reporte.grupoNombre ?? "Grupo";
-  if (reporte.tipo === "individual") return reporte.estudianteNombre ?? "Alumno";
-  return "Reporte general de la evaluación";
+const CARPETAS: Array<{ tipo: CarpetaReportes; nombre: string; descripcion: string }> = [
+  { tipo: "individual", nombre: "Resultados individuales", descripcion: "Un archivo PDF por alumno, organizado por grupo" },
+  { tipo: "grupal", nombre: "Resultados grupales", descripcion: "Reportes PDF de cada grupo" },
+  { tipo: "general", nombre: "Resultados institucionales", descripcion: "Reportes generales de la evaluación" },
+];
+
+function nombreArchivo(reporte: ReporteConContexto, fallback: string) {
+  if (reporte.tipo === "individual" && reporte.estudianteNombre) return `${reporte.estudianteNombre}.pdf`;
+  if (reporte.tipo === "grupal" && reporte.grupoNombre) return `${reporte.grupoNombre}.pdf`;
+  const nombreDesdeUrl = decodeURIComponent(reporte.archivoUrl.split("?")[0]?.split("/").pop() ?? "");
+  return nombreDesdeUrl || fallback;
 }
 
-function SeccionReportes({ tipo, reportes }: { tipo: TipoReporte; reportes: ReporteConContexto[] }) {
-  const meta = TIPO_META[tipo];
+function ArchivoPdf({ reporte, nombre }: { reporte: ReporteConContexto; nombre: string }) {
   return (
-    <div style={{ marginBottom: 18 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-        <span style={{ fontSize: 16 }}>{meta.icono}</span>
-        <h3 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: COLORS.neutro900 }}>{meta.titulo}</h3>
-        <span style={{ fontSize: 12, color: COLORS.neutro500 }}>({reportes.length})</span>
-      </div>
+    <a
+      href={reporte.archivoUrl}
+      target="_blank"
+      rel="noreferrer"
+      style={{
+        display: "flex", alignItems: "center", gap: 10,
+        minHeight: 44, padding: "8px 14px 8px 46px",
+        borderBottom: `1px solid ${COLORS.neutro50}`,
+        textDecoration: "none", color: COLORS.neutro700, fontSize: 13,
+        transition: "background 0.15s",
+      }}
+      onMouseEnter={e => { e.currentTarget.style.background = COLORS.violeta50; }}
+      onMouseLeave={e => { e.currentTarget.style.background = "#fff"; }}
+    >
+      <i className="ti ti-file-type-pdf" style={{ fontSize: 18, color: COLORS.rojo400 }} aria-hidden="true" />
+      <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{nombre}</span>
+      <i className="ti ti-external-link" style={{ fontSize: 15, color: COLORS.neutro400 }} aria-hidden="true" />
+    </a>
+  );
+}
 
-      {reportes.length === 0 ? (
-        <p style={{ margin: 0, fontSize: 13, color: COLORS.neutro400 }}>Todavía no hay reportes de este tipo.</p>
-      ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {reportes.map(r => (
-            <a
-              key={r.id}
-              href={r.archivoUrl}
-              target="_blank"
-              rel="noreferrer"
-              style={{
-                display: "flex", alignItems: "center", gap: 10,
-                padding: "10px 14px", borderRadius: 10,
-                border: `1px solid ${COLORS.neutro100}`, background: "#fff",
-                textDecoration: "none", color: COLORS.neutro900, fontSize: 14,
-                transition: "border-color 0.15s, background 0.15s",
-              }}
-              onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.borderColor = COLORS.violeta400; (e.currentTarget as HTMLAnchorElement).style.background = COLORS.violeta50; }}
-              onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.borderColor = COLORS.neutro100; (e.currentTarget as HTMLAnchorElement).style.background = "#fff"; }}
-            >
-              <i className="ti ti-file-type-pdf" style={{ fontSize: 18, color: COLORS.rojo400 }} aria-hidden="true" />
-              <span style={{ flex: 1 }}>{nombreDeReporte(r)}</span>
-              <i className="ti ti-download" style={{ fontSize: 16, color: COLORS.neutro500 }} aria-hidden="true" />
-            </a>
-          ))}
+function CarpetaGrupo({ nombre, reportes }: { nombre: string; reportes: ReporteConContexto[] }) {
+  const [abierta, setAbierta] = useState(false);
+
+  return (
+    <div style={{ borderBottom: `1px solid ${COLORS.neutro50}` }}>
+      <button
+        type="button"
+        onClick={() => setAbierta(prev => !prev)}
+        style={{
+          display: "flex", alignItems: "center", gap: 10, width: "100%",
+          minHeight: 46, padding: "8px 14px 8px 46px", border: "none",
+          background: "#fff", color: COLORS.neutro700, textAlign: "left", cursor: "pointer",
+        }}
+      >
+        <i className={`ti ti-chevron-${abierta ? "down" : "right"}`} style={{ fontSize: 15, color: COLORS.neutro400 }} aria-hidden="true" />
+        <i className="ti ti-folder" style={{ fontSize: 20, color: COLORS.ambar400 }} aria-hidden="true" />
+        <span style={{ flex: 1, fontSize: 13, fontWeight: 600 }}>{nombre}</span>
+        <span style={{ fontSize: 12, color: COLORS.neutro500 }}>{reportes.length}</span>
+      </button>
+      {abierta && reportes.map(reporte => (
+        <ArchivoPdf key={reporte.id} reporte={reporte} nombre={nombreArchivo(reporte, "Reporte individual.pdf")} />
+      ))}
+    </div>
+  );
+}
+
+function CarpetaReportes({ tipo, nombre, descripcion, reportes }: {
+  tipo: CarpetaReportes; nombre: string; descripcion: string; reportes: ReporteConContexto[];
+}) {
+  const [abierta, setAbierta] = useState(true);
+  const grupos = Array.from(new Map(reportes.map(reporte => [reporte.grupoNombre ?? "Sin grupo", [] as ReporteConContexto[]])).keys())
+    .map(grupoNombre => ({ nombre: grupoNombre, reportes: reportes.filter(reporte => (reporte.grupoNombre ?? "Sin grupo") === grupoNombre) }));
+
+  return (
+    <div style={{ border: `1px solid ${COLORS.neutro100}`, borderRadius: 10, overflow: "hidden", background: "#fff" }}>
+      <button
+        type="button"
+        onClick={() => setAbierta(prev => !prev)}
+        style={{
+          display: "flex", alignItems: "center", gap: 10, width: "100%",
+          padding: "13px 14px", border: "none", background: COLORS.neutro50,
+          color: COLORS.neutro900, textAlign: "left", cursor: "pointer",
+        }}
+      >
+        <i className={`ti ti-chevron-${abierta ? "down" : "right"}`} style={{ fontSize: 16, color: COLORS.neutro500 }} aria-hidden="true" />
+        <i className="ti ti-folder-filled" style={{ fontSize: 22, color: COLORS.ambar400 }} aria-hidden="true" />
+        <span style={{ flex: 1, fontSize: 14, fontWeight: 700 }}>{nombre}</span>
+        <span style={{ fontSize: 12, color: COLORS.neutro500 }}>{reportes.length} archivo{reportes.length === 1 ? "" : "s"}</span>
+      </button>
+      {abierta && (
+        <div>
+          <p style={{ margin: 0, padding: "10px 14px 8px 46px", fontSize: 12, color: COLORS.neutro500 }}>{descripcion}</p>
+          {reportes.length === 0 ? (
+            <p style={{ margin: 0, padding: "8px 14px 14px 46px", fontSize: 13, color: COLORS.neutro400 }}>Carpeta vacía.</p>
+          ) : tipo === "individual" ? (
+            grupos.map(grupo => <CarpetaGrupo key={grupo.nombre} nombre={grupo.nombre} reportes={grupo.reportes} />)
+          ) : (
+            reportes.map(reporte => <ArchivoPdf key={reporte.id} reporte={reporte} nombre={nombreArchivo(reporte, tipo === "grupal" ? "Reporte grupal.pdf" : "Reporte institucional.pdf")} />)
+          )}
         </div>
       )}
+    </div>
+  );
+}
+
+function ExploradorReportes({ reportes }: { reportes: Record<TipoReporte, ReporteConContexto[]> }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, paddingBottom: 12, borderBottom: `1px solid ${COLORS.neutro100}` }}>
+        <i className="ti ti-home-2" style={{ fontSize: 16, color: COLORS.neutro500 }} aria-hidden="true" />
+        <span style={{ fontSize: 13, color: COLORS.neutro500 }}>Mis archivos</span>
+        <i className="ti ti-chevron-right" style={{ fontSize: 14, color: COLORS.neutro400 }} aria-hidden="true" />
+        <strong style={{ fontSize: 13, color: COLORS.neutro900 }}>Resultados</strong>
+      </div>
+      {CARPETAS.map(carpeta => (
+        <CarpetaReportes key={carpeta.tipo} {...carpeta} reportes={reportes[carpeta.tipo]} />
+      ))}
     </div>
   );
 }
@@ -284,7 +350,7 @@ export default function Reportes() {
 
   return (
     <CentroPagina>
-      <div style={{ ...cardStyle, width: 460 }}>
+      <div style={{ ...cardStyle, width: "min(760px, 100%)" }}>
         <LogoHeader escuela={verificado.colegioNombre} sub={info.nombre} />
         <div style={cardBodyStyle}>
           {loadingReportes ? (
@@ -297,9 +363,7 @@ export default function Reportes() {
             </p>
           ) : reportes ? (
             <>
-              <SeccionReportes tipo="general" reportes={reportes.reportes.general} />
-              <SeccionReportes tipo="grupal" reportes={reportes.reportes.grupal} />
-              <SeccionReportes tipo="individual" reportes={reportes.reportes.individual} />
+              <ExploradorReportes reportes={reportes.reportes} />
             </>
           ) : null}
         </div>
