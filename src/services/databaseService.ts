@@ -473,9 +473,7 @@ class DatabaseService {
       return { colegio: data.colegio, evaluaciones: data.evaluaciones };
     },
 
-    // Info pública de una evaluación (nombre, colegio, si acepta
-    // respuestas / tiene reportes publicados) — sin sesión, para mostrar
-    // contexto antes de pedir clave de acceso o de entrar directo.
+    // Info pública de una evaluación (nombre, colegio y estado).
     obtenerInfoEvaluacion: async (evaluacionId: string): Promise<EvaluacionParaFacilitador> => {
       const { data } = await this.get<ApiEnvelope<EvaluacionParaFacilitador>>(
         `/api/facilitador/evaluaciones/${evaluacionId}`,
@@ -484,11 +482,11 @@ class DatabaseService {
       return data;
     },
 
-    // El código corto localiza la evaluación; la clave del colegio verifica el acceso.
-    entrarPorEvaluacion: async (evaluacionId: string, claveAcceso: string): Promise<EvaluacionParaFacilitador> => {
+    // El enlace corto permite entrar a la encuesta sin pedir la clave del colegio.
+    entrarPorEvaluacion: async (evaluacionId: string): Promise<EvaluacionParaFacilitador> => {
       const { data } = await this.post<ApiEnvelope<EvaluacionParaFacilitador & { colegioId: string; token: string }>>(
         `/api/facilitador/evaluaciones/${evaluacionId}`,
-        { claveAcceso },
+        undefined,
         { conColegio: false }
       );
       this.guardarSesionFacilitador(data.colegioId, data.token);

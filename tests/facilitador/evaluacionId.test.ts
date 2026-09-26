@@ -29,21 +29,15 @@ describe("GET /api/facilitador/evaluaciones/:id", () => {
     expect(body.data.colegioId).toBeUndefined();
   });
 
-  test("POST requiere la clave del colegio para verificar el enlace corto", async () => {
-    const wrong = await fetch(`${server.url}/api/facilitador/evaluaciones/${mock.codigoEvaluacionSanJose}`, {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ claveAcceso: "clave-incorrecta" }),
+  test("POST permite entrar por enlace corto sin la clave del colegio", async () => {
+    const res = await fetch(`${server.url}/api/facilitador/evaluaciones/${mock.codigoEvaluacionSanJose}`, {
+      method: "POST",
     });
-    expect(wrong.status).toBe(401);
-
-    const valid = await fetch(`${server.url}/api/facilitador/evaluaciones/${mock.codigoEvaluacionSanJose}`, {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ claveAcceso: "san-jose-2026" }),
-    });
-    expect(valid.status).toBe(200);
-    const body = await valid.json();
+    expect(res.status).toBe(200);
+    const body = await res.json();
     expect(body.data.estado).toBe("abierto");
     expect(body.data.evaluacionId).toBe(mock.evaluacionSanJose);
+    expect(body.data.token).toBeTruthy();
   });
 
   test("200 y refleja estado cerrado", async () => {

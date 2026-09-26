@@ -59,7 +59,6 @@ export default function Encuesta() {
   const [pasoError, setPasoError] = useState<string | null>(null);
   const [resolviendoLink, setResolviendoLink] = useState(false);
   const [linkError, setLinkError] = useState<string | null>(null);
-  const [claveAcceso, setClaveAcceso] = useState("");
 
   const PASOS: Seccion[] = ["verificacion", "seleccionarGrupo", "seleccionarFormulario", "seleccionarAlumno"];
   const pasoActual = PASOS.indexOf(seccion);
@@ -81,11 +80,11 @@ export default function Encuesta() {
     }
   };
 
-  const verificarAccesoEncuesta = async () => {
-    if (!evaluacionIdParam || !claveAcceso.trim()) return;
+  const entrarAEncuesta = async () => {
+    if (!evaluacionIdParam) return;
     setResolviendoLink(true); setLinkError(null);
     try {
-      const evaluacion = await databaseService.facilitador.entrarPorEvaluacion(evaluacionIdParam, claveAcceso);
+      const evaluacion = await databaseService.facilitador.entrarPorEvaluacion(evaluacionIdParam);
       await handleVerificado(evaluacion.colegioNombre, evaluacion);
     } catch (err) {
       setLinkError(err instanceof ApiError ? err.message : "No se pudo verificar el acceso a esta evaluación.");
@@ -214,10 +213,9 @@ export default function Encuesta() {
         {pasoError && <p style={{ marginBottom: 12, fontSize: 13, color: COLORS.rojo400, textAlign: "center" }}>{pasoError}</p>}
         {seccion === "bienvenida" && <BienvenidaStep onContinue={() => setSeccion("verificacion")} />}
         {seccion === "verificacion" && <div style={cardStyle}><LogoHeader /><div style={cardBodyStyle}>
-          <label htmlFor="clave-colegio" style={{ display: "block", marginBottom: 8, fontSize: 14, color: COLORS.neutro700 }}>Clave de acceso del colegio</label>
-          <input id="clave-colegio" value={claveAcceso} onChange={e => setClaveAcceso(e.target.value)} onKeyDown={e => { if (e.key === "Enter") void verificarAccesoEncuesta(); }} autoComplete="off" style={{ boxSizing: "border-box", width: "100%", padding: 11, borderRadius: 8, border: `1px solid ${COLORS.neutro200}`, marginBottom: 12 }} />
+          <p style={{ margin: "0 0 12px", fontSize: 14, color: COLORS.neutro700 }}>Continúa para ingresar a la encuesta.</p>
           {linkError && <p style={{ margin: "0 0 12px", fontSize: 13, color: COLORS.rojo400 }}>{linkError}</p>}
-          <button onClick={() => void verificarAccesoEncuesta()} disabled={resolviendoLink || !claveAcceso.trim()} style={{ width: "100%", padding: 11, border: 0, borderRadius: 8, background: COLORS.violeta400, color: "white", fontWeight: 600, cursor: "pointer", opacity: resolviendoLink || !claveAcceso.trim() ? 0.6 : 1 }}>{resolviendoLink ? "Verificando..." : "Continuar"}</button>
+          <button onClick={() => void entrarAEncuesta()} disabled={resolviendoLink} style={{ width: "100%", padding: 11, border: 0, borderRadius: 8, background: COLORS.violeta400, color: "white", fontWeight: 600, cursor: "pointer", opacity: resolviendoLink ? 0.6 : 1 }}>{resolviendoLink ? "Preparando encuesta..." : "Entrar a la encuesta"}</button>
         </div></div>}
         {seccion === "seleccionarGrupo" && <SeleccionarGrupoStep escuela={escuela} grupos={grupos} onBack={reiniciar} onContinue={handleSeleccionarGrupo} />}
         {seccion === "seleccionarFormulario" && grupo && <SeleccionarFormularioStep escuela={escuela} grupo={grupo} onBack={() => setSeccion("seleccionarGrupo")} onContinue={handleSeleccionarFormulario} />}

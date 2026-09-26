@@ -159,7 +159,7 @@ export interface EvaluacionConProgreso {
   totalReportes: string;
 }
 
-// Respuesta de POST /api/facilitador/evaluaciones/:id — tras verificar la clave.
+// Respuesta de POST /api/facilitador/evaluaciones/:id — acceso a la encuesta abierta.
 export interface EvaluacionParaFacilitador {
   evaluacionId: string;
   nombre: string;
