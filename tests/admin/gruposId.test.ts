@@ -24,9 +24,13 @@ describe("GET /api/admin/grupos/:id", () => {
     const body = await res.json();
     expect(body.data.grupoId).toBe(mock.grupoA);
     expect(body.data.formEmocionesTitulo).toBe("Bienestar emocional");
-    expect(body.data.estudiantes).toHaveLength(2);
+    expect(body.data.estudiantes).toHaveLength(9);
     expect(body.data.estudiantes.map((e: { nombreCompleto: string }) => e.nombreCompleto).sort())
-      .toEqual(["Ana López García", "Bruno Pérez Cruz"]);
+      .toEqual([
+        "Ana López García", "Bruno Pérez Cruz", "Diego Hernández Luna", "Elena Torres Ríos",
+        "Fernanda Cruz Vega", "Gabriel Morales Díaz", "Hugo Navarro León", "Inés Flores Rangel",
+        "Javier Soto Méndez",
+      ]);
   });
 });
 

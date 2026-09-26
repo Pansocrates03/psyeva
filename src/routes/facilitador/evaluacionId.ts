@@ -14,7 +14,7 @@ export const facilitadorEvaluacionIdRoutes = {
           ev.id AS evaluacion_id, ev.nombre, ev.estado, c.nombre AS colegio_nombre
         FROM evaluacion ev
         JOIN colegio c ON c.id = ev.colegio_id
-        WHERE ev.codigo_acceso = ${codigo} OR ev.id::text = ${codigo}
+        WHERE upper(ev.codigo_acceso::text) = ${codigo} OR lower(ev.id::text) = lower(${codigo})
       `;
 
       if (!evaluacion) {
@@ -39,7 +39,7 @@ export const facilitadorEvaluacionIdRoutes = {
         SELECT ev.id AS evaluacion_id, ev.nombre, ev.estado,
                ev.colegio_id, c.nombre AS colegio_nombre
         FROM evaluacion ev JOIN colegio c ON c.id = ev.colegio_id
-        WHERE (ev.codigo_acceso = ${codigo} OR ev.id::text = ${codigo})
+        WHERE (upper(ev.codigo_acceso::text) = ${codigo} OR lower(ev.id::text) = lower(${codigo}))
           AND UPPER(c.clave_acceso) = UPPER(${claveAcceso})
       `;
       if (!evaluacion) return Response.json({ error: "Código de evaluación o clave del colegio inválidos" }, { status: 401 });

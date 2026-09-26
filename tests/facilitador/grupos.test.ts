@@ -56,7 +56,7 @@ describe("GET /api/facilitador/grupos", () => {
 
     const grupoA = body.data.grupos.find((g: { grupoId: string }) => g.grupoId === mock.grupoA);
     expect(grupoA).toBeTruthy();
-    expect(Number(grupoA.totalAlumnos)).toBe(2);
+    expect(Number(grupoA.totalAlumnos)).toBe(9);
     // Grupo A: Ana (1 sesión completada de 3) + Bruno (1 sesión completada de 3)
     expect(Number(grupoA.sesionesCompletadas)).toBe(2);
   });

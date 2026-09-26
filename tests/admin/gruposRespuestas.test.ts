@@ -24,7 +24,7 @@ describe("GET /api/admin/grupos/:id/respuestas", () => {
     const body = await res.json();
     // 2 preguntas por cada uno de los 3 formularios asignados a grupoA
     expect(body.data.preguntas).toHaveLength(6);
-    expect(body.data.estudiantes).toHaveLength(2);
+    expect(body.data.estudiantes).toHaveLength(9);
 
     const ana = body.data.estudiantes.find((e: { nombreCompleto: string }) => e.nombreCompleto === "Ana López García");
     expect(ana.respuestas[mock.preguntaEmocion1]).toBe("Bien");

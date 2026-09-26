@@ -46,13 +46,31 @@ INSERT INTO evaluacion (id, codigo_acceso, colegio_id, nombre, estado, fecha, cr
 -- GRUPOS
 INSERT INTO grupo (id, evaluacion_id, form_emociones_id, form_bienpsic_id, form_aprendizaje_id, nombre, created_at) VALUES
   ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', 'cccccccc-cccc-cccc-cccc-cccccccccccc', '33333333-3333-3333-3333-333333333333', '44444444-4444-4444-4444-444444444444', '55555555-5555-5555-5555-555555555555', 'Grupo A', '2026-02-02 08:00:00'),
-  ('ffffffff-ffff-ffff-ffff-ffffffffffff', 'cccccccc-cccc-cccc-cccc-cccccccccccc', '33333333-3333-3333-3333-333333333333', '44444444-4444-4444-4444-444444444444', '55555555-5555-5555-5555-555555555555', 'Grupo B', '2026-02-02 08:10:00');
+  ('ffffffff-ffff-ffff-ffff-ffffffffffff', 'cccccccc-cccc-cccc-cccc-cccccccccccc', '33333333-3333-3333-3333-333333333333', '44444444-4444-4444-4444-444444444444', '55555555-5555-5555-5555-555555555555', 'Grupo B', '2026-02-02 08:10:00'),
+  ('a0000000-0000-4000-8000-000000000001', 'dddddddd-dddd-dddd-dddd-dddddddddddd', '33333333-3333-3333-3333-333333333333', '44444444-4444-4444-4444-444444444444', '55555555-5555-5555-5555-555555555555', 'Grupo C', '2026-05-02 08:00:00');
 
 -- ESTUDIANTES
 INSERT INTO estudiante (id, grupo_id, nombre_completo, curp, created_at) VALUES
   ('10101010-1010-1010-1010-101010101010', 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', 'Ana López García', 'LOGA960101HDFLPN01', '2026-02-03 10:00:00'),
   ('20202020-2020-2020-2020-202020202020', 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', 'Bruno Pérez Cruz', 'PECB950505HDFRZR02', '2026-02-03 10:05:00'),
-  ('30303030-3030-3030-3030-303030303030', 'ffffffff-ffff-ffff-ffff-ffffffffffff', 'Carmen Ruiz Sol', 'RUSC980707MDFRRL03', '2026-02-03 10:10:00');
+  ('30303030-3030-3030-3030-303030303030', 'ffffffff-ffff-ffff-ffff-ffffffffffff', 'Carmen Ruiz Sol', 'RUSC980707MDFRRL03', '2026-02-03 10:10:00'),
+  ('a1000000-0000-4000-8000-000000000001', 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', 'Diego Hernández Luna', NULL, '2026-02-03 10:15:00'),
+  ('a1000000-0000-4000-8000-000000000002', 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', 'Elena Torres Ríos', NULL, '2026-02-03 10:20:00'),
+  ('a1000000-0000-4000-8000-000000000003', 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', 'Fernanda Cruz Vega', NULL, '2026-02-03 10:25:00'),
+  ('a1000000-0000-4000-8000-000000000004', 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', 'Gabriel Morales Díaz', NULL, '2026-02-03 10:30:00'),
+  ('a1000000-0000-4000-8000-000000000005', 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', 'Hugo Navarro León', NULL, '2026-02-03 10:35:00'),
+  ('a1000000-0000-4000-8000-000000000006', 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', 'Inés Flores Rangel', NULL, '2026-02-03 10:40:00'),
+  ('a1000000-0000-4000-8000-000000000007', 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', 'Javier Soto Méndez', NULL, '2026-02-03 10:45:00'),
+  ('b1000000-0000-4000-8000-000000000001', 'a0000000-0000-4000-8000-000000000001', 'Karla Jiménez Paredes', NULL, '2026-05-03 10:00:00'),
+  ('b1000000-0000-4000-8000-000000000002', 'a0000000-0000-4000-8000-000000000001', 'Luis Aguilar Campos', NULL, '2026-05-03 10:05:00'),
+  ('b1000000-0000-4000-8000-000000000003', 'a0000000-0000-4000-8000-000000000001', 'Mariana Reyes Solís', NULL, '2026-05-03 10:10:00'),
+  ('b1000000-0000-4000-8000-000000000004', 'a0000000-0000-4000-8000-000000000001', 'Nicolás Vega Soto', NULL, '2026-05-03 10:15:00'),
+  ('b1000000-0000-4000-8000-000000000005', 'a0000000-0000-4000-8000-000000000001', 'Olivia Herrera Paz', NULL, '2026-05-03 10:20:00'),
+  ('b1000000-0000-4000-8000-000000000006', 'a0000000-0000-4000-8000-000000000001', 'Pablo Medina Ruiz', NULL, '2026-05-03 10:25:00'),
+  ('b1000000-0000-4000-8000-000000000007', 'a0000000-0000-4000-8000-000000000001', 'Renata Castillo Gil', NULL, '2026-05-03 10:30:00'),
+  ('b1000000-0000-4000-8000-000000000008', 'a0000000-0000-4000-8000-000000000001', 'Santiago Lara Núñez', NULL, '2026-05-03 10:35:00'),
+  ('b1000000-0000-4000-8000-000000000009', 'a0000000-0000-4000-8000-000000000001', 'Valeria Campos Rojas', NULL, '2026-05-03 10:40:00'),
+  ('b1000000-0000-4000-8000-000000000010', 'a0000000-0000-4000-8000-000000000001', 'Ximena Ortega Vidal', NULL, '2026-05-03 10:45:00');
 
 -- SESIONES
 INSERT INTO sesion (id, estudiante_id, formulario_id, evaluacion_id, estado, iniciada_at, completada_at) VALUES

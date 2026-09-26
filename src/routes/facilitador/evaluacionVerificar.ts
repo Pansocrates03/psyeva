@@ -29,7 +29,7 @@ export const facilitadorEvaluacionVerificarRoutes = {
           c.clave_acceso
         FROM evaluacion ev
         JOIN colegio c ON c.id = ev.colegio_id
-        WHERE ev.codigo_acceso = ${codigo} OR ev.id::text = ${codigo}
+        WHERE upper(ev.codigo_acceso::text) = ${codigo} OR lower(ev.id::text) = lower(${codigo})
       `;
 
       if (!evaluacion) {

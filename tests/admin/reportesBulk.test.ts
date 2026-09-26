@@ -1,7 +1,7 @@
 import { describe, test, expect, beforeAll, afterAll, beforeEach } from "bun:test";
 import { createTestServer, resetDb, sql } from "../setup";
 import { reportesBulkRoutes } from "../../src/routes";
-import { mock } from "../factories";
+import { mock, createEvaluacion } from "../factories";
 
 // Igual que tests/admin/reportes.test.ts: no hay bucket de test separado,
 // así que los casos que llegan a "asignado" suben un PDF real al MinIO
@@ -19,8 +19,7 @@ beforeEach(resetDb);
 const pdfFile = (nombre: string) =>
   new File([new Uint8Array([0x25, 0x50, 0x44, 0x46])], nombre, { type: "application/pdf" });
 
-// db/reset-and-seed.sql: evaluacionSanJose tiene 3 alumnos —
-// Ana López García y Bruno Pérez Cruz (grupoA), Carmen Ruiz Sol (grupoB).
+// db/reset-and-seed.sql: evaluacionSanJose tiene 10 alumnos.
 async function subirBulk(nombresArchivo: string[]) {
   const form = new FormData();
   form.set("evaluacionId", mock.evaluacionSanJose);
@@ -39,9 +38,10 @@ describe("POST /api/admin/reportes/bulk", () => {
   });
 
   test("404 si la evaluación no tiene alumnos", async () => {
-    // evaluacionLiceo no tiene alumnos en el seed — se usa acá a propósito
+    // Usa una evaluación independiente para que el seed pueda poblar las dos evaluaciones principales.
+    const evaluacionVacia = await createEvaluacion();
     const form = new FormData();
-    form.set("evaluacionId", mock.evaluacionLiceo);
+    form.set("evaluacionId", evaluacionVacia.id);
     form.append("archivos", pdfFile("cualquiera.pdf"));
     const res = await fetch(`${server.url}/api/admin/reportes/bulk`, { method: "POST", body: form });
     expect(res.status).toBe(404);

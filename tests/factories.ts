@@ -21,8 +21,10 @@ export const mock = {
 
   // estado = abierto
   evaluacionSanJose: "cccccccc-cccc-cccc-cccc-cccccccccccc",
+  codigoEvaluacionSanJose: "K7M4Q2",
   // estado = publico
   evaluacionLiceo: "dddddddd-dddd-dddd-dddd-dddddddddddd",
+  codigoEvaluacionLiceo: "R9X3PA",
 
   grupoA: "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee",
   grupoB: "ffffffff-ffff-ffff-ffff-ffffffffffff",

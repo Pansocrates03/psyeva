@@ -28,7 +28,7 @@ describe("GET /api/admin/evaluaciones", () => {
 
     const sanJose = body.data.find((e: { evaluacionId: string }) => e.evaluacionId === mock.evaluacionSanJose);
     expect(Number(sanJose.totalGrupos)).toBe(2);
-    expect(Number(sanJose.totalAlumnos)).toBe(3);
+    expect(Number(sanJose.totalAlumnos)).toBe(10);
     expect(Number(sanJose.sesionesCompletadas)).toBe(2);
   });
 });

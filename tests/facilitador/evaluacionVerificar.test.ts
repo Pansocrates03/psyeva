@@ -20,7 +20,7 @@ const post = (evaluacionId: string, body: unknown) =>
 
 describe("POST /api/facilitador/evaluaciones/:id/verificar", () => {
   test("400 si falta claveAcceso", async () => {
-    const res = await post(mock.evaluacionLiceo, {});
+    const res = await post(mock.codigoEvaluacionLiceo, {});
     expect(res.status).toBe(400);
   });
 
@@ -31,23 +31,23 @@ describe("POST /api/facilitador/evaluaciones/:id/verificar", () => {
 
   test("403 si los reportes de esa evaluación todavía no están publicados", async () => {
     // evaluacionSanJose: reportes_publicados = false en el mock data
-    const res = await post(mock.evaluacionSanJose, { claveAcceso: "san-jose-2026" });
+    const res = await post(mock.codigoEvaluacionSanJose, { claveAcceso: "san-jose-2026" });
     expect(res.status).toBe(403);
   });
 
   test("401 con una clave incorrecta", async () => {
-    const res = await post(mock.evaluacionLiceo, { claveAcceso: "no-es-la-clave" });
+    const res = await post(mock.codigoEvaluacionLiceo, { claveAcceso: "no-es-la-clave" });
     expect(res.status).toBe(401);
   });
 
   test("401 con la clave correcta de OTRO colegio", async () => {
     // san-jose-2026 es válida, pero no para la evaluación del Liceo
-    const res = await post(mock.evaluacionLiceo, { claveAcceso: "san-jose-2026" });
+    const res = await post(mock.codigoEvaluacionLiceo, { claveAcceso: "san-jose-2026" });
     expect(res.status).toBe(401);
   });
 
   test("200 con la clave correcta, sin importar mayúsculas/espacios", async () => {
-    const res = await post(mock.evaluacionLiceo, { claveAcceso: "  LICEO-ARTES-2026  " });
+    const res = await post(mock.codigoEvaluacionLiceo, { claveAcceso: "  LICEO-ARTES-2026  " });
     expect(res.status).toBe(200);
 
     const body = await res.json();
