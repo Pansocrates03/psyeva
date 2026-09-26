@@ -1,4 +1,4 @@
-import { useEffect, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import COLORS from "../utils/Colors";
 
 interface DrawerProps {
@@ -9,17 +9,6 @@ interface DrawerProps {
 }
 
 export default function Drawer({ open, onClose, title, children }: DrawerProps) {
-  useEffect(() => {
-    if (!open) return;
-
-    const handler = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
-    };
-
-    document.addEventListener("keydown", handler);
-    return () => document.removeEventListener("keydown", handler);
-  }, [onClose, open]);
-
   if (!open) return null;
 
   return (
@@ -27,7 +16,6 @@ export default function Drawer({ open, onClose, title, children }: DrawerProps) 
       role="dialog"
       aria-modal="true"
       aria-label={title}
-      onClick={onClose}
       style={{
         position: "fixed",
         inset: 0,
@@ -38,7 +26,6 @@ export default function Drawer({ open, onClose, title, children }: DrawerProps) 
       }}
     >
       <div
-        onClick={event => event.stopPropagation()}
         style={{
           width: 560,
           maxWidth: "92vw",
