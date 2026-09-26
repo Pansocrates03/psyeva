@@ -45,6 +45,17 @@ bun run db:init
 `db:init` espera a que PostgreSQL acepte conexiones y aplica `db/schema.sql` y
 `db/procedures.sql` en ese orden.
 
+Para una base existente, aplica la conversión del estado una sola vez y luego
+recrea las vistas y funciones:
+
+```bash
+psql -U postgres -d psyeva1 -f db/migrate-evaluacion-estado.sql
+psql -U postgres -d psyeva1 -f db/procedures.sql
+```
+
+La migración convierte los permisos previos en `cerrado`, `abierto` o `publico` y
+elimina las dos columnas anteriores.
+
 Para tener datos de prueba (colegios, evaluaciones, grupos, estudiantes, reportes de
 ejemplo con IDs fijos — ver `tests/factories.ts`):
 

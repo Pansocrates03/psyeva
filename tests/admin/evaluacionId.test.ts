@@ -56,11 +56,11 @@ describe("PATCH /api/admin/evaluaciones/:id", () => {
 
     const body = await res.json();
     expect(body.data.nombre).toBe("Renombrada");
-    expect(body.data.aceptaRespuestas).toBe(true); // no se tocó
+    expect(body.data.estado).toBe("abierto"); // no se tocó
 
-    const [row] = await sql`SELECT nombre, acepta_respuestas FROM evaluacion WHERE id = ${mock.evaluacionSanJose}`;
+    const [row] = await sql`SELECT nombre, estado FROM evaluacion WHERE id = ${mock.evaluacionSanJose}`;
     expect(row.nombre).toBe("Renombrada");
-    expect(row.aceptaRespuestas).toBe(true);
+    expect(row.estado).toBe("abierto");
   });
 });
 

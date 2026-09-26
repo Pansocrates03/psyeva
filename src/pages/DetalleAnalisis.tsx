@@ -81,9 +81,7 @@ function formatFecha(fecha: string) {
 type EstadoEvaluacionUI = "cerrado" | "abierto" | "publico";
 
 function estadoEvaluacionUI(evaluacion: EvaluacionConProgreso): EstadoEvaluacionUI {
-  if (evaluacion.reportesPublicados) return "publico";
-  if (evaluacion.aceptaRespuestas) return "abierto";
-  return "cerrado";
+  return evaluacion.estado;
 }
 
 const ESTADO_UI_LABELS: Record<EstadoEvaluacionUI, string> = {
@@ -217,10 +215,10 @@ export default function DetalleAnalisis() {
   const gruposCard = useMemo(() => grupos.map(mapGrupoParaCard), [grupos]);
 
   // ── Fase de la evaluación ─────────────────────────────────────
-  const cambiarFase = async (campo: "cerrado" | "abierto" | "publico", valor: boolean) => {
+  const cambiarFase = async (estado: "cerrado" | "abierto" | "publico") => {
     if (!evaluacionId) return;
     try {
-      await databaseService.admin.cambiarEstadoEvaluacion(evaluacionId, campo, valor);
+      await databaseService.admin.cambiarEstadoEvaluacion(evaluacionId, estado);
       cargarEvaluacion();
     } catch (err) {
       alert(err instanceof ApiError ? err.message : "No se pudo cambiar el estado de la evaluación");
@@ -534,23 +532,23 @@ export default function DetalleAnalisis() {
               {ESTADO_UI_LABELS[estado]}
             </span>
             <div style={{ display: "flex", gap: 8 }}>
-              <ClipboardCopy label="Encuesta:" copyText={`${window.location.origin}/e/${evaluacionId}`} />
-              <ClipboardCopy label="Reportes:" copyText={`${window.location.origin}/reportes/${evaluacionId}`} />
+              <ClipboardCopy label="Encuesta:" copyText={`${window.location.origin}/e/${evaluacion.codigoAcceso}`} />
+              <ClipboardCopy label="Reportes:" copyText={`${window.location.origin}/reportes/${evaluacion.codigoAcceso}`} />
 
               {estado === "cerrado" && (
-                <button onClick={() => cambiarFase("abierto", true)} style={{ padding: "7px 12px", borderRadius: 8, border: "none", background: COLORS.azul400, color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                <button onClick={() => cambiarFase("abierto")} style={{ padding: "7px 12px", borderRadius: 8, border: "none", background: COLORS.azul400, color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
                   Abrir evaluación
                 </button>
               )}
 
               {estado === "abierto" && (
-                <button onClick={() => cambiarFase("publico", true)} style={{ padding: "7px 12px", borderRadius: 8, border: "none", background: COLORS.verde400, color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                <button onClick={() => cambiarFase("publico")} style={{ padding: "7px 12px", borderRadius: 8, border: "none", background: COLORS.verde400, color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
                   Publicar evaluación
                 </button>
               )}
               
               {estado === "publico" && (
-                <button onClick={() => cambiarFase("cerrado", false)} style={{ padding: "7px 12px", borderRadius: 8, border: "none", background: COLORS.violeta400, color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                <button onClick={() => cambiarFase("cerrado")} style={{ padding: "7px 12px", borderRadius: 8, border: "none", background: COLORS.violeta400, color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
                   Cerrar evaluación
                 </button>
               )}

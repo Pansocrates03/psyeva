@@ -54,15 +54,13 @@ describe("POST /api/facilitador/verificar", () => {
 
     const ids = body.data.evaluaciones.map((e: { evaluacionId: string }) => e.evaluacionId);
     expect(ids).toContain(mock.evaluacionSanJose);
-    expect(body.data.evaluaciones.every((e: { aceptaRespuestas: boolean; reportesPublicados: boolean }) =>
-      e.aceptaRespuestas || e.reportesPublicados
-    )).toBe(true);
+    expect(body.data.evaluaciones.every((e: { estado: string }) => e.estado !== "cerrado")).toBe(true);
   });
 
   test("no muestra evaluaciones que ni aceptan respuestas ni tienen reportes publicados", async () => {
     // Cierra la evaluación de San José y le quita la publicación de reportes
     await sql`
-      UPDATE evaluacion SET acepta_respuestas = false, reportes_publicados = false
+      UPDATE evaluacion SET estado = 'cerrado'
       WHERE id = ${mock.evaluacionSanJose}
     `;
 

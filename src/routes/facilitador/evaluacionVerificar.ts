@@ -11,7 +11,7 @@ export const facilitadorEvaluacionVerificarRoutes = {
 
   async POST(req: Request) {
     try {
-      const id = new URL(req.url).pathname.split("/").at(-2)!;
+      const codigo = new URL(req.url).pathname.split("/").at(-2)!.toUpperCase();
       const body = await req.json();
       const { claveAcceso } = body;
 
@@ -23,20 +23,20 @@ export const facilitadorEvaluacionVerificarRoutes = {
         SELECT
           ev.id       AS evaluacion_id,
           ev.nombre,
-          ev.reportes_publicados,
+          ev.estado,
           c.id        AS colegio_id,
           c.nombre    AS colegio_nombre,
           c.clave_acceso
         FROM evaluacion ev
         JOIN colegio c ON c.id = ev.colegio_id
-        WHERE ev.id = ${id}
+        WHERE ev.codigo_acceso = ${codigo} OR ev.id::text = ${codigo}
       `;
 
       if (!evaluacion) {
         return Response.json({ error: "Evaluación no encontrada" }, { status: 404 });
       }
 
-      if (!evaluacion.reportesPublicados) {
+      if (evaluacion.estado !== "publico") {
         return Response.json(
           { error: "Los reportes de esta evaluación todavía no están publicados" },
           { status: 403 }

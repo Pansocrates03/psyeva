@@ -20,7 +20,7 @@ import type { FormularioDisponible } from "@/components/encuesta/Pasos";
 
 interface EvaluacionActiva {
   evaluacionId: string;
-  aceptaRespuestas: boolean;
+  estado: "cerrado" | "abierto" | "publico";
 }
 
 type Seccion =
@@ -59,6 +59,7 @@ export default function Encuesta() {
   const [pasoError, setPasoError] = useState<string | null>(null);
   const [resolviendoLink, setResolviendoLink] = useState(false);
   const [linkError, setLinkError] = useState<string | null>(null);
+  const [claveAcceso, setClaveAcceso] = useState("");
 
   const PASOS: Seccion[] = ["verificacion", "seleccionarGrupo", "seleccionarFormulario", "seleccionarAlumno"];
   const pasoActual = PASOS.indexOf(seccion);
@@ -80,25 +81,18 @@ export default function Encuesta() {
     }
   };
 
-  useEffect(() => {
-    if (!evaluacionIdParam || seccion !== "verificacion") return;
-    let cancelado = false;
+  const verificarAccesoEncuesta = async () => {
+    if (!evaluacionIdParam || !claveAcceso.trim()) return;
     setResolviendoLink(true); setLinkError(null);
-    databaseService.facilitador.entrarPorEvaluacion(evaluacionIdParam)
-      .then(async evaluacion => {
-        if (cancelado) return;
-        if (!evaluacion.aceptaRespuestas) {
-          setLinkError("Esta evaluación no está aceptando respuestas en este momento.");
-          return;
-        }
-        await handleVerificado(evaluacion.colegioNombre, evaluacion);
-      })
-      .catch(err => {
-        if (!cancelado) setLinkError(err instanceof ApiError ? err.message : "No se pudo abrir esta evaluación.");
-      })
-      .finally(() => { if (!cancelado) setResolviendoLink(false); });
-    return () => { cancelado = true; };
-  }, [evaluacionIdParam, seccion]);
+    try {
+      const evaluacion = await databaseService.facilitador.entrarPorEvaluacion(evaluacionIdParam, claveAcceso);
+      await handleVerificado(evaluacion.colegioNombre, evaluacion);
+    } catch (err) {
+      setLinkError(err instanceof ApiError ? err.message : "No se pudo verificar el acceso a esta evaluación.");
+    } finally {
+      setResolviendoLink(false);
+    }
+  };
 
   const handleSeleccionarGrupo = (g: GrupoConProgreso) => {
     setGrupo(g); setSeccion("seleccionarFormulario");
@@ -210,11 +204,7 @@ export default function Encuesta() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "100vh", background: `linear-gradient(135deg, ${COLORS.violeta50} 0%, ${COLORS.neutro50} 60%, ${COLORS.azul50} 100%)`, fontFamily: "system-ui, -apple-system, sans-serif" }}>
-      {evaluacionIdParam && (resolviendoLink || linkError) ? (
-        <div style={cardStyle}><LogoHeader /><div style={{ ...cardBodyStyle, textAlign: "center" as const, padding: "36px 24px" }}>
-          {linkError ? <><div style={{ fontSize: 40, marginBottom: 12 }}>⚠️</div><p style={{ margin: 0, fontSize: 14, color: COLORS.rojo400 }}>{linkError}</p></> : <p style={{ margin: 0, fontSize: 14, color: COLORS.neutro500 }}>Cargando...</p>}
-        </div></div>
-      ) : <>
+      <>
         {(seccion === "verificacion" || seccion === "seleccionarGrupo" || seccion === "seleccionarFormulario" || seccion === "seleccionarAlumno") && <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 24 }}>
           {PASOS.map((s, i) => { const activo = s === seccion; const completado = PASOS.indexOf(s) < pasoActual; return <React.Fragment key={s}>
             <div style={{ width: 28, height: 28, borderRadius: "50%", background: completado ? COLORS.verde400 : activo ? COLORS.violeta400 : COLORS.neutro100, color: completado || activo ? "#fff" : COLORS.neutro400, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 600 }}>{completado ? <svg width="12" height="10" viewBox="0 0 12 10" fill="none"><path d="M1 5L4.5 8.5L11 1.5" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg> : i + 1}</div>
@@ -223,6 +213,12 @@ export default function Encuesta() {
         </div>}
         {pasoError && <p style={{ marginBottom: 12, fontSize: 13, color: COLORS.rojo400, textAlign: "center" }}>{pasoError}</p>}
         {seccion === "bienvenida" && <BienvenidaStep onContinue={() => setSeccion("verificacion")} />}
+        {seccion === "verificacion" && <div style={cardStyle}><LogoHeader /><div style={cardBodyStyle}>
+          <label htmlFor="clave-colegio" style={{ display: "block", marginBottom: 8, fontSize: 14, color: COLORS.neutro700 }}>Clave de acceso del colegio</label>
+          <input id="clave-colegio" value={claveAcceso} onChange={e => setClaveAcceso(e.target.value)} onKeyDown={e => { if (e.key === "Enter") void verificarAccesoEncuesta(); }} autoComplete="off" style={{ boxSizing: "border-box", width: "100%", padding: 11, borderRadius: 8, border: `1px solid ${COLORS.neutro200}`, marginBottom: 12 }} />
+          {linkError && <p style={{ margin: "0 0 12px", fontSize: 13, color: COLORS.rojo400 }}>{linkError}</p>}
+          <button onClick={() => void verificarAccesoEncuesta()} disabled={resolviendoLink || !claveAcceso.trim()} style={{ width: "100%", padding: 11, border: 0, borderRadius: 8, background: COLORS.violeta400, color: "white", fontWeight: 600, cursor: "pointer", opacity: resolviendoLink || !claveAcceso.trim() ? 0.6 : 1 }}>{resolviendoLink ? "Verificando..." : "Continuar"}</button>
+        </div></div>}
         {seccion === "seleccionarGrupo" && <SeleccionarGrupoStep escuela={escuela} grupos={grupos} onBack={reiniciar} onContinue={handleSeleccionarGrupo} />}
         {seccion === "seleccionarFormulario" && grupo && <SeleccionarFormularioStep escuela={escuela} grupo={grupo} onBack={() => setSeccion("seleccionarGrupo")} onContinue={handleSeleccionarFormulario} />}
         {seccion === "seleccionarAlumno" && grupo && formulario && <SeleccionarAlumnoStep escuela={escuela} grupo={grupo} formulario={formulario} estudiantes={estudiantes} onBack={() => setSeccion("seleccionarFormulario")} onContinue={handleSeleccionarAlumno} />}
@@ -230,7 +226,7 @@ export default function Encuesta() {
         {seccion === "instruccion" && sesion && preguntaActual && alumno && <InstruccionStep key={preguntaActual.id} pregunta={preguntaActual} nombreEstudiante={alumno.nombreCompleto} onContinue={continuarInstruccion} />}
         {seccion === "respondiendo" && sesion && preguntaActual && alumno && <div style={{ width: "100%" }}><Reactivo pregunta={preguntaActual.texto} imagenUrl={preguntaActual.imagenUrl ?? undefined} instruccionTexto={preguntaActual.instruccionTexto ?? undefined} instruccionImagenUrl={preguntaActual.instruccionImagenUrl ?? undefined} opciones={preguntaActual.opcionesRespuesta.map(o => ({ label: o.texto, value: o.valor }))} numeroPregunta={indexActual + 1} totalPreguntas={sesion.preguntas.length} nombreEstudiante={alumno.nombreCompleto} valorSeleccionado={respuestasLocal[preguntaActual.id] ?? null} onSeleccionar={handleSeleccionarOpcion} onAnterior={indexActual > 0 ? volverPreguntaAnterior : undefined} avanzando={avanzando || enviando} esUltima={indexActual === sesion.preguntas.length - 1} /></div>}
         {seccion === "completado" && alumno && <CompletadoStep alumno={alumno} onSiguienteAlumno={siguienteAlumno} />}
-      </>}
+      </>
     </div>
   );
 }

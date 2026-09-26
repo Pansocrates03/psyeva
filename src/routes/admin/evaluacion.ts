@@ -40,8 +40,8 @@ export const evaluacionRoutes = {
       }
 
       const [nueva] = await sql`
-        INSERT INTO evaluacion (colegio_id, nombre, fecha, acepta_respuestas, reportes_publicados)
-        VALUES (${colegioId}, ${nombre}, ${fecha}, false, false)
+        INSERT INTO evaluacion (colegio_id, nombre, fecha, estado)
+        VALUES (${colegioId}, ${nombre}, ${fecha}, 'cerrado')
         RETURNING *
       `;
 

@@ -61,8 +61,7 @@ describe("POST /api/admin/evaluaciones", () => {
     expect(res.status).toBe(201);
 
     const body = await res.json();
-    expect(body.data.aceptaRespuestas).toBe(false);
-    expect(body.data.reportesPublicados).toBe(false);
+    expect(body.data.estado).toBe("cerrado");
 
     const [row] = await sql`SELECT * FROM evaluacion WHERE id = ${body.data.id}`;
     expect(row.nombre).toBe("Evaluación otoño");

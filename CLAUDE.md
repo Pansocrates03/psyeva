@@ -85,16 +85,16 @@ formulario ──< pregunta ──────┘             (sesion.formulario
 ```
 
 - Un **colegio** tiene una `clave_acceso` única (la usa el facilitador para autenticarse en ciertos flujos).
-- Una **evaluacion** pertenece a un colegio; dos flags controlan su ciclo de vida: `acepta_respuestas` (¿los alumnos pueden responder ahora?) y `reportes_publicados` (¿el facilitador ya puede ver/descargar reportes?). Un endpoint (`PATCH /api/admin/evaluaciones/:id/estado`) bloquea publicar reportes mientras `acepta_respuestas` siga en `true`.
+- Una **evaluación** pertenece a un colegio y tiene un único estado: `cerrado` (sin respuestas ni reportes), `abierto` (acepta respuestas) o `publico` (facilitador puede consultar reportes). Se actualiza con `PATCH /api/admin/evaluaciones/:id/estado`.
 - Un **grupo** pertenece a una evaluación (no al colegio directamente — así el mismo colegio puede tener grupos distintos por semestre) y tiene hasta 3 `formulario` asignados, uno por categoría (`form_emociones_id`, `form_bienpsic_id`, `form_aprendizaje_id`).
 - Un **formulario** es un catálogo de `pregunta`s con `opciones_respuesta` (JSONB: `[{ valor, texto }]`).
 - Una **sesion** es el intento de un estudiante respondiendo un formulario completo; una **respuesta** es su respuesta a una pregunta puntual (el texto se copia del JSONB al momento de responder, para no perder el histórico si el formulario cambia después).
-- Un **reporte** (PDF) es `individual` | `grupal` | `general`; su visibilidad para el facilitador depende de `evaluacion.reportes_publicados`, no de un flag en el reporte mismo.
+- Un **reporte** (PDF) es `individual` | `grupal` | `general`; su visibilidad para el facilitador depende de que `evaluacion.estado = 'publico'`, no de un flag en el reporte mismo.
 
 ### Dos flujos de facilitador con seguridad distinta, a propósito
 
 - **`/e/:id`** (aplicar encuesta): el link *es* el secreto — no pide clave de acceso. `GET /api/facilitador/evaluaciones/:id` es público y resuelve el colegio dueño de esa evaluación directamente.
-- **`/reportes/:id`** (ver/descargar reportes, para directores): sí pide clave de acceso, pero **escopeada a esa evaluación puntual** — `POST /api/facilitador/evaluaciones/:id/verificar` valida que la clave pertenezca justo al colegio dueño de esa evaluación (no a cualquier colegio), y solo si `reportes_publicados = true`.
+- **`/reportes/:id`** (ver/descargar reportes, para directores): sí pide clave de acceso, pero **escopeada a esa evaluación puntual** — `POST /api/facilitador/evaluaciones/:id/verificar` valida que la clave pertenezca justo al colegio dueño de esa evaluación (no a cualquier colegio), y solo si `estado = 'publico'`.
 
 Ambos flujos, al validar, guardan la sesión facilitador (`X-Colegio-Id`) en `databaseService` para las siguientes llamadas (listar grupos, estudiantes, reportes, etc.).
 

@@ -74,10 +74,10 @@ COMMENT ON VIEW vista_progreso_grupo IS
 CREATE OR REPLACE VIEW vista_progreso_evaluacion AS
 SELECT
   ev.id                                                             AS evaluacion_id,
+  ev.codigo_acceso,
   ev.nombre,
   ev.fecha,
-  ev.acepta_respuestas,
-  ev.reportes_publicados,
+  ev.estado,
   ev.colegio_id,
   c.nombre                                                          AS colegio_nombre,
   COUNT(DISTINCT g.id)                                              AS total_grupos,
@@ -181,22 +181,22 @@ RETURNS TABLE (
 LANGUAGE plpgsql
 AS $$
 DECLARE
-  v_acepta      BOOLEAN;
+  v_estado_evaluacion estado_evaluacion;
   v_sesion_id   UUID;
   v_estado      estado_sesion;
   v_es_nueva    BOOLEAN := FALSE;
 BEGIN
   -- 1. Verifica que la evaluación acepte respuestas
-  SELECT acepta_respuestas INTO v_acepta
-  FROM evaluacion
-  WHERE id = p_evaluacion_id;
+  SELECT ev.estado INTO v_estado_evaluacion
+  FROM evaluacion AS ev
+  WHERE ev.id = p_evaluacion_id;
 
-  IF v_acepta IS NULL THEN
+  IF v_estado_evaluacion IS NULL THEN
     RAISE EXCEPTION 'evaluacion_no_encontrada'
       USING HINT = 'La evaluación no existe';
   END IF;
 
-  IF NOT v_acepta THEN
+  IF v_estado_evaluacion <> 'abierto' THEN
     RAISE EXCEPTION 'evaluacion_cerrada'
       USING HINT = 'La evaluación no está aceptando respuestas';
   END IF;

@@ -93,7 +93,7 @@ describe("POST /api/facilitador/sesiones (iniciar sesión)", () => {
   });
 
   test("403 si la evaluación no está aceptando respuestas", async () => {
-    const evaluacion = await createEvaluacion({ aceptaRespuestas: false });
+    const evaluacion = await createEvaluacion({ estado: "cerrado" });
     const grupo = await createGrupo({ evaluacionId: evaluacion.id });
     const estudiante = await createEstudiante({ grupoId: grupo.id });
 
@@ -180,3 +180,4 @@ describe("PATCH /api/facilitador/sesiones/completar", () => {
     expect(res.status).toBe(409);
   });
 });
+

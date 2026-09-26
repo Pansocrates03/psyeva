@@ -3,14 +3,14 @@ import { resolveUrl } from "../../services/storageService";
 
 // GET /api/facilitador/reportes
 // Devuelve los reportes del colegio del facilitador,
-// solo cuando evaluacion.reportes_publicados = true.
+// solo cuando la evaluación está en estado publico.
 // Nunca devuelve reportes de otros colegios.
 //
 // Headers requeridos:
 //   X-Colegio-Id: uuid
 //
 // Query params opcionales:
-//   ?evaluacionId=uuid
+//   ?evaluacionId=uuid|codigo-corto
 //   ?tipo=individual|grupal|general
 //   ?grupoId=uuid
 export const facilitadorReportesRoutes = {
@@ -30,7 +30,7 @@ export const facilitadorReportesRoutes = {
         );
       }
 
-      // La visibilidad la controla evaluacion.reportes_publicados
+      // La visibilidad la controla evaluacion.estado
       // no un campo en la tabla reporte
       const reportes = await sql`
         SELECT
@@ -49,9 +49,9 @@ export const facilitadorReportesRoutes = {
         JOIN evaluacion ev ON ev.id = r.evaluacion_id
         LEFT JOIN grupo      g ON g.id = r.grupo_id
         LEFT JOIN estudiante e ON e.id = r.estudiante_id
-        WHERE ev.reportes_publicados = true
+        WHERE ev.estado = 'publico'
           AND ev.colegio_id          = ${colegioId}
-          AND (${evaluacionId}::uuid IS NULL OR r.evaluacion_id = ${evaluacionId}::uuid)
+          AND (${evaluacionId}::text IS NULL OR ev.codigo_acceso::text = upper(${evaluacionId}::text) OR ev.id::text = ${evaluacionId}::text)
           AND (${tipo}::text         IS NULL OR r.tipo          = ${tipo}::tipo_reporte)
           AND (${grupoId}::uuid      IS NULL OR r.grupo_id      = ${grupoId}::uuid)
         ORDER BY r.created_at DESC

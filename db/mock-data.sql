@@ -38,9 +38,9 @@ INSERT INTO pregunta (id, seccion_id, orden, texto, imagen_url) VALUES
   ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'f0000006-0000-0000-0000-000000000006', 1, '¿Logras organizar tu tiempo para estudiar?', NULL);
 
 -- EVALUACIONES
-INSERT INTO evaluacion (id, colegio_id, nombre, acepta_respuestas, reportes_publicados, fecha, created_at) VALUES
-  ('cccccccc-cccc-cccc-cccc-cccccccccccc', '11111111-1111-1111-1111-111111111111', 'Evaluación primer semestre 2026', TRUE, FALSE, '2026-03-15', '2026-02-01 09:00:00'),
-  ('dddddddd-dddd-dddd-dddd-dddddddddddd', '22222222-2222-2222-2222-222222222222', 'Evaluación segundo semestre 2026', TRUE, TRUE, '2026-06-15', '2026-05-01 09:00:00');
+INSERT INTO evaluacion (id, codigo_acceso, colegio_id, nombre, estado, fecha, created_at) VALUES
+  ('cccccccc-cccc-cccc-cccc-cccccccccccc', 'K7M4Q2', '11111111-1111-1111-1111-111111111111', 'Evaluación primer semestre 2026', 'abierto', '2026-03-15', '2026-02-01 09:00:00'),
+  ('dddddddd-dddd-dddd-dddd-dddddddddddd', 'R9X3PA', '22222222-2222-2222-2222-222222222222', 'Evaluación segundo semestre 2026', 'publico', '2026-06-15', '2026-05-01 09:00:00');
 
 -- GRUPOS
 INSERT INTO grupo (id, evaluacion_id, form_emociones_id, form_bienpsic_id, form_aprendizaje_id, nombre, created_at) VALUES
@@ -87,3 +87,4 @@ INSERT INTO reporte (id, tipo, evaluacion_id, grupo_id, estudiante_id, archivo_u
   ('c0c0c0c0-c0c0-c0c0-c0c0-c0c0c0c0c0c0', 'grupal', 'cccccccc-cccc-cccc-cccc-cccccccccccc', 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', NULL, 'https://example.com/reportes/grupo-a.pdf', '2026-03-20 10:00:00'),
   ('d0d0d0d0-d0d0-d0d0-d0d0-d0d0d0d0d0d0', 'individual', 'cccccccc-cccc-cccc-cccc-cccccccccccc', NULL, '10101010-1010-1010-1010-101010101010', 'https://example.com/reportes/ana-lopez.pdf', '2026-03-20 10:15:00'),
   ('e0e0e0e0-e0e0-e0e0-e0e0-e0e0e0e0e0e0', 'general', 'dddddddd-dddd-dddd-dddd-dddddddddddd', NULL, NULL, 'https://example.com/reportes/general-2026.pdf', '2026-06-20 10:30:00');
+

@@ -1,7 +1,7 @@
 import sql from "../../db";
 
 // GET    /api/admin/evaluaciones/:id  → detalle con grupos y KPIs
-// PATCH  /api/admin/evaluaciones/:id  → edita campos incluyendo acepta_respuestas y reportes_publicados
+// PATCH  /api/admin/evaluaciones/:id  → edita nombre, fecha o estado
 // DELETE /api/admin/evaluaciones/:id  → elimina si no tiene sesiones completadas
 export const evaluacionIdRoutes = {
 
@@ -47,10 +47,13 @@ export const evaluacionIdRoutes = {
     try {
       const id   = new URL(req.url).pathname.split("/").at(-1)!;
       const body = await req.json();
-      const { nombre, fecha, aceptaRespuestas, reportesPublicados } = body;
+      const { nombre, fecha, estado } = body;
 
-      if (nombre === undefined && fecha === undefined &&
-          aceptaRespuestas === undefined && reportesPublicados === undefined) {
+      if (estado !== undefined && !["cerrado", "abierto", "publico"].includes(estado)) {
+        return Response.json({ error: "estado debe ser cerrado, abierto o publico" }, { status: 400 });
+      }
+
+      if (nombre === undefined && fecha === undefined && estado === undefined) {
         return Response.json(
           { error: "Debes enviar al menos un campo a actualizar" },
           { status: 400 }
@@ -61,9 +64,8 @@ export const evaluacionIdRoutes = {
         UPDATE evaluacion
         SET
           nombre              = COALESCE(${nombre              ?? null}, nombre),
-          fecha               = COALESCE(${fecha               ?? null}::date, fecha),
-          acepta_respuestas   = COALESCE(${aceptaRespuestas    ?? null}::boolean, acepta_respuestas),
-          reportes_publicados = COALESCE(${reportesPublicados  ?? null}::boolean, reportes_publicados)
+          fecha               = COALESCE(${fecha  ?? null}::date, fecha),
+          estado              = COALESCE(${estado ?? null}::estado_evaluacion, estado)
         WHERE id = ${id}
         RETURNING *
       `;

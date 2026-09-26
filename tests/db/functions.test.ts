@@ -68,7 +68,7 @@ describe("iniciar_sesion()", () => {
   });
 
   test("lanza evaluacion_cerrada si la evaluación no acepta respuestas", async () => {
-    const evaluacion = await createEvaluacion({ aceptaRespuestas: false });
+    const evaluacion = await createEvaluacion({ estado: "cerrado" });
     const grupo = await createGrupo({ evaluacionId: evaluacion.id });
     const estudiante = await createEstudiante({ grupoId: grupo.id });
 
@@ -184,3 +184,4 @@ describe("completar_sesion()", () => {
     );
   });
 });
+

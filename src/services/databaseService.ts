@@ -7,6 +7,7 @@ import type {
   Evaluacion,
   EvaluacionConProgreso,
   EvaluacionParaFacilitador,
+  EstadoEvaluacion,
   Formulario,
   FormularioConSecciones,
   FormularioConTotalPreguntas,
@@ -277,7 +278,7 @@ class DatabaseService {
 
     actualizarEvaluacion: async (
       id: string,
-      cambios: Partial<{ nombre: string; fecha: string; aceptaRespuestas: boolean; reportesPublicados: boolean }>
+      cambios: Partial<{ nombre: string; fecha: string; estado: EstadoEvaluacion }>
     ): Promise<Evaluacion> => {
       const { data } = await this.patch<ApiEnvelope<Evaluacion>>(
         `/api/admin/evaluaciones/${id}`,
@@ -295,15 +296,13 @@ class DatabaseService {
       return data;
     },
 
-    // campo="aceptaRespuestas"|"reportesPublicados"; sin `valor` hace toggle
     cambiarEstadoEvaluacion: async (
       id: string,
-      campo: "cerrado" | "abierto" | "publico",
-      valor?: boolean
+      estado: EstadoEvaluacion
     ): Promise<{ evaluacion: Evaluacion; mensaje: string }> => {
       const { data, mensaje } = await this.patch<ApiEnvelope<Evaluacion>>(
         `/api/admin/evaluaciones/${id}/estado`,
-        { campo, valor },
+        { estado },
         { conColegio: false }
       );
       return { evaluacion: data, mensaje: mensaje ?? "" };
@@ -485,12 +484,14 @@ class DatabaseService {
       return data;
     },
 
-    // Entra directo con el link /e/:id (sin clave de acceso) —
-    // el propio id de la evaluación funciona como el "secreto" del link.
-    // Se usa para APLICAR la encuesta.
-    entrarPorEvaluacion: async (evaluacionId: string): Promise<EvaluacionParaFacilitador> => {
-      const data = await this.facilitador.obtenerInfoEvaluacion(evaluacionId);
-      this.guardarSesionFacilitador(data.colegioId, btoa(data.colegioId));
+    // El código corto localiza la evaluación; la clave del colegio verifica el acceso.
+    entrarPorEvaluacion: async (evaluacionId: string, claveAcceso: string): Promise<EvaluacionParaFacilitador> => {
+      const { data } = await this.post<ApiEnvelope<EvaluacionParaFacilitador & { colegioId: string; token: string }>>(
+        `/api/facilitador/evaluaciones/${evaluacionId}`,
+        { claveAcceso },
+        { conColegio: false }
+      );
+      this.guardarSesionFacilitador(data.colegioId, data.token);
       return data;
     },
 

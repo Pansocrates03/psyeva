@@ -10,11 +10,11 @@ import COLORS from "../utils/Colors";
 import { databaseService, ApiError } from "../services/databaseService";
 import type { ColegioConTotalEvaluaciones, EvaluacionConProgreso } from "../utils/types";
 
-type Filtro = "todos" | "aceptando" | "publicadas";
+type Filtro = "todos" | "cerradas" | "abiertas" | "publicas";
 
 function estadoDe(evaluacion: EvaluacionConProgreso) {
-  if (evaluacion.aceptaRespuestas) return "activo" as const;
-  if (evaluacion.reportesPublicados) return "archivado" as const;
+  if (evaluacion.estado === "abierto") return "activo" as const;
+  if (evaluacion.estado === "publico") return "archivado" as const;
   return "sin_iniciar" as const;
 }
 
@@ -57,11 +57,13 @@ export default function MisAnalisis() {
 
   useEffect(cargarEvaluaciones, []);
 
-  const aceptando = evaluaciones.filter(e => e.aceptaRespuestas);
-  const publicadas = evaluaciones.filter(e => e.reportesPublicados);
+  const cerradas = evaluaciones.filter(e => e.estado === "cerrado");
+  const abiertas = evaluaciones.filter(e => e.estado === "abierto");
+  const publicas = evaluaciones.filter(e => e.estado === "publico");
 
-  const filtradas = filtro === "aceptando" ? aceptando
-                   : filtro === "publicadas" ? publicadas
+  const filtradas = filtro === "cerradas" ? cerradas
+                   : filtro === "abiertas" ? abiertas
+                   : filtro === "publicas" ? publicas
                    : evaluaciones;
 
   const abrirCrearModal = () => {
@@ -99,19 +101,19 @@ export default function MisAnalisis() {
 
   const cerrarEvaluacion = async (id: string) => {
     try {
-      await databaseService.admin.cambiarEstadoEvaluacion(id, "abierto", false);
+      await databaseService.admin.cambiarEstadoEvaluacion(id, "cerrado");
       cargarEvaluaciones();
     } catch (err) {
       alert(err instanceof ApiError ? err.message : "No se pudo cerrar la evaluación");
     }
   };
 
-  const copiarEnlace = async (id: string, tipo: "evaluacion" | "reportes") => {
-    const url = `${window.location.origin}/${tipo === "evaluacion" ? "evaluacion" : "reportes"}/${id}`;
+  const copiarEnlace = async (item: EvaluacionConProgreso, tipo: "evaluacion" | "reportes") => {
+    const url = `${window.location.origin}/${tipo === "evaluacion" ? "e" : "reportes"}/${item.codigoAcceso}`;
     try {
       await navigator.clipboard.writeText(url);
-      setCopiado({ id, tipo });
-      setTimeout(() => setCopiado(current => current?.id === id && current.tipo === tipo ? null : current), 2000);
+      setCopiado({ id: item.evaluacionId, tipo });
+      setTimeout(() => setCopiado(current => current?.id === item.evaluacionId && current.tipo === tipo ? null : current), 2000);
     } catch {
       alert(`No se pudo copiar automáticamente. Enlace:\n${url}`);
     }
@@ -150,8 +152,9 @@ export default function MisAnalisis() {
 
         <div style={{ display: "flex", gap: 12, marginBottom: 28 }}>
           <StatCard label="Todas" value={evaluaciones.length} onClick={() => setFiltro("todos")} accent={filtro === "todos"} />
-          <StatCard label="Evaluaciones abiertas" value={aceptando.length} onClick={() => setFiltro("aceptando")} accent={filtro === "aceptando"} />
-          <StatCard label="Evaluaciones publicadas" value={publicadas.length} onClick={() => setFiltro("publicadas")} accent={filtro === "publicadas"} />
+          <StatCard label="Evaluaciones cerradas" value={cerradas.length} onClick={() => setFiltro("cerradas")} accent={filtro === "cerradas"} />
+          <StatCard label="Evaluaciones abiertas" value={abiertas.length} onClick={() => setFiltro("abiertas")} accent={filtro === "abiertas"} />
+          <StatCard label="Evaluaciones públicas" value={publicas.length} onClick={() => setFiltro("publicas")} accent={filtro === "publicas"} />
         </div>
 
         <div style={{
@@ -217,14 +220,14 @@ export default function MisAnalisis() {
                       <ActionButton
                         label={copiado?.id === item.evaluacionId && copiado.tipo === "evaluacion" ? "¡Copiado!" : "Link encuesta"}
                         icon="ti-link"
-                        onClick={() => copiarEnlace(item.evaluacionId, "evaluacion")}
+                        onClick={() => copiarEnlace(item, "evaluacion")}
                       />
                       <ActionButton
                         label={copiado?.id === item.evaluacionId && copiado.tipo === "reportes" ? "¡Copiado!" : "Link reportes"}
                         icon="ti-file-download"
-                        onClick={() => copiarEnlace(item.evaluacionId, "reportes")}
+                        onClick={() => copiarEnlace(item, "reportes")}
                       />
-                      {item.aceptaRespuestas
+                      {item.estado === "abierto"
                         ? <ActionButton label="Cerrar" variant="archive" onClick={() => cerrarEvaluacion(item.evaluacionId)} />
                         : <ActionButton label="Eliminar" variant="danger" onClick={() => eliminarEvaluacion(item.evaluacionId)} />
                       }

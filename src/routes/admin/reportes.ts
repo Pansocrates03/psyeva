@@ -9,7 +9,7 @@ import { uploadFile, getObjectUrl, resolveUrl } from "../../services/storageServ
 //   ?tipo=individual|grupal|general
 //
 // Nota: la visibilidad de reportes ya no es por reporte individual
-// sino por evaluacion.reportes_publicados. Este endpoint
+// sino por evaluacion.estado. Este endpoint
 // solo lo usa el administrador para gestionar los PDFs.
 export const reportesRoutes = {
 
@@ -27,8 +27,7 @@ export const reportesRoutes = {
           r.created_at,
           ev.id     AS evaluacion_id,
           ev.nombre AS evaluacion_nombre,
-          ev.acepta_respuestas,
-          ev.reportes_publicados,
+          ev.estado,
           c.nombre  AS colegio_nombre,
           g.id      AS grupo_id,
           g.nombre  AS grupo_nombre,

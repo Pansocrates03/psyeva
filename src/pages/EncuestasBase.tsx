@@ -383,7 +383,7 @@ export default function EncuestasBase() {
         </div>
 
         <div style={{ display: "flex", gap: 12, marginBottom: 24 }}>
-          <StatCard label="Total de encuestas" accent={filter === "Todas"} onClick={() => setFilter("Todas")} value={encuestas.length} />
+          <StatCard label="Todas las encuestas" accent={filter === "Todas"} onClick={() => setFilter("Todas")} value={encuestas.length} />
           {CATEGORIAS.map(categoria => (
             <StatCard
               key={categoria}

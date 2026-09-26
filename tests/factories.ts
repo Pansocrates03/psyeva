@@ -19,9 +19,9 @@ export const mock = {
   preguntaAprendizaje1: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
   preguntaAprendizaje2: "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
 
-  // acepta_respuestas = true, reportes_publicados = false
+  // estado = abierto
   evaluacionSanJose: "cccccccc-cccc-cccc-cccc-cccccccccccc",
-  // acepta_respuestas = true, reportes_publicados = true
+  // estado = publico
   evaluacionLiceo: "dddddddd-dddd-dddd-dddd-dddddddddddd",
 
   grupoA: "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee",
@@ -85,17 +85,15 @@ export async function createEvaluacion(overrides: Partial<{
   colegioId: string;
   nombre: string;
   fecha: string;
-  aceptaRespuestas: boolean;
-  reportesPublicados: boolean;
+  estado: "cerrado" | "abierto" | "publico";
 }> = {}) {
   const [row] = await sql`
-    INSERT INTO evaluacion (colegio_id, nombre, fecha, acepta_respuestas, reportes_publicados)
+    INSERT INTO evaluacion (colegio_id, nombre, fecha, estado)
     VALUES (
       ${overrides.colegioId ?? mock.colegioSanJose},
       ${overrides.nombre ?? `Evaluación Test ${randomUUID()}`},
       ${overrides.fecha ?? "2026-04-01"},
-      ${overrides.aceptaRespuestas ?? false},
-      ${overrides.reportesPublicados ?? false}
+      ${(overrides.estado ?? "cerrado")}::estado_evaluacion
     )
     RETURNING *
   `;

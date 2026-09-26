@@ -1,6 +1,7 @@
 export type CategoriaFormulario = "aprendizaje" | "bienestar_psicologico" | "emociones";
 export type EstadoSesion = "pendiente" | "en_progreso" | "completada";
 export type TipoReporte = "individual" | "grupal" | "general";
+export type EstadoEvaluacion = "cerrado" | "abierto" | "publico";
 
 // ── Filas de tabla (tal como las devuelve la API, camelCase) ───
 
@@ -13,10 +14,9 @@ export interface Colegio {
 
 export interface Evaluacion {
   id: string;
-  colegioId: string;
+  colegioId?: string;
   nombre: string;
-  aceptaRespuestas: boolean;
-  reportesPublicados: boolean;
+  estado: EstadoEvaluacion;
   fecha: string;
   createdAt: string;
 }
@@ -146,10 +146,10 @@ export interface Respuesta {
 
 export interface EvaluacionConProgreso {
   evaluacionId: string;
+  codigoAcceso: string;
   nombre: string;
   fecha: string;
-  aceptaRespuestas: boolean;
-  reportesPublicados: boolean;
+  estado: EstadoEvaluacion;
   colegioId: string;
   colegioNombre: string;
   totalGrupos: string;
@@ -159,14 +159,12 @@ export interface EvaluacionConProgreso {
   totalReportes: string;
 }
 
-// Respuesta de GET /api/facilitador/evaluaciones/:id — lo mínimo para
-// resolver el link /e/:id sin pedir clave de acceso.
+// Respuesta de POST /api/facilitador/evaluaciones/:id — tras verificar la clave.
 export interface EvaluacionParaFacilitador {
   evaluacionId: string;
   nombre: string;
-  aceptaRespuestas: boolean;
-  reportesPublicados: boolean;
-  colegioId: string;
+  estado: EstadoEvaluacion;
+  colegioId?: string;
   colegioNombre: string;
 }
 

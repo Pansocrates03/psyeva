@@ -303,7 +303,7 @@ export default function Reportes() {
     );
   }
 
-  if (!info.reportesPublicados) {
+  if (info.estado !== "publico") {
     return (
       <CentroPagina>
         <div style={cardStyle}>

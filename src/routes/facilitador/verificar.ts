@@ -44,15 +44,14 @@ export const verificarRoutes = {
           evaluacion_id,
           nombre,
           fecha,
-          acepta_respuestas,
-          reportes_publicados,
+          estado,
           total_grupos,
           total_alumnos,
           sesiones_completadas,
           sesiones_pendientes
         FROM vista_progreso_evaluacion
         WHERE colegio_id = ${colegio.id}
-          AND (acepta_respuestas = true OR reportes_publicados = true)
+          AND estado <> 'cerrado'
         ORDER BY fecha DESC
       `;
 

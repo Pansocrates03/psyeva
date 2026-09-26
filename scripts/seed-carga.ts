@@ -116,8 +116,8 @@ async function main() {
   `;
   const formularioId = await crearFormulario();
   const [evaluacion] = await sql`
-    INSERT INTO evaluacion (colegio_id, nombre, acepta_respuestas, fecha)
-    VALUES (${colegio.id}, 'Evaluación de carga', TRUE, CURRENT_DATE)
+    INSERT INTO evaluacion (colegio_id, nombre, estado, fecha)
+    VALUES (${colegio.id}, 'Evaluación de carga', 'abierto', CURRENT_DATE)
     RETURNING id
   `;
   const [grupo] = await sql`

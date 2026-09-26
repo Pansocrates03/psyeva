@@ -34,7 +34,7 @@ describe("GET /api/facilitador/grupos", () => {
   });
 
   test("403 si la evaluación no está aceptando respuestas", async () => {
-    const evaluacion = await createEvaluacion({ colegioId: mock.colegioSanJose, aceptaRespuestas: false });
+    const evaluacion = await createEvaluacion({ colegioId: mock.colegioSanJose, estado: "cerrado" });
     const res = await get(
       { evaluacionId: evaluacion.id },
       { "X-Colegio-Id": mock.colegioSanJose }
@@ -76,3 +76,4 @@ describe("GET /api/facilitador/grupos", () => {
     expect(Number(grupoA.sesionesCompletadas)).toBe(3);
   });
 });
+

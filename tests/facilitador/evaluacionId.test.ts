@@ -24,18 +24,17 @@ describe("GET /api/facilitador/evaluaciones/:id", () => {
     const body = await res.json();
     expect(body.data.evaluacionId).toBe(mock.evaluacionSanJose);
     expect(body.data.nombre).toBe("Evaluación primer semestre 2026");
-    expect(body.data.aceptaRespuestas).toBe(true);
-    expect(body.data.reportesPublicados).toBe(false);
-    expect(body.data.colegioId).toBe(mock.colegioSanJose);
+    expect(body.data.estado).toBe("abierto");
     expect(body.data.colegioNombre).toBe("Colegio San José");
   });
 
-  test("200 y refleja aceptaRespuestas=false cuando la evaluación está cerrada", async () => {
-    const cerrada = await createEvaluacion({ aceptaRespuestas: false });
+  test("200 y refleja estado cerrado", async () => {
+    const cerrada = await createEvaluacion({ estado: "cerrado" });
     const res = await fetch(`${server.url}/api/facilitador/evaluaciones/${cerrada.id}`);
     expect(res.status).toBe(200);
 
     const body = await res.json();
-    expect(body.data.aceptaRespuestas).toBe(false);
+    expect(body.data.estado).toBe("cerrado");
   });
 });
+

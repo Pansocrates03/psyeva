@@ -4,6 +4,35 @@
 
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
+CREATE OR REPLACE FUNCTION random_string(length integer)
+RETURNS TEXT AS $$
+DECLARE
+    chars text[] := '{a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z}';
+    result text := '';
+    i integer;
+BEGIN
+    FOR i IN 1..length LOOP
+        result := result || chars[1 + floor(random() * array_length(chars, 1))::integer];
+    END LOOP;
+    RETURN result;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION codigo_evaluacion_aleatorio()
+RETURNS TEXT AS $$
+DECLARE
+  caracteres CONSTANT TEXT := 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  aleatorios BYTEA := gen_random_bytes(6);
+  resultado TEXT := '';
+  i INTEGER;
+BEGIN
+  FOR i IN 0..5 LOOP
+    resultado := resultado || substr(caracteres, (get_byte(aleatorios, i) & 31) + 1, 1);
+  END LOOP;
+  RETURN resultado;
+END;
+$$ LANGUAGE plpgsql VOLATILE;
+
 -- ============================================================
 -- ENUMS
 -- ============================================================
@@ -19,6 +48,8 @@ CREATE TYPE estado_sesion AS ENUM (
   'en_progreso',
   'completada'
 );
+
+CREATE TYPE estado_evaluacion AS ENUM ('cerrado', 'abierto', 'publico');
 
 CREATE TYPE tipo_reporte AS ENUM (
   'individual',
@@ -44,7 +75,7 @@ COMMENT ON COLUMN colegio.clave_acceso IS 'Clave compartida con el facilitador p
 -- FORMULARIO
 -- Catálogo base de encuestas — independiente de colegios.
 -- Se elimina el campo "activo" ya que el control de acceso
--- ahora lo maneja evaluacion.acepta_respuestas.
+-- ahora lo maneja evaluacion.estado.
 -- ============================================================
 
 CREATE TABLE formulario (
@@ -132,28 +163,24 @@ COMMENT ON COLUMN pregunta.orden      IS 'Posición de la pregunta dentro de su 
 -- EVALUACION (antes: analisis)
 -- Instancia de evaluación de un colegio en un periodo.
 --
--- acepta_respuestas: controla si los alumnos pueden responder.
---   El administrador lo activa cuando la evaluación está lista
---   y lo desactiva al cerrar el periodo.
---
--- reportes_publicados: controla si el facilitador puede ver
---   y descargar los reportes. Se activa una vez que PSYEVA
---   ha subido y revisado todos los reportes.
+-- estado: cerrado no permite responder ni ver reportes; abierto permite
+-- responder; publico permite consultar los reportes publicados.
 -- ============================================================
 
 CREATE TABLE evaluacion (
   id                  UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+  codigo_acceso       CHAR(6)      NOT NULL UNIQUE DEFAULT codigo_evaluacion_aleatorio(),
   colegio_id          UUID         NOT NULL REFERENCES colegio(id) ON DELETE RESTRICT,
   nombre              VARCHAR(255) NOT NULL,
-  acepta_respuestas   BOOLEAN      NOT NULL DEFAULT FALSE,
-  reportes_publicados BOOLEAN      NOT NULL DEFAULT FALSE,
+  estado              estado_evaluacion NOT NULL DEFAULT 'cerrado',
   fecha               DATE         NOT NULL,
   created_at          TIMESTAMP    NOT NULL DEFAULT NOW()
 );
 
+COMMENT ON COLUMN evaluacion.codigo_acceso IS 'Código corto público para compartir enlaces; no es un mecanismo de autenticación.';
+
 COMMENT ON TABLE  evaluacion                     IS 'Instancia de evaluación de un colegio en un periodo específico.';
-COMMENT ON COLUMN evaluacion.acepta_respuestas   IS 'TRUE = alumnos pueden responder. El admin lo activa/desactiva.';
-COMMENT ON COLUMN evaluacion.reportes_publicados IS 'TRUE = facilitador puede ver y descargar los reportes.';
+COMMENT ON COLUMN evaluacion.estado IS 'Ciclo de vida: cerrado, abierto o publico.';
 
 -- ============================================================
 -- GRUPO
@@ -237,7 +264,7 @@ COMMENT ON COLUMN respuesta.texto_libre IS 'Texto de la opción seleccionada, co
 -- REPORTE
 -- Tres tipos: individual, grupal, general.
 -- La visibilidad ya no es por reporte sino por evaluacion
--- a través de evaluacion.reportes_publicados.
+-- a través de evaluacion.estado = 'publico'.
 -- ============================================================
 
 CREATE TABLE reporte (
@@ -276,8 +303,7 @@ COMMENT ON COLUMN reporte.estudiante_id IS 'Solo para tipo=individual.';
 
 -- Evaluaciones por colegio
 CREATE INDEX idx_evaluacion_colegio        ON evaluacion(colegio_id);
-CREATE INDEX idx_evaluacion_acepta         ON evaluacion(acepta_respuestas)   WHERE acepta_respuestas = TRUE;
-CREATE INDEX idx_evaluacion_publicados     ON evaluacion(reportes_publicados) WHERE reportes_publicados = TRUE;
+CREATE INDEX idx_evaluacion_estado         ON evaluacion(estado);
 
 -- Grupos por evaluación
 CREATE INDEX idx_grupo_evaluacion          ON grupo(evaluacion_id);

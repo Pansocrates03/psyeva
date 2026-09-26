@@ -34,7 +34,7 @@ export const facilitadorGruposRoutes = {
 
       // Verifica pertenencia al colegio y que acepte respuestas
       const [evaluacion] = await sql`
-        SELECT id, nombre, fecha, acepta_respuestas, reportes_publicados
+        SELECT id, nombre, fecha, estado
         FROM evaluacion
         WHERE id         = ${evaluacionId}
           AND colegio_id = ${colegioId}
@@ -47,7 +47,7 @@ export const facilitadorGruposRoutes = {
         );
       }
 
-      if (!evaluacion.aceptaRespuestas) {
+      if (evaluacion.estado !== "abierto") {
         return Response.json(
           { error: "Esta evaluación no está aceptando respuestas" },
           { status: 403 }
