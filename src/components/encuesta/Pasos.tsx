@@ -26,11 +26,11 @@ export const cardBodyStyle: React.CSSProperties = {
   padding: "20px 24px 24px",
 };
 
-export function BienvenidaStep({ onContinue }: { onContinue: () => void }) {
+export function BienvenidaStep({ onContinue, loading = false }: { onContinue: () => void; loading?: boolean }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
       <img
-        src="/assets/eva_2.png"
+        src="/assets/eva_bebe.png"
         alt="Bienvenida"
         style={{
           display: "block",
@@ -40,7 +40,7 @@ export function BienvenidaStep({ onContinue }: { onContinue: () => void }) {
         }}
       />
       <div style={{ width: 180 }}>
-        <BtnPrimario label="Siguiente" onClick={onContinue} />
+        <BtnPrimario label={loading ? "Cargando..." : "Siguiente"} onClick={onContinue} disabled={loading} />
       </div>
     </div>
   );
@@ -131,10 +131,9 @@ export function SeleccionarGrupoStep({ escuela, grupos, onBack, onContinue }: {
       <LogoHeader escuela={escuela} />
       <div style={cardBodyStyle}>
         <h2 style={{ margin: "0 0 4px", fontSize: 17, fontWeight: 600, color: COLORS.neutro900 }}>
-          Selecciona el grupo
+          Da click en tu grupo
         </h2>
         <p style={{ margin: "0 0 18px", fontSize: 13, color: COLORS.neutro500 }}>
-          Toca el grupo que va a realizar la evaluación hoy.
         </p>
         {grupos.length === 0 ? (
           <p style={{ margin: "0 0 20px", fontSize: 13, color: COLORS.neutro400, textAlign: "center" }}>
@@ -186,7 +185,7 @@ export function SeleccionarFormularioStep({ escuela, grupo, onBack, onContinue }
       <LogoHeader escuela={escuela} grupo={grupo.grupoNombre} />
       <div style={cardBodyStyle}>
         <h2 style={{ margin: "0 0 4px", fontSize: 17, fontWeight: 600, color: COLORS.neutro900 }}>Área a evaluar</h2>
-        <p style={{ margin: "0 0 18px", fontSize: 13, color: COLORS.neutro500 }}>Toca el formulario que van a responder hoy.</p>
+        <p style={{ margin: "0 0 18px", fontSize: 13, color: COLORS.neutro500 }}>Selecciona la prueba que indique tu maestra o maestro</p>
         {disponibles.length === 0 ? (
           <p style={{ margin: "0 0 20px", fontSize: 13, color: COLORS.neutro400, textAlign: "center" }}>
             Este grupo no tiene encuestas asignadas todavía.
@@ -244,8 +243,8 @@ export function SeleccionarAlumnoStep({ escuela, grupo, formulario, estudiantes,
     <div style={{ ...cardStyle, width: 420 }}>
       <LogoHeader escuela={escuela} grupo={`${grupo.grupoNombre} · ${CATEGORIA_LABELS[formulario.categoria]}`} />
       <div style={cardBodyStyle}>
-        <h2 style={{ margin: "0 0 4px", fontSize: 17, fontWeight: 600, color: COLORS.neutro900 }}>¿Quién va a responder?</h2>
-        <p style={{ margin: "0 0 14px", fontSize: 13, color: COLORS.neutro500 }}>{pendientes.length} alumnos pendientes · toca un nombre para seleccionar.</p>
+        <h2 style={{ margin: "0 0 4px", fontSize: 17, fontWeight: 600, color: COLORS.neutro900 }}>¿Cuál es tu nombre?</h2>
+        <p style={{ margin: "0 0 14px", fontSize: 13, color: COLORS.neutro500 }}></p>
         <div style={{ border: `1px solid ${COLORS.neutro100}`, borderRadius: 12, overflow: "hidden", marginBottom: 18, maxHeight: 340, overflowY: "auto" }}>
           {pendientes.length === 0 ? (
             <div style={{ padding: "28px", textAlign: "center" as const, fontSize: 14, color: COLORS.neutro400 }}>Todos los alumnos han completado esta encuesta ✓</div>

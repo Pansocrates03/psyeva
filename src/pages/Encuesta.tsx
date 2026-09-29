@@ -3,7 +3,7 @@ import { useParams } from "react-router-dom";
 import COLORS from "@/utils/Colors";
 import Reactivo from "./Reactivo";
 import { databaseService, ApiError } from "@/services/databaseService";
-import type { EstudianteConEstado, GrupoConProgreso, PreguntaSesion } from "@/utils/types";
+import type { CategoriaFormulario, EstudianteConEstado, GrupoConProgreso, PreguntaSesion } from "@/utils/types";
 import {
   cardBodyStyle,
   cardStyle,
@@ -25,7 +25,6 @@ interface EvaluacionActiva {
 
 type Seccion =
   | "bienvenida"
-  | "verificacion"
   | "seleccionarGrupo"
   | "seleccionarFormulario"
   | "seleccionarAlumno"
@@ -39,9 +38,22 @@ interface SesionActiva {
   preguntas: PreguntaSesion[];
 }
 
+const FONDOS_POR_CATEGORIA: Record<CategoriaFormulario, { base: string; brillo: string; sombra: string }> = {
+  emociones: { base: COLORS.violeta50, brillo: "#E5DAFF", sombra: "#F8F5FF" },
+  bienestar_psicologico: { base: COLORS.verde50, brillo: "#DDF4C5", sombra: "#F7FCEF" },
+  aprendizaje: { base: COLORS.azul50, brillo: "#CDEBFF", sombra: "#F3FAFF" },
+};
+
+function crearFondoMagico(categoria: CategoriaFormulario) {
+  const colores = FONDOS_POR_CATEGORIA[categoria];
+  return `radial-gradient(ellipse at 15% 20%, ${colores.brillo} 0%, transparent 48%), radial-gradient(ellipse at 85% 80%, ${colores.sombra} 0%, transparent 50%), linear-gradient(135deg, ${colores.base} 0%, ${colores.sombra} 100%)`;
+}
+
 export default function Encuesta() {
   const { id: evaluacionIdParam } = useParams<{ id?: string }>();
   const [seccion, setSeccion] = useState<Seccion>("bienvenida");
+  const [estadoValidacion, setEstadoValidacion] = useState<"cargando" | "lista" | "error">("cargando");
+  const [reintentoValidacion, setReintentoValidacion] = useState(0);
   const [escuela, setEscuela] = useState("");
   const [evaluacionActiva, setEvaluacionActiva] = useState<EvaluacionActiva | null>(null);
   const [grupos, setGrupos] = useState<GrupoConProgreso[]>([]);
@@ -56,39 +68,62 @@ export default function Encuesta() {
   const [enviando, setEnviando] = useState(false);
   const [avanzando, setAvanzando] = useState(false);
   const [pasoError, setPasoError] = useState<string | null>(null);
-  const [resolviendoLink, setResolviendoLink] = useState(false);
+  const [cargandoGrupos, setCargandoGrupos] = useState(false);
   const [linkError, setLinkError] = useState<string | null>(null);
 
-  const PASOS: Seccion[] = ["verificacion", "seleccionarGrupo", "seleccionarFormulario", "seleccionarAlumno"];
+  const PASOS: Seccion[] = ["bienvenida", "seleccionarGrupo", "seleccionarFormulario", "seleccionarAlumno"];
   const pasoActual = PASOS.indexOf(seccion);
+  const fondoEncuesta = formulario ? crearFondoMagico(formulario.categoria) : undefined;
 
   const reiniciar = () => {
     setSeccion("bienvenida");
-    setEscuela(""); setEvaluacionActiva(null); setGrupos([]);
     setGrupo(null); setFormulario(null); setEstudiantes([]); setAlumno(null);
     setSesion(null); setIndexActual(0); setRespuestasLocal({});
   };
 
-  const handleVerificado = async (colegioNombre: string, evaluacion: EvaluacionActiva) => {
-    setEscuela(colegioNombre); setEvaluacionActiva(evaluacion); setPasoError(null);
+  useEffect(() => {
+    let vigente = true;
+    setEstadoValidacion("cargando");
+    setLinkError(null);
+
+    if (!evaluacionIdParam) {
+      setLinkError("No se indicó qué evaluación abrir.");
+      setEstadoValidacion("error");
+      return () => { vigente = false; };
+    }
+
+    databaseService.facilitador.entrarPorEvaluacion(evaluacionIdParam)
+      .then(evaluacion => {
+        if (!vigente) return;
+        if (evaluacion.estado !== "abierto") {
+          setLinkError("Esta evaluación no está aceptando respuestas.");
+          setEstadoValidacion("error");
+          return;
+        }
+        setEscuela(evaluacion.colegioNombre);
+        setEvaluacionActiva(evaluacion);
+        setEstadoValidacion("lista");
+      })
+      .catch(err => {
+        if (!vigente) return;
+        setLinkError(err instanceof ApiError ? err.message : "No se pudo verificar esta evaluación.");
+        setEstadoValidacion("error");
+      });
+
+    return () => { vigente = false; };
+  }, [evaluacionIdParam, reintentoValidacion]);
+
+  const handleContinuarBienvenida = async () => {
+    if (!evaluacionActiva) return;
+    setCargandoGrupos(true);
+    setPasoError(null);
     try {
-      const { grupos } = await databaseService.facilitador.listarGrupos(evaluacion.evaluacionId);
+      const { grupos } = await databaseService.facilitador.listarGrupos(evaluacionActiva.evaluacionId);
       setGrupos(grupos); setSeccion("seleccionarGrupo");
     } catch (err) {
       setPasoError(err instanceof ApiError ? err.message : "No se pudieron cargar los grupos");
-    }
-  };
-
-  const entrarAEncuesta = async () => {
-    if (!evaluacionIdParam) return;
-    setResolviendoLink(true); setLinkError(null);
-    try {
-      const evaluacion = await databaseService.facilitador.entrarPorEvaluacion(evaluacionIdParam);
-      await handleVerificado(evaluacion.colegioNombre, evaluacion);
-    } catch (err) {
-      setLinkError(err instanceof ApiError ? err.message : "No se pudo verificar el acceso a esta evaluación.");
     } finally {
-      setResolviendoLink(false);
+      setCargandoGrupos(false);
     }
   };
 
@@ -197,29 +232,34 @@ export default function Encuesta() {
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "100vh", background: `linear-gradient(135deg, ${COLORS.violeta50} 0%, ${COLORS.neutro50} 60%, ${COLORS.azul50} 100%)`, fontFamily: "system-ui, -apple-system, sans-serif" }}>
-      <>
-        {(seccion === "verificacion" || seccion === "seleccionarGrupo" || seccion === "seleccionarFormulario" || seccion === "seleccionarAlumno") && <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 24 }}>
+    <div className={fondoEncuesta ? "encuesta-fondo-magico" : undefined} style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "100vh", background: fondoEncuesta ?? `linear-gradient(135deg, ${COLORS.violeta50} 0%, ${COLORS.neutro50} 60%, ${COLORS.azul50} 100%)`, fontFamily: "system-ui, -apple-system, sans-serif" }}>
+      {estadoValidacion !== "lista" ? (
+        <div style={{ ...cardStyle, maxWidth: "calc(100vw - 32px)" }}>
+          <LogoHeader />
+          <div style={cardBodyStyle}>
+            <p style={{ margin: 0, fontSize: 14, color: estadoValidacion === "error" ? COLORS.rojo400 : COLORS.neutro700, textAlign: "center" }}>
+              {estadoValidacion === "cargando" ? "Verificando que la evaluación esté disponible..." : linkError}
+            </p>
+            {estadoValidacion === "error" && <button onClick={() => setReintentoValidacion(value => value + 1)} style={{ width: "100%", marginTop: 16, padding: 11, border: 0, borderRadius: 8, background: COLORS.violeta400, color: "white", fontWeight: 600, cursor: "pointer" }}>Reintentar</button>}
+          </div>
+        </div>
+      ) : <>
+        {(seccion === "bienvenida" || seccion === "seleccionarGrupo" || seccion === "seleccionarFormulario" || seccion === "seleccionarAlumno") && <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 24 }}>
           {PASOS.map((s, i) => { const activo = s === seccion; const completado = PASOS.indexOf(s) < pasoActual; return <React.Fragment key={s}>
             <div style={{ width: 28, height: 28, borderRadius: "50%", background: completado ? COLORS.verde400 : activo ? COLORS.violeta400 : COLORS.neutro100, color: completado || activo ? "#fff" : COLORS.neutro400, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 600 }}>{completado ? <svg width="12" height="10" viewBox="0 0 12 10" fill="none"><path d="M1 5L4.5 8.5L11 1.5" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg> : i + 1}</div>
             {i < PASOS.length - 1 && <div style={{ width: 28, height: 2, borderRadius: 2, background: completado ? COLORS.verde400 : COLORS.neutro100 }} />}
           </React.Fragment>; })}
         </div>}
         {pasoError && <p style={{ marginBottom: 12, fontSize: 13, color: COLORS.rojo400, textAlign: "center" }}>{pasoError}</p>}
-        {seccion === "bienvenida" && <BienvenidaStep onContinue={() => setSeccion("verificacion")} />}
-        {seccion === "verificacion" && <div style={cardStyle}><LogoHeader /><div style={cardBodyStyle}>
-          <p style={{ margin: "0 0 12px", fontSize: 14, color: COLORS.neutro700 }}>Continúa para ingresar a la encuesta.</p>
-          {linkError && <p style={{ margin: "0 0 12px", fontSize: 13, color: COLORS.rojo400 }}>{linkError}</p>}
-          <button onClick={() => void entrarAEncuesta()} disabled={resolviendoLink} style={{ width: "100%", padding: 11, border: 0, borderRadius: 8, background: COLORS.violeta400, color: "white", fontWeight: 600, cursor: "pointer", opacity: resolviendoLink ? 0.6 : 1 }}>{resolviendoLink ? "Preparando encuesta..." : "Entrar a la encuesta"}</button>
-        </div></div>}
+        {seccion === "bienvenida" && <BienvenidaStep onContinue={() => void handleContinuarBienvenida()} loading={cargandoGrupos} />}
         {seccion === "seleccionarGrupo" && <SeleccionarGrupoStep escuela={escuela} grupos={grupos} onBack={reiniciar} onContinue={handleSeleccionarGrupo} />}
         {seccion === "seleccionarFormulario" && grupo && <SeleccionarFormularioStep escuela={escuela} grupo={grupo} onBack={() => setSeccion("seleccionarGrupo")} onContinue={handleSeleccionarFormulario} />}
         {seccion === "seleccionarAlumno" && grupo && formulario && <SeleccionarAlumnoStep escuela={escuela} grupo={grupo} formulario={formulario} estudiantes={estudiantes} onBack={() => setSeccion("seleccionarFormulario")} onContinue={handleSeleccionarAlumno} />}
         {seccion === "confirmacion" && alumno && formulario && <ConfirmacionStep alumno={alumno} formulario={formulario} iniciando={iniciando} onIniciar={handleIniciar} />}
         {seccion === "instruccion" && sesion && preguntaActual && alumno && <InstruccionStep key={preguntaActual.id} pregunta={preguntaActual} nombreEstudiante={alumno.nombreCompleto} onContinue={continuarInstruccion} />}
-        {seccion === "respondiendo" && sesion && preguntaActual && alumno && <div style={{ width: "100%" }}><Reactivo pregunta={preguntaActual.texto} imagenUrl={preguntaActual.imagenUrl ?? undefined} instruccionTexto={preguntaActual.instruccionTexto ?? undefined} instruccionImagenUrl={preguntaActual.instruccionImagenUrl ?? undefined} opciones={preguntaActual.opcionesRespuesta.map(o => ({ label: o.texto, value: o.valor }))} numeroPregunta={indexActual + 1} totalPreguntas={sesion.preguntas.length} nombreEstudiante={alumno.nombreCompleto} valorSeleccionado={respuestasLocal[preguntaActual.id] ?? null} onSeleccionar={handleSeleccionarOpcion} onConfirmar={handleConfirmarRespuesta} onAnterior={indexActual > 0 ? volverPreguntaAnterior : undefined} avanzando={avanzando || enviando} esUltima={indexActual === sesion.preguntas.length - 1} /></div>}
+        {seccion === "respondiendo" && sesion && preguntaActual && alumno && <div style={{ width: "100%" }}><Reactivo pregunta={preguntaActual.texto} imagenUrl={preguntaActual.imagenUrl ?? undefined} instruccionTexto={preguntaActual.instruccionTexto ?? undefined} instruccionImagenUrl={preguntaActual.instruccionImagenUrl ?? undefined} opciones={preguntaActual.opcionesRespuesta.map(o => ({ label: o.texto, value: o.valor }))} numeroPregunta={indexActual + 1} totalPreguntas={sesion.preguntas.length} nombreEstudiante={alumno.nombreCompleto} valorSeleccionado={respuestasLocal[preguntaActual.id] ?? null} onSeleccionar={handleSeleccionarOpcion} onConfirmar={handleConfirmarRespuesta} onAnterior={indexActual > 0 ? volverPreguntaAnterior : undefined} avanzando={avanzando || enviando} esUltima={indexActual === sesion.preguntas.length - 1} background={fondoEncuesta} /></div>}
         {seccion === "completado" && alumno && <CompletadoStep alumno={alumno} onSiguienteAlumno={siguienteAlumno} />}
-      </>
+      </>}
     </div>
   );
 }

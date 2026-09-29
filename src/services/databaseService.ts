@@ -7,6 +7,7 @@ import type {
   Evaluacion,
   EvaluacionConProgreso,
   EvaluacionParaFacilitador,
+  EvaluacionPublica,
   EstadoEvaluacion,
   Formulario,
   FormularioConSecciones,
@@ -141,6 +142,16 @@ class DatabaseService {
   }
 
   // ── Admin ─────────────────────────────────────────────────────
+  publico = {
+    listarEvaluaciones: async (): Promise<EvaluacionPublica[]> => {
+      const { data } = await this.get<ApiEnvelope<EvaluacionPublica[]>>(
+        "/api/evaluaciones-publicas",
+        { conColegio: false }
+      );
+      return data;
+    },
+  };
+
   // Las rutas /api/admin/* no requieren X-Colegio-Id.
   admin = {
     iniciarSesion: async (password: string): Promise<void> => {

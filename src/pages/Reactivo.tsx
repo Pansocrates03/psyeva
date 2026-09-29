@@ -37,6 +37,8 @@ interface ReactivoProps {
   avanzando?: boolean;
   /** Si es la última pregunta, cambia el mensaje de "avanzando" */
   esUltima?: boolean;
+  /** Fondo de acuerdo con la categoría del formulario. */
+  background?: string;
 }
 
 // ── Componente ────────────────────────────────────────────────
@@ -55,6 +57,7 @@ export default function Reactivo({
   onAnterior,
   avanzando = false,
   esUltima = false,
+  background = COLORS.neutro50,
 }: ReactivoProps) {
   const [hovered, setHovered] = useState<number | null>(null);
 
@@ -74,11 +77,11 @@ export default function Reactivo({
   const esPrimera = numeroPregunta === 1;
 
   return (
-    <div style={{
+    <div className={background === COLORS.neutro50 ? undefined : "encuesta-fondo-magico"} style={{
       display: "flex",
       flexDirection: "column",
       minHeight: "100vh",
-      background: COLORS.neutro50,
+      background,
       fontFamily: "system-ui, -apple-system, sans-serif",
     }}>
 

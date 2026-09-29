@@ -12,6 +12,7 @@ import Reactivo from "./pages/Reactivo";
 import Encuesta from "./pages/Encuesta";
 import Reportes from "./pages/Reportes";
 import Login from "./pages/Login";
+import Evaluacion from "./pages/Evaluacion";
 
 function AdminGuard({ children }: { children: ReactNode }) {
   const [checking, setChecking] = useState(true);
@@ -36,14 +37,16 @@ function AdminGuard({ children }: { children: ReactNode }) {
   }, []);
 
   if (checking) return null;
-  return authenticated ? children : <Navigate to="/" replace />;
+  return authenticated ? children : <Navigate to="/login" replace />;
 }
 
 export function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Login />} />
+        <Route path="/" element={<Evaluacion />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/admin" element={<AdminGuard><Navigate to="/admin/evaluaciones" replace /></AdminGuard>} />
         <Route path="/admin/evaluaciones" element={<AdminGuard><MisAnalisis /></AdminGuard>} />
         <Route path="/admin/evaluaciones/:id" element={<AdminGuard><DetalleAnalisis /></AdminGuard>} />
         <Route path="/admin/colegios" element={<AdminGuard><Colegios /></AdminGuard>} />
@@ -52,7 +55,6 @@ export function App() {
         <Route path="/admin/configuracion" element={<AdminGuard><Configuracion /></AdminGuard>} />
         <Route path="/e/:id" element={<Encuesta />} />
         <Route path="/reportes/:id" element={<Reportes />} />
-  
       </Routes>
     </BrowserRouter>
   );

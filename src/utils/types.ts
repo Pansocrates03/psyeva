@@ -168,6 +168,15 @@ export interface EvaluacionParaFacilitador {
   colegioNombre: string;
 }
 
+export interface EvaluacionPublica {
+  colegioId: string;
+  colegioNombre: string;
+  codigoAcceso: string;
+  evaluacionNombre: string;
+  fecha: string;
+  estado: EstadoEvaluacion;
+}
+
 export interface GrupoConProgreso {
   grupoId: string;
   grupoNombre: string;

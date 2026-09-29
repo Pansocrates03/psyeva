@@ -33,12 +33,16 @@ import {
   estudiantesRoutes,
   sesionesRoutes,
   facilitadorReportesRoutes,
+  evaluacionesPublicasRoutes,
 } from "./routes";
 
 const server = serve({
   routes: {
-    "/assets/eva_2.png": Bun.file("./src/assets/eva_2.png"),
+    "/assets/eva_bebe.png": Bun.file("./src/assets/eva_bebe.png"),
     "/*": index,
+
+    // ── Público ──────────────────────────────────────────────
+    "/api/evaluaciones-publicas":             evaluacionesPublicasRoutes,
 
     // ── Admin ───────────────────────────────────────────────
     "/api/admin/login":                         adminAuthRoutes,
