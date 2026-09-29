@@ -26,8 +26,10 @@ interface ReactivoProps {
   nombreEstudiante?: string;
   /** Valor actualmente seleccionado (controlled) */
   valorSeleccionado?: number | null;
-  /** Callback al seleccionar una opción — avanza solo, no hace falta un botón "Siguiente" */
+  /** Callback al seleccionar una opción (sin avanzar todavía) */
   onSeleccionar?: (valor: number) => void;
+  /** Callback al confirmar la respuesta seleccionada */
+  onConfirmar?: () => void;
   /** Callback al presionar "Anterior" */
   onAnterior?: () => void;
   /** true mientras se guarda la respuesta y se transiciona a la siguiente pregunta —
@@ -49,6 +51,7 @@ export default function Reactivo({
   nombreEstudiante,
   valorSeleccionado = null,
   onSeleccionar,
+  onConfirmar,
   onAnterior,
   avanzando = false,
   esUltima = false,
@@ -286,12 +289,14 @@ export default function Reactivo({
           </div>
         </div>
 
-        {/* Navegación — solo "Anterior": seleccionar una opción ya avanza solo */}
+        {/* Navegación — requiere seleccionar y luego confirmar */}
         <div style={{
           display: "flex",
           gap: 12,
           width: "100%",
           alignItems: "center",
+          justifyContent: "space-between",
+          flexWrap: "wrap",
         }}>
           <button
             onClick={onAnterior}
@@ -315,6 +320,27 @@ export default function Reactivo({
               <path d="M10 12L6 8L10 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
             Anterior
+          </button>
+
+          <button
+            onClick={onConfirmar}
+            disabled={!puedeAvanzar || avanzando}
+            style={{
+              display: "flex", alignItems: "center", justifyContent: "center",
+              padding: "13px 20px",
+              borderRadius: 10,
+              border: "none",
+              background: !puedeAvanzar || avanzando ? COLORS.neutro200 : COLORS.violeta400,
+              color: !puedeAvanzar || avanzando ? COLORS.neutro500 : "#fff",
+              fontSize: 15,
+              fontWeight: 600,
+              cursor: (!puedeAvanzar || avanzando) ? "not-allowed" : "pointer",
+              opacity: avanzando ? 0.75 : 1,
+              transition: "opacity 0.15s, background 0.15s",
+              flexShrink: 0,
+            }}
+          >
+            {avanzando ? (esUltima ? "Finalizando..." : "Guardando...") : "Confirmar respuesta"}
           </button>
 
           {avanzando && (
@@ -344,7 +370,7 @@ export default function Reactivo({
             color: COLORS.neutro400,
             textAlign: "center",
           }}>
-            Selecciona una opción para continuar
+            Selecciona una opción y luego confirma para continuar
           </p>
         )}
       </main>

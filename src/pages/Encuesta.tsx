@@ -55,7 +55,6 @@ export default function Encuesta() {
   const [iniciando, setIniciando] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [avanzando, setAvanzando] = useState(false);
-  const avanceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [pasoError, setPasoError] = useState<string | null>(null);
   const [resolviendoLink, setResolviendoLink] = useState(false);
   const [linkError, setLinkError] = useState<string | null>(null);
@@ -148,12 +147,6 @@ export default function Encuesta() {
     setSeccion(anteriorPregunta?.seccionId !== preguntaActual?.seccionId && (anteriorPregunta?.instruccionImagenUrl || anteriorPregunta?.instruccionTexto) ? "instruccion" : "respondiendo");
   };
 
-  useEffect(() => () => {
-    if (avanceTimeoutRef.current) clearTimeout(avanceTimeoutRef.current);
-    avanceTimeoutRef.current = null;
-    setAvanzando(false);
-  }, [indexActual]);
-
   const avanzarConRespuesta = async (valor: number) => {
     if (!sesion) return;
     const pregunta = sesion.preguntas[indexActual];
@@ -186,11 +179,13 @@ export default function Encuesta() {
   const handleSeleccionarOpcion = (valor: number) => {
     if (!preguntaActual || enviando || avanzando) return;
     setRespuestasLocal(prev => ({ ...prev, [preguntaActual.id]: valor }));
-    if (avanceTimeoutRef.current) clearTimeout(avanceTimeoutRef.current);
-    setAvanzando(true);
-    avanceTimeoutRef.current = setTimeout(() => {
-      setAvanzando(false); void avanzarConRespuesta(valor);
-    }, 450);
+  };
+
+  const handleConfirmarRespuesta = () => {
+    if (!preguntaActual || enviando || avanzando) return;
+    const valorSeleccionado = respuestasLocal[preguntaActual.id];
+    if (valorSeleccionado == null) return;
+    void avanzarConRespuesta(valorSeleccionado);
   };
 
   const siguienteAlumno = () => {
@@ -222,7 +217,7 @@ export default function Encuesta() {
         {seccion === "seleccionarAlumno" && grupo && formulario && <SeleccionarAlumnoStep escuela={escuela} grupo={grupo} formulario={formulario} estudiantes={estudiantes} onBack={() => setSeccion("seleccionarFormulario")} onContinue={handleSeleccionarAlumno} />}
         {seccion === "confirmacion" && alumno && formulario && <ConfirmacionStep alumno={alumno} formulario={formulario} iniciando={iniciando} onIniciar={handleIniciar} />}
         {seccion === "instruccion" && sesion && preguntaActual && alumno && <InstruccionStep key={preguntaActual.id} pregunta={preguntaActual} nombreEstudiante={alumno.nombreCompleto} onContinue={continuarInstruccion} />}
-        {seccion === "respondiendo" && sesion && preguntaActual && alumno && <div style={{ width: "100%" }}><Reactivo pregunta={preguntaActual.texto} imagenUrl={preguntaActual.imagenUrl ?? undefined} instruccionTexto={preguntaActual.instruccionTexto ?? undefined} instruccionImagenUrl={preguntaActual.instruccionImagenUrl ?? undefined} opciones={preguntaActual.opcionesRespuesta.map(o => ({ label: o.texto, value: o.valor }))} numeroPregunta={indexActual + 1} totalPreguntas={sesion.preguntas.length} nombreEstudiante={alumno.nombreCompleto} valorSeleccionado={respuestasLocal[preguntaActual.id] ?? null} onSeleccionar={handleSeleccionarOpcion} onAnterior={indexActual > 0 ? volverPreguntaAnterior : undefined} avanzando={avanzando || enviando} esUltima={indexActual === sesion.preguntas.length - 1} /></div>}
+        {seccion === "respondiendo" && sesion && preguntaActual && alumno && <div style={{ width: "100%" }}><Reactivo pregunta={preguntaActual.texto} imagenUrl={preguntaActual.imagenUrl ?? undefined} instruccionTexto={preguntaActual.instruccionTexto ?? undefined} instruccionImagenUrl={preguntaActual.instruccionImagenUrl ?? undefined} opciones={preguntaActual.opcionesRespuesta.map(o => ({ label: o.texto, value: o.valor }))} numeroPregunta={indexActual + 1} totalPreguntas={sesion.preguntas.length} nombreEstudiante={alumno.nombreCompleto} valorSeleccionado={respuestasLocal[preguntaActual.id] ?? null} onSeleccionar={handleSeleccionarOpcion} onConfirmar={handleConfirmarRespuesta} onAnterior={indexActual > 0 ? volverPreguntaAnterior : undefined} avanzando={avanzando || enviando} esUltima={indexActual === sesion.preguntas.length - 1} /></div>}
         {seccion === "completado" && alumno && <CompletadoStep alumno={alumno} onSiguienteAlumno={siguienteAlumno} />}
       </>
     </div>

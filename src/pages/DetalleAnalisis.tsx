@@ -90,6 +90,47 @@ const ESTADO_UI_LABELS: Record<EstadoEvaluacionUI, string> = {
   publico: "Público",
 };
 
+type NextEstadoProps = {
+  evaluacionId: string | undefined;
+  estado: EstadoEvaluacionUI;
+  cargarEvaluacion: () => void;
+};
+
+function NextEstadoBtn({ evaluacionId, estado, cargarEvaluacion }: NextEstadoProps) {
+  // ── Fase de la evaluación ─────────────────────────────────────
+  const cambiarFase = async (siguienteEstado: "cerrado" | "abierto" | "publico") => {
+    if (!evaluacionId) return;
+    try {
+      await databaseService.admin.cambiarEstadoEvaluacion(evaluacionId, siguienteEstado);
+      cargarEvaluacion();
+    } catch (err) {
+      alert(err instanceof ApiError ? err.message : "No se pudo cambiar el estado de la evaluación");
+    }
+  };
+
+  return (
+    <>
+      {estado === "cerrado" && (
+        <button onClick={() => cambiarFase("abierto")} style={{ padding: "7px 12px", borderRadius: 8, border: "none", background: COLORS.azul400, color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+          Abrir evaluación
+        </button>
+      )}
+
+      {estado === "abierto" && (
+        <button onClick={() => cambiarFase("publico")} style={{ padding: "7px 12px", borderRadius: 8, border: "none", background: COLORS.verde400, color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+          Publicar evaluación
+        </button>
+      )}
+
+      {estado === "publico" && (
+        <button onClick={() => cambiarFase("cerrado")} style={{ padding: "7px 12px", borderRadius: 8, border: "none", background: COLORS.violeta400, color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+          Cerrar evaluación
+        </button>
+      )}
+    </>
+  );
+}
+
 // ── Página principal ──────────────────────────────────────────
 export default function DetalleAnalisis() {
   const { id: evaluacionId } = useParams<{ id: string }>();
@@ -213,17 +254,6 @@ export default function DetalleAnalisis() {
     : 0;
 
   const gruposCard = useMemo(() => grupos.map(mapGrupoParaCard), [grupos]);
-
-  // ── Fase de la evaluación ─────────────────────────────────────
-  const cambiarFase = async (estado: "cerrado" | "abierto" | "publico") => {
-    if (!evaluacionId) return;
-    try {
-      await databaseService.admin.cambiarEstadoEvaluacion(evaluacionId, estado);
-      cargarEvaluacion();
-    } catch (err) {
-      alert(err instanceof ApiError ? err.message : "No se pudo cambiar el estado de la evaluación");
-    }
-  };
 
   // ── Drawer crear/editar grupo ────────────────────────────────
   const asegurarFormularios = () => {
@@ -510,6 +540,7 @@ export default function DetalleAnalisis() {
       <Sidebar />
 
       <main style={{ flex: 1, padding: "32px 40px", minWidth: 0 }}>
+        
         {/* Header */}
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 24 }}>
           <div>
@@ -523,35 +554,27 @@ export default function DetalleAnalisis() {
               {formatFecha(evaluacion.fecha)}
             </p>
           </div>
+          {/* Estado */}
           <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8 }}>
-            <span style={{
-              padding: "6px 14px", borderRadius: 999, fontSize: 13, fontWeight: 600,
-              background: estado === "publico" ? COLORS.verde50 : estado === "abierto" ? COLORS.violeta50 : COLORS.neutro100,
-              color: estado === "publico" ? COLORS.verde600 : estado === "abierto" ? COLORS.violeta600 : COLORS.neutro700,
-            }}>
-              {ESTADO_UI_LABELS[estado]}
-            </span>
+            <div>
+                <span style={{
+                padding: "6px 14px", borderRadius: 999, fontSize: 13, fontWeight: 600,
+                background: estado === "publico" ? COLORS.verde50 : estado === "abierto" ? COLORS.violeta50 : COLORS.neutro100,
+                color: estado === "publico" ? COLORS.verde600 : estado === "abierto" ? COLORS.violeta600 : COLORS.neutro700,
+              }}>
+                {ESTADO_UI_LABELS[estado]}
+              </span>
+              <NextEstadoBtn evaluacionId={evaluacionId} estado={estado} cargarEvaluacion={cargarEvaluacion} />              
+            </div>
+            
+            
+
+            {/* Enlaces */}
             <div style={{ display: "flex", gap: 8 }}>
               <ClipboardCopy label="Encuesta:" copyText={`${window.location.origin}/e/${evaluacion.codigoAcceso}`} />
               <ClipboardCopy label="Reportes:" copyText={`${window.location.origin}/reportes/${evaluacion.codigoAcceso}`} />
 
-              {estado === "cerrado" && (
-                <button onClick={() => cambiarFase("abierto")} style={{ padding: "7px 12px", borderRadius: 8, border: "none", background: COLORS.azul400, color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
-                  Abrir evaluación
-                </button>
-              )}
-
-              {estado === "abierto" && (
-                <button onClick={() => cambiarFase("publico")} style={{ padding: "7px 12px", borderRadius: 8, border: "none", background: COLORS.verde400, color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
-                  Publicar evaluación
-                </button>
-              )}
               
-              {estado === "publico" && (
-                <button onClick={() => cambiarFase("cerrado")} style={{ padding: "7px 12px", borderRadius: 8, border: "none", background: COLORS.violeta400, color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
-                  Cerrar evaluación
-                </button>
-              )}
             </div>
           </div>
         </div>
