@@ -38,16 +38,11 @@ interface SesionActiva {
   preguntas: PreguntaSesion[];
 }
 
-const FONDOS_POR_CATEGORIA: Record<CategoriaFormulario, { base: string; brillo: string; sombra: string }> = {
-  emociones: { base: COLORS.violeta50, brillo: "#E5DAFF", sombra: "#F8F5FF" },
-  bienestar_psicologico: { base: COLORS.verde50, brillo: "#DDF4C5", sombra: "#F7FCEF" },
-  aprendizaje: { base: COLORS.azul50, brillo: "#CDEBFF", sombra: "#F3FAFF" },
+const FONDOS_POR_CATEGORIA: Record<CategoriaFormulario, string> = {
+  emociones: COLORS.violeta50,
+  bienestar_psicologico: COLORS.verde50,
+  aprendizaje: COLORS.azul50,
 };
-
-function crearFondoMagico(categoria: CategoriaFormulario) {
-  const colores = FONDOS_POR_CATEGORIA[categoria];
-  return `radial-gradient(ellipse at 15% 20%, ${colores.brillo} 0%, transparent 48%), radial-gradient(ellipse at 85% 80%, ${colores.sombra} 0%, transparent 50%), linear-gradient(135deg, ${colores.base} 0%, ${colores.sombra} 100%)`;
-}
 
 export default function Encuesta() {
   const { id: evaluacionIdParam } = useParams<{ id?: string }>();
@@ -70,10 +65,11 @@ export default function Encuesta() {
   const [pasoError, setPasoError] = useState<string | null>(null);
   const [cargandoGrupos, setCargandoGrupos] = useState(false);
   const [linkError, setLinkError] = useState<string | null>(null);
+  const imagenesPrecargadas = useRef(new Map<string, HTMLImageElement>());
 
   const PASOS: Seccion[] = ["bienvenida", "seleccionarGrupo", "seleccionarFormulario", "seleccionarAlumno"];
   const pasoActual = PASOS.indexOf(seccion);
-  const fondoEncuesta = formulario ? crearFondoMagico(formulario.categoria) : undefined;
+  const fondoEncuesta = formulario ? FONDOS_POR_CATEGORIA[formulario.categoria] : undefined;
 
   const reiniciar = () => {
     setSeccion("bienvenida");
@@ -112,6 +108,24 @@ export default function Encuesta() {
 
     return () => { vigente = false; };
   }, [evaluacionIdParam, reintentoValidacion]);
+
+  useEffect(() => {
+    if (!sesion) return;
+
+    const indices = seccion === "instruccion" ? [indexActual, indexActual + 1] : [indexActual + 1];
+    for (const indice of indices) {
+      const pregunta = sesion.preguntas[indice];
+      if (!pregunta) continue;
+
+      for (const url of [pregunta.instruccionImagenUrl, pregunta.imagenUrl]) {
+        if (!url || imagenesPrecargadas.current.has(url)) continue;
+        const imagen = new Image();
+        imagen.decoding = "async";
+        imagen.src = url;
+        imagenesPrecargadas.current.set(url, imagen);
+      }
+    }
+  }, [sesion, indexActual, seccion]);
 
   const handleContinuarBienvenida = async () => {
     if (!evaluacionActiva) return;
@@ -232,7 +246,7 @@ export default function Encuesta() {
   };
 
   return (
-    <div className={fondoEncuesta ? "encuesta-fondo-magico" : undefined} style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "100vh", background: fondoEncuesta ?? `linear-gradient(135deg, ${COLORS.violeta50} 0%, ${COLORS.neutro50} 60%, ${COLORS.azul50} 100%)`, fontFamily: "system-ui, -apple-system, sans-serif" }}>
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "100vh", background: fondoEncuesta ?? `linear-gradient(135deg, ${COLORS.violeta50} 0%, ${COLORS.neutro50} 60%, ${COLORS.azul50} 100%)`, fontFamily: "system-ui, -apple-system, sans-serif" }}>
       {estadoValidacion !== "lista" ? (
         <div style={{ ...cardStyle, maxWidth: "calc(100vw - 32px)" }}>
           <LogoHeader />

@@ -18,20 +18,6 @@
   }
 }
 
-@keyframes encuesta-fondo-magico {
-  from {
-    background-position: 0% 0%;
-  }
-  to {
-    background-position: 100% 100%;
-  }
-}
-
-.encuesta-fondo-magico {
-  background-size: 180% 180%;
-  animation: encuesta-fondo-magico 18s ease-in-out infinite alternate;
-}
-
 @media (prefers-reduced-motion) {
   *,
   ::before,

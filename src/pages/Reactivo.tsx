@@ -77,7 +77,7 @@ export default function Reactivo({
   const esPrimera = numeroPregunta === 1;
 
   return (
-    <div className={background === COLORS.neutro50 ? undefined : "encuesta-fondo-magico"} style={{
+    <div style={{
       display: "flex",
       flexDirection: "column",
       minHeight: "100vh",
