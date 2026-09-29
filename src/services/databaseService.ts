@@ -17,6 +17,7 @@ import type {
   GrupoConProgreso,
   GrupoRespuestas,
   ImportacionEstudiantes,
+  ContenidoSeccionesInput,
   PreguntaSesion,
   Reporte,
   ReporteConContexto,
@@ -215,10 +216,17 @@ class DatabaseService {
     },
 
     // Si se envía `secciones`, reemplaza el set completo (409 si alguna
-    // pregunta actual ya tiene respuestas registradas).
+    // pregunta actual ya tiene respuestas registradas). `contenidoSecciones`
+    // actualiza textos e imágenes sin reemplazar IDs ni respuestas.
     actualizarFormulario: async (
       id: string,
-      cambios: Partial<{ titulo: string; descripcion: string; categoria: CategoriaFormulario; secciones: SeccionInput[] }>
+      cambios: Partial<{
+        titulo: string;
+        descripcion: string;
+        categoria: CategoriaFormulario;
+        secciones: SeccionInput[];
+        contenidoSecciones: ContenidoSeccionesInput[];
+      }>
     ): Promise<Formulario> => {
       const { data } = await this.patch<ApiEnvelope<Formulario>>(`/api/admin/formularios/${id}`, cambios, { conColegio: false });
       return data;

@@ -231,6 +231,11 @@ export interface SeccionInput {
   preguntas: PreguntaInput[];
 }
 
+export interface ContenidoSeccionesInput {
+  instruccionImagenKey: string | null;
+  preguntas: Array<{ texto: string; imagenKey: string | null }>;
+}
+
 // Imagen predefinida disponible en el bucket para elegir como imagen de
 // una pregunta o instrucción de sección (ver GET /api/admin/imagenes).
 export interface ArchivoBucket {

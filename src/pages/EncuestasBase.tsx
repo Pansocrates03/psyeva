@@ -163,6 +163,12 @@ export default function EncuestasBase() {
         .map(p => ({ texto: p.texto.trim(), imagenKey: p.imagenKey.trim() || null }))
         .filter(p => p.texto.length > 0),
     }));
+    const contenidoSecciones = form.secciones.map(seccion => ({
+      instruccionImagenKey: seccion.instruccionImagenKey.trim() || null,
+      preguntas: seccion.preguntas
+        .filter(pregunta => pregunta.texto.trim().length > 0)
+        .map(pregunta => ({ texto: pregunta.texto.trim(), imagenKey: pregunta.imagenKey.trim() || null })),
+    }));
 
     if (secciones.some(s => (!s.instruccionTexto && !s.instruccionImagenKey) || s.opcionesRespuesta.length < 2 || s.preguntas.length === 0)) {
       setFormError("Cada sección necesita una instrucción (texto o imagen), al menos 2 respuestas y al menos una pregunta.");
@@ -183,14 +189,15 @@ export default function EncuestasBase() {
         } catch (err) {
           if (err instanceof ApiError && err.status === 409) {
             // Ya hay respuestas registradas para las preguntas actuales:
-            // guarda al menos los metadatos y avisa que las secciones no cambiaron.
+            // guarda metadatos, textos e imágenes sin reemplazar IDs ni opciones.
             await databaseService.admin.actualizarFormulario(editingId, {
               titulo: form.titulo.trim(),
               descripcion: form.descripcion.trim(),
               categoria: form.categoria,
+              contenidoSecciones,
             });
             setFormError(null);
-            alert("Ya hay alumnos que respondieron esta encuesta, así que las secciones no se modificaron. Sí se guardaron el nombre, categoría y descripción.");
+            alert("Ya hay alumnos que respondieron esta encuesta, así que no se modificaron las opciones. Sí se guardaron el nombre, categoría, descripción, textos de preguntas e imágenes.");
           } else {
             throw err;
           }
