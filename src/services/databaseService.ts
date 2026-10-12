@@ -637,6 +637,13 @@ class DatabaseService {
       );
       return data;
     },
+
+    listarArchivosReportes: async (evaluacionId: string, folder = ""): Promise<DirectorioReportes> => {
+      const { data } = await this.get<ApiEnvelope<DirectorioReportes>>(
+        `/api/facilitador/reportes/archivos-storage${buildQuery({ evaluacionId, folder })}`
+      );
+      return data;
+    },
   };
 }
 

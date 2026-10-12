@@ -606,7 +606,7 @@ export default function DetalleAnalisis() {
             bulkUploading={subiendoReportesBulk}
           />
         ) : layout === "reportes" ? (
-          <DetalleAnalisisReportes evaluacionId={evaluacionId} />
+          evaluacionId ? <DetalleAnalisisReportes evaluacionId={evaluacionId} /> : null
         ) : (
           <DetalleAnalisisDatos
             preguntas={datosRespuestas?.preguntas ?? []}

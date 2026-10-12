@@ -2,7 +2,8 @@ import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import COLORS from "@/utils/Colors";
 import { databaseService, ApiError } from "@/services/databaseService";
-import type { EvaluacionParaFacilitador, ReporteConContexto, TipoReporte } from "@/utils/types";
+import type { EvaluacionParaFacilitador } from "@/utils/types";
+import DetalleAnalisisReportes from "@/components/layouts/DetalleAnalisisReportes";
 
 // ─────────────────────────────────────────────
 // Estilos compartidos (mismo lenguaje visual que Encuesta.tsx)
@@ -99,127 +100,6 @@ function CentroPagina({ children }: { children: React.ReactNode }) {
   );
 }
 
-// ─────────────────────────────────────────────
-// Vista de archivos estilo Google Drive
-// ─────────────────────────────────────────────
-type CarpetaReportes = "individual" | "grupal" | "general";
-
-const CARPETAS: Array<{ tipo: CarpetaReportes; nombre: string; descripcion: string }> = [
-  { tipo: "individual", nombre: "Resultados individuales", descripcion: "Un archivo PDF por alumno, organizado por grupo" },
-  { tipo: "grupal", nombre: "Resultados grupales", descripcion: "Reportes PDF de cada grupo" },
-  { tipo: "general", nombre: "Resultados institucionales", descripcion: "Reportes generales de la evaluación" },
-];
-
-function nombreArchivo(reporte: ReporteConContexto, fallback: string) {
-  if (reporte.tipo === "individual" && reporte.estudianteNombre) return `${reporte.estudianteNombre}.pdf`;
-  if (reporte.tipo === "grupal" && reporte.grupoNombre) return `${reporte.grupoNombre}.pdf`;
-  const nombreDesdeUrl = decodeURIComponent(reporte.archivoUrl.split("?")[0]?.split("/").pop() ?? "");
-  return nombreDesdeUrl || fallback;
-}
-
-function ArchivoPdf({ reporte, nombre }: { reporte: ReporteConContexto; nombre: string }) {
-  return (
-    <a
-      href={reporte.archivoUrl}
-      target="_blank"
-      rel="noreferrer"
-      style={{
-        display: "flex", alignItems: "center", gap: 10,
-        minHeight: 44, padding: "8px 14px 8px 46px",
-        borderBottom: `1px solid ${COLORS.neutro50}`,
-        textDecoration: "none", color: COLORS.neutro700, fontSize: 13,
-        transition: "background 0.15s",
-      }}
-      onMouseEnter={e => { e.currentTarget.style.background = COLORS.violeta50; }}
-      onMouseLeave={e => { e.currentTarget.style.background = "#fff"; }}
-    >
-      <i className="ti ti-file-type-pdf" style={{ fontSize: 18, color: COLORS.rojo400 }} aria-hidden="true" />
-      <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{nombre}</span>
-      <i className="ti ti-external-link" style={{ fontSize: 15, color: COLORS.neutro400 }} aria-hidden="true" />
-    </a>
-  );
-}
-
-function CarpetaGrupo({ nombre, reportes }: { nombre: string; reportes: ReporteConContexto[] }) {
-  const [abierta, setAbierta] = useState(false);
-
-  return (
-    <div style={{ borderBottom: `1px solid ${COLORS.neutro50}` }}>
-      <button
-        type="button"
-        onClick={() => setAbierta(prev => !prev)}
-        style={{
-          display: "flex", alignItems: "center", gap: 10, width: "100%",
-          minHeight: 46, padding: "8px 14px 8px 46px", border: "none",
-          background: "#fff", color: COLORS.neutro700, textAlign: "left", cursor: "pointer",
-        }}
-      >
-        <i className={`ti ti-chevron-${abierta ? "down" : "right"}`} style={{ fontSize: 15, color: COLORS.neutro400 }} aria-hidden="true" />
-        <i className="ti ti-folder" style={{ fontSize: 20, color: COLORS.ambar400 }} aria-hidden="true" />
-        <span style={{ flex: 1, fontSize: 13, fontWeight: 600 }}>{nombre}</span>
-        <span style={{ fontSize: 12, color: COLORS.neutro500 }}>{reportes.length}</span>
-      </button>
-      {abierta && reportes.map(reporte => (
-        <ArchivoPdf key={reporte.id} reporte={reporte} nombre={nombreArchivo(reporte, "Reporte individual.pdf")} />
-      ))}
-    </div>
-  );
-}
-
-function CarpetaReportes({ tipo, nombre, descripcion, reportes }: {
-  tipo: CarpetaReportes; nombre: string; descripcion: string; reportes: ReporteConContexto[];
-}) {
-  const [abierta, setAbierta] = useState(true);
-  const grupos = Array.from(new Map(reportes.map(reporte => [reporte.grupoNombre ?? "Sin grupo", [] as ReporteConContexto[]])).keys())
-    .map(grupoNombre => ({ nombre: grupoNombre, reportes: reportes.filter(reporte => (reporte.grupoNombre ?? "Sin grupo") === grupoNombre) }));
-
-  return (
-    <div style={{ border: `1px solid ${COLORS.neutro100}`, borderRadius: 10, overflow: "hidden", background: "#fff" }}>
-      <button
-        type="button"
-        onClick={() => setAbierta(prev => !prev)}
-        style={{
-          display: "flex", alignItems: "center", gap: 10, width: "100%",
-          padding: "13px 14px", border: "none", background: COLORS.neutro50,
-          color: COLORS.neutro900, textAlign: "left", cursor: "pointer",
-        }}
-      >
-        <i className={`ti ti-chevron-${abierta ? "down" : "right"}`} style={{ fontSize: 16, color: COLORS.neutro500 }} aria-hidden="true" />
-        <i className="ti ti-folder-filled" style={{ fontSize: 22, color: COLORS.ambar400 }} aria-hidden="true" />
-        <span style={{ flex: 1, fontSize: 14, fontWeight: 700 }}>{nombre}</span>
-        <span style={{ fontSize: 12, color: COLORS.neutro500 }}>{reportes.length} archivo{reportes.length === 1 ? "" : "s"}</span>
-      </button>
-      {abierta && (
-        <div>
-          <p style={{ margin: 0, padding: "10px 14px 8px 46px", fontSize: 12, color: COLORS.neutro500 }}>{descripcion}</p>
-          {reportes.length === 0 ? (
-            <p style={{ margin: 0, padding: "8px 14px 14px 46px", fontSize: 13, color: COLORS.neutro400 }}>Carpeta vacía.</p>
-          ) : tipo === "individual" ? (
-            grupos.map(grupo => <CarpetaGrupo key={grupo.nombre} nombre={grupo.nombre} reportes={grupo.reportes} />)
-          ) : (
-            reportes.map(reporte => <ArchivoPdf key={reporte.id} reporte={reporte} nombre={nombreArchivo(reporte, tipo === "grupal" ? "Reporte grupal.pdf" : "Reporte institucional.pdf")} />)
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function ExploradorReportes({ reportes }: { reportes: Record<TipoReporte, ReporteConContexto[]> }) {
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, paddingBottom: 12, borderBottom: `1px solid ${COLORS.neutro100}` }}>
-        <i className="ti ti-home-2" style={{ fontSize: 16, color: COLORS.neutro500 }} aria-hidden="true" />
-        <span style={{ fontSize: 13, color: COLORS.neutro500 }}>Mis archivos</span>
-        <i className="ti ti-chevron-right" style={{ fontSize: 14, color: COLORS.neutro400 }} aria-hidden="true" />
-        <strong style={{ fontSize: 13, color: COLORS.neutro900 }}>Resultados</strong>
-      </div>
-      {CARPETAS.map(carpeta => (
-        <CarpetaReportes key={carpeta.tipo} {...carpeta} reportes={reportes[carpeta.tipo]} />
-      ))}
-    </div>
-  );
-}
 
 // ─────────────────────────────────────────────
 // Componente principal
@@ -236,10 +116,6 @@ export default function Reportes() {
   const [verificando, setVerificando] = useState(false);
   const [claveError, setClaveError] = useState("");
   const [verificado, setVerificado] = useState<{ colegioNombre: string } | null>(null);
-
-  const [reportes, setReportes] = useState<{ total: number; reportes: Record<TipoReporte, ReporteConContexto[]> } | null>(null);
-  const [loadingReportes, setLoadingReportes] = useState(false);
-  const [reportesError, setReportesError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!evaluacionId) return;
@@ -259,16 +135,6 @@ export default function Reportes() {
     try {
       const { colegio } = await databaseService.facilitador.verificarConEvaluacion(evaluacionId, clave.trim());
       setVerificado({ colegioNombre: colegio.nombre });
-
-      setLoadingReportes(true);
-      try {
-        const data = await databaseService.facilitador.listarReportes({ evaluacionId });
-        setReportes(data);
-      } catch (err) {
-        setReportesError(err instanceof ApiError ? err.message : "No se pudieron cargar los reportes");
-      } finally {
-        setLoadingReportes(false);
-      }
     } catch (err) {
       setClaveError(err instanceof ApiError ? err.message : "No se pudo verificar el código.");
     } finally {
@@ -353,19 +219,7 @@ export default function Reportes() {
       <div style={{ ...cardStyle, width: "min(760px, 100%)" }}>
         <LogoHeader escuela={verificado.colegioNombre} sub={info.nombre} />
         <div style={cardBodyStyle}>
-          {loadingReportes ? (
-            <p style={{ margin: 0, fontSize: 14, color: COLORS.neutro500, textAlign: "center" }}>Cargando reportes...</p>
-          ) : reportesError ? (
-            <p style={{ margin: 0, fontSize: 14, color: COLORS.rojo400, textAlign: "center" }}>{reportesError}</p>
-          ) : reportes && reportes.total === 0 ? (
-            <p style={{ margin: 0, fontSize: 14, color: COLORS.neutro500, textAlign: "center" }}>
-              Todavía no hay reportes disponibles para esta evaluación.
-            </p>
-          ) : reportes ? (
-            <>
-              <ExploradorReportes reportes={reportes.reportes} />
-            </>
-          ) : null}
+          <DetalleAnalisisReportes evaluacionId={info.evaluacionId} modo="facilitador" />
         </div>
       </div>
     </CentroPagina>

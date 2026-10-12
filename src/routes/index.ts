@@ -27,6 +27,7 @@ export { facilitadorGruposRoutes }      from "./facilitador/grupos";
 export { estudiantesRoutes }            from "./facilitador/estudiantes";
 export { sesionesRoutes }               from "./facilitador/sesiones";
 export { facilitadorReportesRoutes }    from "./facilitador/reportes";
+export { facilitadorReportesStorageRoutes } from "./facilitador/reportesStorage";
 
 // ── Público ───────────────────────────────────────────────────
 export { evaluacionesPublicasRoutes } from "./evaluacionesPublicas";

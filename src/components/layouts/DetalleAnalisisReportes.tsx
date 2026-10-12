@@ -55,7 +55,13 @@ function IconoEnlaceExterno() {
     );
 }
 
-export default function DetalleAnalisisReportes({ evaluacionId }: { evaluacionId: string | undefined }) {
+const UUID_REGEX = /^[\da-f]{8}(?:-[\da-f]{4}){3}-[\da-f]{12}$/i;
+
+export default function DetalleAnalisisReportes({ evaluacionId, modo = "admin" }: {
+    evaluacionId: string;
+    modo?: "admin" | "facilitador";
+}) {
+    const esAdmin = modo === "admin";
     const [archivos, setArchivos] = useState<ArchivoBucket[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -110,8 +116,8 @@ export default function DetalleAnalisisReportes({ evaluacionId }: { evaluacionId
 
     useEffect(() => {
         let activo = true;
-        if (!evaluacionId) {
-            setError("No se encontró el identificador de la evaluación");
+        if (!UUID_REGEX.test(evaluacionId)) {
+            setError("El identificador de la evaluación no es un UUID válido");
             setLoading(false);
             return () => { activo = false; };
         }
@@ -119,7 +125,9 @@ export default function DetalleAnalisisReportes({ evaluacionId }: { evaluacionId
         setLoading(true);
         setError(null);
 
-        databaseService.admin.listarArchivosReportes(evaluacionId, carpetaActual)
+        (esAdmin
+            ? databaseService.admin.listarArchivosReportes(evaluacionId, carpetaActual)
+            : databaseService.facilitador.listarArchivosReportes(evaluacionId, carpetaActual))
             .then(data => {
                 if (activo) {
                     setArchivos(data.files);
@@ -134,7 +142,7 @@ export default function DetalleAnalisisReportes({ evaluacionId }: { evaluacionId
             });
 
         return () => { activo = false; };
-    }, [recarga, evaluacionId, carpetaActual]);
+    }, [recarga, evaluacionId, carpetaActual, esAdmin]);
 
     const navegarCarpeta = (ruta: string) => {
         setCarpetaActual(ruta);
@@ -167,7 +175,7 @@ export default function DetalleAnalisisReportes({ evaluacionId }: { evaluacionId
                         <IconoActualizar />
                         Actualizar
                     </button>
-                    <button
+                    {esAdmin && <button
                         type="button"
                         onClick={() => setMostrarCrearCarpeta(actual => !actual)}
                         disabled={loading || subiendo || creandoCarpeta || !evaluacionId}
@@ -182,8 +190,8 @@ export default function DetalleAnalisisReportes({ evaluacionId }: { evaluacionId
                     >
                         <IconoNuevaCarpeta />
                         Crear carpeta
-                    </button>
-                    <input
+                    </button>}
+                    {esAdmin && <input
                         ref={inputArchivosRef}
                         type="file"
                         accept="application/pdf,.pdf"
@@ -191,8 +199,8 @@ export default function DetalleAnalisisReportes({ evaluacionId }: { evaluacionId
                         onChange={subirArchivos}
                         disabled={subiendo || creandoCarpeta || !evaluacionId}
                         style={{ display: "none" }}
-                    />
-                    <button
+                    />}
+                    {esAdmin && <button
                         type="button"
                         onClick={() => inputArchivosRef.current?.click()}
                         disabled={subiendo || creandoCarpeta || !evaluacionId}
@@ -208,12 +216,12 @@ export default function DetalleAnalisisReportes({ evaluacionId }: { evaluacionId
                     >
                         {!subiendo && <IconoSubir />}
                         {subiendo ? "Subiendo..." : "Subir archivos"}
-                    </button>
+                    </button>}
                 </div>
                 
             </div>
 
-            {mostrarCrearCarpeta && (
+            {esAdmin && mostrarCrearCarpeta && (
                 <form
                     onSubmit={crearCarpeta}
                     style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 20px", borderBottom: `1px solid ${COLORS.neutro100}` }}

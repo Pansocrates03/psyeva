@@ -34,6 +34,7 @@ import {
   estudiantesRoutes,
   sesionesRoutes,
   facilitadorReportesRoutes,
+  facilitadorReportesStorageRoutes,
   evaluacionesPublicasRoutes,
 } from "./routes";
 
@@ -79,6 +80,7 @@ const server = serve({
     "/api/facilitador/sesiones/respuesta":           sesionesRoutes,
     "/api/facilitador/sesiones/completar":           sesionesRoutes,
     "/api/facilitador/reportes":                     facilitadorReportesRoutes,
+    "/api/facilitador/reportes/archivos-storage":    facilitadorReportesStorageRoutes,
   },
 
   development: process.env.NODE_ENV !== "production" && {
