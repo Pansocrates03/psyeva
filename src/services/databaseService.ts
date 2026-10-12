@@ -34,6 +34,11 @@ interface ApiEnvelope<T> {
   mensaje?: string;
 }
 
+export interface DirectorioReportes {
+  files: ArchivoBucket[];
+  folders: string[];
+}
+
 export class ApiError extends Error {
   status: number;
   detalle: unknown;
@@ -435,6 +440,42 @@ class DatabaseService {
     listarReportes: async (filtros: { evaluacionId?: string; tipo?: TipoReporte } = {}): Promise<Reporte[]> => {
       const { data } = await this.get<ApiEnvelope<Reporte[]>>(
         `/api/admin/reportes${buildQuery(filtros)}`,
+        { conColegio: false }
+      );
+      return data;
+    },
+
+    listarArchivosReportes: async (evaluacionId: string, folder = ""): Promise<DirectorioReportes> => {
+      const { data } = await this.get<ApiEnvelope<DirectorioReportes>>(
+        `/api/admin/reportes/archivos-storage${buildQuery({ evaluacionId, folder })}`,
+        { conColegio: false }
+      );
+      return data;
+    },
+
+    subirArchivosReportes: async (evaluacionId: string, archivos: File[], folder = ""): Promise<{ subidos: number; archivos: string[] }> => {
+      const form = new FormData();
+      form.set("evaluacionId", evaluacionId);
+      form.set("folder", folder);
+      archivos.forEach(archivo => form.append("archivos", archivo));
+
+      const { data } = await this.post<ApiEnvelope<{ subidos: number; archivos: string[] }>>(
+        "/api/admin/reportes/archivos-storage",
+        form,
+        { conColegio: false }
+      );
+      return data;
+    },
+
+    crearCarpetaReportes: async (evaluacionId: string, folder: string, folderName: string): Promise<{ creada: string }> => {
+      const form = new FormData();
+      form.set("evaluacionId", evaluacionId);
+      form.set("folder", folder);
+      form.set("folderName", folderName);
+
+      const { data } = await this.post<ApiEnvelope<{ creada: string }>>(
+        "/api/admin/reportes/archivos-storage",
+        form,
         { conColegio: false }
       );
       return data;

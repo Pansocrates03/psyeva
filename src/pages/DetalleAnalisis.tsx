@@ -8,6 +8,7 @@ import COLORS from "../utils/Colors";
 import DetalleAnalisisGrupos, { type Grupo as GrupoCardData } from "@/components/layouts/DetalleAnalisisGrupos";
 import DetalleAnalisisEstudiantes, { type EstudianteTablaRow } from "@/components/layouts/DetalleAnalisisEstudiantes";
 import DetalleAnalisisDatos from "@/components/layouts/DetalleAnalisisDatos";
+import DetalleAnalisisReportes from "@/components/layouts/DetalleAnalisisReportes";
 import { databaseService, ApiError } from "../services/databaseService";
 import { CATEGORIA_LABELS, CATEGORIAS } from "../utils/categorias";
 import type {
@@ -21,6 +22,7 @@ import type {
   ResultadoReporteBulk,
 } from "../utils/types";
 import ClipboardCopy from "@/components/ClipboardCopy";
+
 
 // ── Tipos locales del formulario de grupo ───────────────────────
 interface AlumnoFormRow {
@@ -140,7 +142,7 @@ export default function DetalleAnalisis() {
   const [loadingEvaluacion, setLoadingEvaluacion] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [layout, setLayout] = useState<"grupos" | "estudiantes" | "datos">("grupos");
+  const [layout, setLayout] = useState<"grupos" | "estudiantes" | "datos" | "reportes">("grupos");
 
   const [estudiantesTabla, setEstudiantesTabla] = useState<EstudianteTablaRow[] | null>(null);
   const [loadingEstudiantes, setLoadingEstudiantes] = useState(false);
@@ -584,6 +586,7 @@ export default function DetalleAnalisis() {
           <StatCard label="Grupos" value={grupos.length} active={layout === "grupos"} onClick={() => setLayout("grupos")} />
           <StatCard label="Estudiantes" value={totalAlumnos} active={layout === "estudiantes"} onClick={() => setLayout("estudiantes")} />
           <StatCard label="Resultados" value={porcentajeCompletado + "%"} active={layout === "datos"} sub="de las preguntas respondidas" onClick={() => setLayout("datos")} />
+          <StatCard label="Reportes" value={totalReportes} active={layout === "reportes"} onClick={() => setLayout("reportes")} />
         </div>
 
         {/* Layout principal */}
@@ -602,6 +605,8 @@ export default function DetalleAnalisis() {
             onUploadReportesBulk={handleUploadReportesBulk}
             bulkUploading={subiendoReportesBulk}
           />
+        ) : layout === "reportes" ? (
+          <DetalleAnalisisReportes evaluacionId={evaluacionId} />
         ) : (
           <DetalleAnalisisDatos
             preguntas={datosRespuestas?.preguntas ?? []}

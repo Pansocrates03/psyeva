@@ -1,5 +1,5 @@
 import sql from "../../db";
-import { uploadFile } from "../../services/storageService";
+import { createUniqueFileKey, listFileKeys, uploadFile } from "../../services/storageService";
 
 interface EstudianteParaReporte {
   id: string;
@@ -107,6 +107,8 @@ export const reportesBulkRoutes = {
         return Response.json({ error: "La evaluación no tiene alumnos registrados" }, { status: 404 });
       }
 
+      const prefijo = `reportes/${evaluacionId}/`;
+      const keysUsadas = new Set(await listFileKeys(prefijo));
       const usados = new Set<string>();
       const resultados: ResultadoBulk[] = [];
 
@@ -137,7 +139,7 @@ export const reportesBulkRoutes = {
           continue;
         }
 
-        const key = `reportes/evaluaciones/${evaluacionId}/estudiantes/${mejor.estudiante.id}/${Date.now()}_${nombreSeguro(archivo.name)}`;
+        const key = createUniqueFileKey(prefijo, nombreSeguro(archivo.name), keysUsadas);
         await uploadFile(key, await archivo.arrayBuffer(), "application/pdf");
         // Un reporte "individual" no lleva grupo_id — el constraint
         // reporte_individual_sin_grupo (db/schema.sql) lo exige NULL, el

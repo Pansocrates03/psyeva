@@ -1,5 +1,11 @@
 import sql from "../../db";
-import { uploadFile, getObjectUrl, resolveUrl } from "../../services/storageService";
+import { uploadFile, getObjectUrl, resolveUrl, listDirectory, listFileKeys, createUniqueFileKey } from "../../services/storageService";
+
+function rutaCarpetaValida(ruta: string): boolean {
+  return ruta === "" || ruta.split("/").every(segment =>
+    segment.length > 0 && segment !== "." && segment !== ".." && !/[\\\u0000-\u001f\u007f]/.test(segment)
+  );
+}
 
 // GET  /api/admin/reportes  → lista reportes con filtros opcionales
 // POST /api/admin/reportes  → sube un nuevo reporte (PDF)
@@ -122,9 +128,9 @@ export const reportesRoutes = {
       }
 
       // Sube el archivo al bucket S3-compatible (MinIO local / Railway en prod)
-      const timestamp = Date.now();
-      const filename  = `${tipo}_${timestamp}_${archivo.name.replace(/\s+/g, "_")}`;
-      const key       = `reportes/${filename}`;
+      const prefijo = `reportes/${evaluacionId}/`;
+      const keysUsadas = new Set(await listFileKeys(prefijo));
+      const key = createUniqueFileKey(prefijo, archivo.name, keysUsadas);
 
       await uploadFile(key, await archivo.arrayBuffer(), archivo.type);
 
@@ -147,6 +153,85 @@ export const reportesRoutes = {
     } catch (err) {
       console.error("[POST /api/admin/reportes]", err);
       return Response.json({ error: "Error al subir el reporte" }, { status: 500 });
+    }
+  },
+};
+
+export const reportesStorageRoutes = {
+  async GET(req: Request) {
+    try {
+      const evaluacionId = new URL(req.url).searchParams.get("evaluacionId");
+      if (!evaluacionId || !/^[\da-f]{8}(?:-[\da-f]{4}){3}-[\da-f]{12}$/i.test(evaluacionId)) {
+        return Response.json({ error: "evaluacionId debe ser un UUID válido" }, { status: 400 });
+      }
+
+      const folderPath = new URL(req.url).searchParams.get("folder") ?? "";
+      if (!rutaCarpetaValida(folderPath)) {
+        return Response.json({ error: "La carpeta solicitada no es válida" }, { status: 400 });
+      }
+
+      const prefijo = `reportes/${evaluacionId}/${folderPath ? `${folderPath}/` : ""}`;
+      const data = await listDirectory(prefijo);
+      return Response.json({ data });
+    } catch (err) {
+      console.error("[GET /api/admin/reportes/archivos-storage]", err);
+      return Response.json({ error: "Error al listar los archivos de reportes" }, { status: 500 });
+    }
+  },
+
+  async POST(req: Request) {
+    try {
+      const form = await req.formData();
+      const evaluacionId = form.get("evaluacionId");
+      const archivos = form.getAll("archivos").filter((value): value is File => value instanceof File);
+      const folderPath = form.get("folder");
+      const folderName = form.get("folderName");
+      if (typeof evaluacionId !== "string" || !/^[\da-f]{8}(?:-[\da-f]{4}){3}-[\da-f]{12}$/i.test(evaluacionId)) {
+        return Response.json({ error: "evaluacionId debe ser un UUID válido" }, { status: 400 });
+      }
+
+      if (folderPath !== null && (typeof folderPath !== "string" || !rutaCarpetaValida(folderPath))) {
+        return Response.json({ error: "La carpeta solicitada no es válida" }, { status: 400 });
+      }
+
+      if (folderName !== null) {
+        const nombre = typeof folderName === "string" ? folderName.trim() : "";
+        if (!nombre || nombre === "." || nombre === ".." || /[\/\\\u0000-\u001f\u007f]/.test(nombre)) {
+          return Response.json({ error: "El nombre de la carpeta no es válido" }, { status: 400 });
+        }
+        const basePrefix = `reportes/${evaluacionId}/${folderPath ? `${folderPath}/` : ""}`;
+        const folderKey = `${basePrefix}${nombre}/`;
+        const contenido = await listDirectory(basePrefix);
+        if (contenido.folders.includes(nombre) || contenido.files.some(archivo => archivo.key.slice(basePrefix.length) === nombre)) {
+          return Response.json({ error: "Ya existe una carpeta con ese nombre" }, { status: 409 });
+        }
+        await uploadFile(folderKey, new Uint8Array(), "application/x-directory");
+        return Response.json({ data: { creada: nombre } }, { status: 201 });
+      }
+
+      if (archivos.length === 0) {
+        return Response.json({ error: "Se requiere al menos un archivo PDF" }, { status: 400 });
+      }
+      if (archivos.length > 100) {
+        return Response.json({ error: "No se pueden subir más de 100 archivos a la vez" }, { status: 400 });
+      }
+      if (archivos.some(archivo => archivo.type !== "application/pdf" && !archivo.name.toLowerCase().endsWith(".pdf"))) {
+        return Response.json({ error: "Solo se permiten archivos PDF" }, { status: 400 });
+      }
+
+      const prefijo = `reportes/${evaluacionId}/${folderPath ? `${folderPath}/` : ""}`;
+      const keysUsadas = new Set(await listFileKeys(prefijo));
+      const subidos: string[] = [];
+      for (const archivo of archivos) {
+        const key = createUniqueFileKey(prefijo, archivo.name, keysUsadas);
+        await uploadFile(key, await archivo.arrayBuffer(), "application/pdf");
+        subidos.push(archivo.name);
+      }
+
+      return Response.json({ data: { subidos: subidos.length, archivos: subidos } }, { status: 201 });
+    } catch (err) {
+      console.error("[POST /api/admin/reportes/archivos-storage]", err);
+      return Response.json({ error: "Error al subir los archivos de reportes" }, { status: 500 });
     }
   },
 };

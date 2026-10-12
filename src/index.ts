@@ -23,6 +23,7 @@ import {
   gruposRespuestasRoutes,
   estudiantesIdRoutes,
   reportesRoutes,
+  reportesStorageRoutes,
   reportesBulkRoutes,
   imagenesRoutes,
   // Facilitador
@@ -64,6 +65,7 @@ const server = serve({
     "/api/admin/estudiantes/:id":               withAdminAuth(estudiantesIdRoutes),
     "/api/admin/plantillas/estudiantes":        withAdminAuth(plantillasEstudiantesRoutes),
     "/api/admin/reportes":                      withAdminAuth(reportesRoutes),
+    "/api/admin/reportes/archivos-storage":     withAdminAuth(reportesStorageRoutes),
     "/api/admin/reportes/bulk":                 withAdminAuth(reportesBulkRoutes),
     "/api/admin/imagenes":                      withAdminAuth(imagenesRoutes),
 

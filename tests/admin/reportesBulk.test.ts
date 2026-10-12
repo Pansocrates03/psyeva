@@ -57,8 +57,15 @@ describe("POST /api/admin/reportes/bulk", () => {
     expect(body.data.resultados[0].estudianteId).toBe(mock.estudianteAna);
     expect(body.data.resultados[0].porcentaje).toBe(100);
 
-    const [reporte] = await sql`SELECT * FROM reporte WHERE estudiante_id = ${mock.estudianteAna}`;
+    const [reporte] = await sql`
+      SELECT * FROM reporte
+      WHERE estudiante_id = ${mock.estudianteAna} AND evaluacion_id = ${mock.evaluacionSanJose}
+      ORDER BY created_at DESC
+      LIMIT 1
+    `;
     expect(reporte.tipo).toBe("individual");
+    expect(reporte.archivoUrl.startsWith(`reportes/${mock.evaluacionSanJose}/`)).toBe(true);
+    expect(reporte.archivoUrl.split("/")).toHaveLength(3);
     // Un reporte individual siempre lleva grupo_id NULL (constraint
     // reporte_individual_sin_grupo) — el grupo se deriva de estudiante_id.
     expect(reporte.grupoId).toBeNull();

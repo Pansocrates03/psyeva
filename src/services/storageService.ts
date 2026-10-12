@@ -143,6 +143,26 @@ export interface ArchivoBucket {
   url: string;
 }
 
+export function createUniqueFileKey(prefix: string, filename: string, usedKeys: Set<string>): string {
+  const nombreSeguro = filename
+    .trim()
+    .replace(/[\\/]/g, "_")
+    .replace(/[\u0000-\u001f\u007f]/g, "_") || "reporte.pdf";
+  const indiceExtension = nombreSeguro.lastIndexOf(".");
+  const nombreBase = indiceExtension > 0 ? nombreSeguro.slice(0, indiceExtension) : nombreSeguro;
+  const extension = indiceExtension > 0 ? nombreSeguro.slice(indiceExtension) : "";
+  let key = `${prefix}${nombreSeguro}`;
+  let contador = 1;
+
+  while (usedKeys.has(key)) {
+    key = `${prefix}${nombreBase}-${contador}${extension}`;
+    contador += 1;
+  }
+
+  usedKeys.add(key);
+  return key;
+}
+
 /**
  * Lista los objetos del bucket bajo un prefijo (p. ej.
  * "assets/preguntas/") con una URL firmada por objeto. Se
@@ -151,16 +171,85 @@ export interface ArchivoBucket {
  * validar el prefijo primero, para no poder listar todo el bucket
  * (incluidos los PDFs de reportes) desde ahí.
  */
-export async function listFiles(prefix: string): Promise<ArchivoBucket[]> {
-  const res = await getClient().send(
-    new ListObjectsV2Command({ Bucket: getBucket(), Prefix: prefix })
-  );
+export async function listFileKeys(prefix: string): Promise<string[]> {
+  const objetosEncontrados: Array<{ Key?: string }> = [];
+  let continuationToken: string | undefined;
 
-  const objetos = (res.Contents ?? [])
+  do {
+    const res = await getClient().send(
+      new ListObjectsV2Command({
+        Bucket: getBucket(),
+        Prefix: prefix,
+        ContinuationToken: continuationToken,
+      })
+    );
+    objetosEncontrados.push(...(res.Contents ?? []));
+
+    if (!res.IsTruncated) break;
+    if (!res.NextContinuationToken) {
+      throw new Error("El bucket indicó más resultados, pero no devolvió un token de continuación.");
+    }
+    continuationToken = res.NextContinuationToken;
+  } while (true);
+
+  const objetos = objetosEncontrados
     .filter((obj): obj is { Key: string } => Boolean(obj.Key) && !obj.Key!.endsWith("/"))
     .sort((a, b) => a.Key!.localeCompare(b.Key!, undefined, { numeric: true }));
 
+  return objetos.map(obj => obj.Key);
+}
+
+export async function listFiles(prefix: string): Promise<ArchivoBucket[]> {
+  const keys = await listFileKeys(prefix);
   return Promise.all(
-    objetos.map(async obj => ({ key: obj.Key, url: await getObjectUrl(obj.Key) }))
+    keys.map(async key => ({ key, url: await getObjectUrl(key) }))
   );
+}
+
+export async function listDirectory(prefix: string): Promise<{ files: ArchivoBucket[]; folders: string[] }> {
+  const client = getClient();
+  const bucket = getBucket();
+  const folders = new Set<string>();
+  const keys: string[] = [];
+  let continuationToken: string | undefined;
+
+  do {
+    const res = await client.send(
+      new ListObjectsV2Command({
+        Bucket: bucket,
+        Prefix: prefix,
+        Delimiter: "/",
+        ContinuationToken: continuationToken,
+      })
+    );
+
+    for (const item of res.CommonPrefixes ?? []) {
+      if (item.Prefix) {
+        const name = item.Prefix.slice(prefix.length).replace(/\/$/, "");
+        if (name && !name.includes("/")) folders.add(name);
+      }
+    }
+
+    for (const item of res.Contents ?? []) {
+      if (!item.Key || item.Key === prefix) continue;
+      const relativeKey = item.Key.slice(prefix.length);
+      const separator = relativeKey.indexOf("/");
+      if (separator >= 0) {
+        const folder = relativeKey.slice(0, separator);
+        if (folder) folders.add(folder);
+      } else {
+        keys.push(item.Key);
+      }
+    }
+
+    if (!res.IsTruncated) break;
+    if (!res.NextContinuationToken) {
+      throw new Error("El bucket indicó más resultados, pero no devolvió un token de continuación.");
+    }
+    continuationToken = res.NextContinuationToken;
+  } while (true);
+
+  keys.sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+  const files = await Promise.all(keys.map(async key => ({ key, url: await getObjectUrl(key) })));
+  return { files, folders: Array.from(folders).sort((a, b) => a.localeCompare(b, undefined, { numeric: true })) };
 }
