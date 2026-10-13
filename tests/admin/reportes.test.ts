@@ -151,6 +151,63 @@ describe("POST /api/admin/reportes/archivos-storage", () => {
   });
 });
 
+describe("DELETE /api/admin/reportes/archivos-storage", () => {
+  test("elimina archivos seleccionados y sus registros de reporte", async () => {
+    const evaluacionId = mock.evaluacionSanJose;
+    const folder = `seleccion-${crypto.randomUUID()}`;
+    const prefix = `reportes/${evaluacionId}/${folder}/`;
+    const key = `${prefix}reporte.pdf`;
+    await uploadFile(key, new Uint8Array([0x25, 0x50, 0x44, 0x46]), "application/pdf");
+    await sql`
+      INSERT INTO reporte (tipo, evaluacion_id, archivo_url)
+      VALUES ('general', ${evaluacionId}::uuid, ${key})
+    `;
+
+    try {
+      const res = await fetch(`${server.url}/api/admin/reportes/archivos-storage`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ evaluacionId, folder, keys: [key] }),
+      });
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.data.eliminados).toBe(1);
+
+      const [reporte] = await sql`SELECT id FROM reporte WHERE archivo_url = ${key}`;
+      expect(reporte).toBeUndefined();
+
+      const resListado = await fetch(`${server.url}/api/admin/reportes/archivos-storage?evaluacionId=${evaluacionId}&folder=${folder}`);
+      const listado = await resListado.json();
+      expect(listado.data.files).toHaveLength(0);
+    } finally {
+      await deleteFile(key);
+    }
+  });
+
+  test("rechaza borrar archivos fuera de la carpeta de la evaluación", async () => {
+    const key = `reportes/${mock.evaluacionLiceo}/reporte.pdf`;
+    const res = await fetch(`${server.url}/api/admin/reportes/archivos-storage`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ evaluacionId: mock.evaluacionSanJose, folder: "", keys: [key] }),
+    });
+    expect(res.status).toBe(400);
+  });
+
+  test("rechaza carpetas y archivos que ya no existen", async () => {
+    const res = await fetch(`${server.url}/api/admin/reportes/archivos-storage`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        evaluacionId: mock.evaluacionSanJose,
+        folder: "",
+        keys: [`reportes/${mock.evaluacionSanJose}/subcarpeta/`],
+      }),
+    });
+    expect(res.status).toBe(400);
+  });
+});
+
 describe("POST /api/admin/reportes", () => {
   test("400 si faltan campos requeridos", async () => {
     const form = new FormData();

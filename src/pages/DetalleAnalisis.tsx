@@ -584,7 +584,7 @@ export default function DetalleAnalisis() {
         {/* KPIs */}
         <div style={{ display: "flex", gap: 12, marginBottom: 28 }}>
           <StatCard label="Grupos" value={grupos.length} active={layout === "grupos"} onClick={() => setLayout("grupos")} />
-          <StatCard label="Estudiantes" value={totalAlumnos} active={layout === "estudiantes"} onClick={() => setLayout("estudiantes")} />
+          {/*  <StatCard label="Estudiantes" value={totalAlumnos} active={layout === "estudiantes"} onClick={() => setLayout("estudiantes")} /> */}
           <StatCard label="Resultados" value={porcentajeCompletado + "%"} active={layout === "datos"} sub="de las preguntas respondidas" onClick={() => setLayout("datos")} />
           <StatCard label="Reportes" value={totalReportes} active={layout === "reportes"} onClick={() => setLayout("reportes")} />
         </div>
@@ -658,30 +658,6 @@ export default function DetalleAnalisis() {
               </select>
             ))}
           </div>
-
-          {grupoEditandoId && (
-            <div>
-              <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: COLORS.neutro700, marginBottom: 6 }}>
-                Reporte grupal
-              </label>
-              <label style={{
-                display: "inline-flex", alignItems: "center", gap: 7,
-                padding: "9px 13px", borderRadius: 8,
-                border: `1px solid ${COLORS.neutro100}`, background: "#fff",
-                color: COLORS.neutro700, fontSize: 13, fontWeight: 600,
-                cursor: "pointer",
-              }}>
-                <i className="ti ti-upload" style={{ fontSize: 15 }} aria-hidden="true" />
-                Subir reporte PDF
-                <input
-                  type="file"
-                  accept="application/pdf"
-                  onChange={handleUploadReporteGrupal}
-                  style={{ display: "none" }}
-                />
-              </label>
-            </div>
-          )}
 
           <div style={{ border: `1px solid ${COLORS.neutro100}`, borderRadius: 12, padding: 12, background: COLORS.neutro50 }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>

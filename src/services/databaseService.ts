@@ -481,6 +481,18 @@ class DatabaseService {
       return data;
     },
 
+    eliminarArchivosReportes: async (evaluacionId: string, folder: string, keys: string[]): Promise<{ eliminados: number }> => {
+      const { data } = await this.request<ApiEnvelope<{ eliminados: number }>>(
+        "/api/admin/reportes/archivos-storage",
+        {
+          method: "DELETE",
+          body: JSON.stringify({ evaluacionId, folder, keys }),
+        },
+        { conColegio: false }
+      );
+      return data;
+    },
+
     subirReporte: async (input: {
       archivo: File;
       tipo: TipoReporte;

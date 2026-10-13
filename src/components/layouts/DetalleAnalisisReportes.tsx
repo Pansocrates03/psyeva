@@ -55,6 +55,14 @@ function IconoEnlaceExterno() {
     );
 }
 
+function IconoEliminar() {
+    return (
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M4 7h16M10 11v6m4-6v6M5 7l1 13h12l1-13M9 7V4h6v3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+    );
+}
+
 const UUID_REGEX = /^[\da-f]{8}(?:-[\da-f]{4}){3}-[\da-f]{12}$/i;
 
 export default function DetalleAnalisisReportes({ evaluacionId, modo = "admin" }: {
@@ -67,6 +75,8 @@ export default function DetalleAnalisisReportes({ evaluacionId, modo = "admin" }
     const [error, setError] = useState<string | null>(null);
     const [recarga, setRecarga] = useState(0);
     const [subiendo, setSubiendo] = useState(false);
+    const [eliminando, setEliminando] = useState(false);
+    const [archivosSeleccionados, setArchivosSeleccionados] = useState<Set<string>>(() => new Set());
     const [carpetaActual, setCarpetaActual] = useState("");
     const [mostrarCrearCarpeta, setMostrarCrearCarpeta] = useState(false);
     const [nombreCarpeta, setNombreCarpeta] = useState("");
@@ -114,6 +124,33 @@ export default function DetalleAnalisisReportes({ evaluacionId, modo = "admin" }
         }
     };
 
+    const eliminarSeleccionados = async () => {
+        const keys = Array.from(archivosSeleccionados);
+        if (!esAdmin || keys.length === 0) return;
+        if (!window.confirm(`¿Eliminar ${keys.length} archivo${keys.length === 1 ? "" : "s"} seleccionado${keys.length === 1 ? "" : "s"}? Esta acción no se puede deshacer.`)) return;
+
+        setEliminando(true);
+        try {
+            const resultado = await databaseService.admin.eliminarArchivosReportes(evaluacionId, carpetaActual, keys);
+            setArchivosSeleccionados(new Set());
+            setRecarga(actual => actual + 1);
+            window.alert(`${resultado.eliminados} archivo${resultado.eliminados === 1 ? "" : "s"} eliminado${resultado.eliminados === 1 ? "" : "s"}.`);
+        } catch (err) {
+            window.alert(err instanceof ApiError ? err.message : "No se pudieron eliminar los archivos");
+        } finally {
+            setEliminando(false);
+        }
+    };
+
+    const alternarSeleccion = (key: string) => {
+        setArchivosSeleccionados(actual => {
+            const siguiente = new Set(actual);
+            if (siguiente.has(key)) siguiente.delete(key);
+            else siguiente.add(key);
+            return siguiente;
+        });
+    };
+
     useEffect(() => {
         let activo = true;
         if (!UUID_REGEX.test(evaluacionId)) {
@@ -147,6 +184,7 @@ export default function DetalleAnalisisReportes({ evaluacionId, modo = "admin" }
     const navegarCarpeta = (ruta: string) => {
         setCarpetaActual(ruta);
         setResultadoCarga(null);
+        setArchivosSeleccionados(new Set());
     };
     const segmentosCarpeta = carpetaActual ? carpetaActual.split("/") : [];
 
@@ -163,18 +201,37 @@ export default function DetalleAnalisisReportes({ evaluacionId, modo = "admin" }
                     <button
                         type="button"
                         onClick={() => setRecarga(actual => actual + 1)}
-                        disabled={loading || subiendo || creandoCarpeta}
+                        disabled={loading || subiendo || creandoCarpeta || eliminando}
                         style={{
                             display: "inline-flex", alignItems: "center", gap: 6,
                             padding: "8px 12px", borderRadius: 8,
                             border: `1px solid ${COLORS.neutro100}`, background: "#fff",
                             color: COLORS.neutro700, fontSize: 12, fontWeight: 600,
-                            cursor: loading || subiendo ? "wait" : "pointer", opacity: loading || subiendo ? 0.6 : 1,
+                            cursor: loading || subiendo || eliminando ? "wait" : "pointer", opacity: loading || subiendo || eliminando ? 0.6 : 1,
                         }}
                     >
                         <IconoActualizar />
                         Actualizar
                     </button>
+                    {esAdmin && archivosSeleccionados.size > 0 && (
+                        <button
+                            type="button"
+                            onClick={eliminarSeleccionados}
+                            disabled={eliminando || loading}
+                            aria-busy={eliminando}
+                            style={{
+                                display: "inline-flex", alignItems: "center", gap: 6,
+                                padding: "8px 12px", borderRadius: 8,
+                                border: `1px solid ${COLORS.rojo400}`, background: COLORS.rojo50,
+                                color: COLORS.rojo600, fontSize: 12, fontWeight: 600,
+                                cursor: eliminando || loading ? "wait" : "pointer",
+                                opacity: eliminando || loading ? 0.6 : 1,
+                            }}
+                        >
+                            <IconoEliminar />
+                            {eliminando ? "Eliminando..." : `Eliminar (${archivosSeleccionados.size})`}
+                        </button>
+                    )}
                     {esAdmin && <button
                         type="button"
                         onClick={() => setMostrarCrearCarpeta(actual => !actual)}
@@ -296,6 +353,7 @@ export default function DetalleAnalisisReportes({ evaluacionId, modo = "admin" }
                                 onMouseEnter={event => { event.currentTarget.style.background = COLORS.violeta50; }}
                                 onMouseLeave={event => { event.currentTarget.style.background = "#fff"; }}
                             >
+                                {esAdmin && <span aria-hidden="true" style={{ width: 16, height: 16, flexShrink: 0 }} />}
                                 <IconoCarpeta />
                                 <span style={{ flex: 1 }}>{carpeta}</span>
                                 <span style={{ display: "inline-flex", color: COLORS.neutro400 }}><IconoChevron /></span>
@@ -305,20 +363,37 @@ export default function DetalleAnalisisReportes({ evaluacionId, modo = "admin" }
                     {archivos.map(archivo => {
                         const nombre = archivo.key.split("/").pop() ?? archivo.key;
                         return (
-                            <a
+                            <div
                                 key={archivo.key}
-                                href={archivo.url}
-                                target="_blank"
-                                rel="noreferrer"
                                 style={{
                                     display: "flex", alignItems: "center", gap: 10,
                                     minHeight: 44, padding: "8px 20px",
                                     borderBottom: `1px solid ${COLORS.neutro50}`,
-                                    textDecoration: "none", color: COLORS.neutro700, fontSize: 13,
+                                    background: archivosSeleccionados.has(archivo.key) ? COLORS.violeta50 : "#fff",
                                 }}
                                 onMouseEnter={event => { event.currentTarget.style.background = COLORS.violeta50; }}
-                                onMouseLeave={event => { event.currentTarget.style.background = "#fff"; }}
+                                onMouseLeave={event => { event.currentTarget.style.background = archivosSeleccionados.has(archivo.key) ? COLORS.violeta50 : "#fff"; }}
                             >
+                                {esAdmin && (
+                                    <input
+                                        type="checkbox"
+                                        aria-label={`Seleccionar ${nombre}`}
+                                        checked={archivosSeleccionados.has(archivo.key)}
+                                        onChange={() => alternarSeleccion(archivo.key)}
+                                        disabled={eliminando}
+                                        style={{ width: 16, height: 16, margin: 0, flexShrink: 0, accentColor: COLORS.violeta600, cursor: eliminando ? "wait" : "pointer" }}
+                                    />
+                                )}
+                                <a
+                                    href={archivo.url}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    style={{
+                                        display: "flex", alignItems: "center", gap: 10,
+                                        minWidth: 0, flex: 1, color: COLORS.neutro700, fontSize: 13,
+                                        textDecoration: "none",
+                                    }}
+                                >
                                 <svg
                                     width="20"
                                     height="22"
@@ -336,7 +411,8 @@ export default function DetalleAnalisisReportes({ evaluacionId, modo = "admin" }
                                     {nombre}
                                 </span>
                                 <span style={{ display: "inline-flex", color: COLORS.neutro400 }}><IconoEnlaceExterno /></span>
-                            </a>
+                                </a>
+                            </div>
                         );
                     })}
                 </div>

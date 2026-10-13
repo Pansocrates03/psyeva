@@ -1,5 +1,5 @@
 import sql from "../../db";
-import { uploadFile, getObjectUrl, resolveUrl, listDirectory, listFileKeys, createUniqueFileKey } from "../../services/storageService";
+import { deleteFile, uploadFile, getObjectUrl, resolveUrl, listDirectory, listFileKeys, createUniqueFileKey } from "../../services/storageService";
 
 function rutaCarpetaValida(ruta: string): boolean {
   return ruta === "" || ruta.split("/").every(segment =>
@@ -232,6 +232,63 @@ export const reportesStorageRoutes = {
     } catch (err) {
       console.error("[POST /api/admin/reportes/archivos-storage]", err);
       return Response.json({ error: "Error al subir los archivos de reportes" }, { status: 500 });
+    }
+  },
+
+  async DELETE(req: Request) {
+    try {
+      const body = await req.json().catch(() => null) as {
+        evaluacionId?: unknown;
+        folder?: unknown;
+        keys?: unknown;
+      } | null;
+      const evaluacionId = body?.evaluacionId;
+      const folderPath = body?.folder ?? "";
+      const keys = body?.keys;
+
+      if (typeof evaluacionId !== "string" || !/^[\da-f]{8}(?:-[\da-f]{4}){3}-[\da-f]{12}$/i.test(evaluacionId)) {
+        return Response.json({ error: "evaluacionId debe ser un UUID válido" }, { status: 400 });
+      }
+      if (typeof folderPath !== "string" || !rutaCarpetaValida(folderPath)) {
+        return Response.json({ error: "La carpeta solicitada no es válida" }, { status: 400 });
+      }
+      if (!Array.isArray(keys) || keys.length === 0 || keys.length > 100 || keys.some(key => typeof key !== "string")) {
+        return Response.json({ error: "Se requiere seleccionar entre 1 y 100 archivos" }, { status: 400 });
+      }
+
+      const prefijo = `reportes/${evaluacionId}/${folderPath ? `${folderPath}/` : ""}`;
+      const seleccion = new Set(keys as string[]);
+      if (seleccion.size !== keys.length || Array.from(seleccion).some(key => {
+        if (!key.startsWith(prefijo)) return true;
+        const nombre = key.slice(prefijo.length);
+        return !nombre || nombre.includes("/") || nombre === "." || nombre === "..";
+      })) {
+        return Response.json({ error: "La selección contiene archivos fuera de la carpeta actual" }, { status: 400 });
+      }
+
+      const directorio = await listDirectory(prefijo);
+      const existentes = new Set(directorio.files.map(archivo => archivo.key));
+      if (Array.from(seleccion).some(key => !existentes.has(key))) {
+        return Response.json({ error: "Uno o más archivos seleccionados ya no existen en esta carpeta" }, { status: 404 });
+      }
+
+      await sql.begin(async tx => {
+        for (const key of seleccion) {
+          await tx`
+            DELETE FROM reporte
+            WHERE evaluacion_id = ${evaluacionId}::uuid
+              AND archivo_url = ${key}
+          `;
+        }
+      });
+
+      for (const key of seleccion) {
+        await deleteFile(key);
+      }
+      return Response.json({ data: { eliminados: seleccion.size } });
+    } catch (err) {
+      console.error("[DELETE /api/admin/reportes/archivos-storage]", err);
+      return Response.json({ error: "Error al eliminar los archivos seleccionados" }, { status: 500 });
     }
   },
 };
