@@ -123,18 +123,25 @@ export const evaluacionExportarRoutes = {
           "Estudiante",
           ...preguntasCategoria.map((pregunta, index) => `${index + 1}. ${pregunta.texto}`),
         ];
-        ws.columns = encabezados.map((header, index) => ({
-          header,
+        ws.columns = encabezados.map((_, index) => ({
           key: index === 0 ? "estudiante" : `pregunta${index}`,
           width: index === 0 ? 30 : 44,
         }));
 
-        ws.getRow(1).eachCell(cell => {
+        const titulo = `Respuestas evaluacion ${evaluacion.nombre} del ${evaluacion.colegioNombre} - ${grupo.nombre}`;
+        const filaTitulo = ws.addRow([titulo]);
+        if (encabezados.length > 1) ws.mergeCells(1, 1, 1, encabezados.length);
+        filaTitulo.height = 30;
+        filaTitulo.getCell(1).font = { bold: true, size: 16, color: { argb: "FF2E2D2C" } };
+        filaTitulo.getCell(1).alignment = { vertical: "middle", horizontal: "left" };
+
+        const filaEncabezados = ws.addRow(encabezados);
+        filaEncabezados.eachCell(cell => {
           cell.font      = { bold: true, color: { argb: "FFFFFFFF" } };
           cell.fill      = { type: "pattern", pattern: "solid", fgColor: { argb: CATEGORIA_COLORES[categoriaHoja] } };
           cell.alignment = { vertical: "middle", horizontal: "center", wrapText: true };
         });
-        ws.getRow(1).height = 30;
+        filaEncabezados.height = 30;
 
         const respuestasPorEstudiante = new Map<string, Map<string, string>>();
         filas.forEach(fila => {
@@ -153,7 +160,7 @@ export const evaluacionExportarRoutes = {
         });
 
         ws.eachRow((row, idx) => {
-          if (idx === 1) return;
+          if (idx <= 2) return;
           row.eachCell(cell => {
             cell.fill = {
               type: "pattern", pattern: "solid",

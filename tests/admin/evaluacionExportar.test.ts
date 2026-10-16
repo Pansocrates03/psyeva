@@ -52,22 +52,25 @@ describe("GET /api/admin/evaluaciones/:id/exportar", () => {
     const bienestar = wb.getWorksheet("Bienestar Psicológico")!;
     const aprendizaje = wb.getWorksheet("Aprendizaje")!;
     [emociones, bienestar, aprendizaje].forEach(ws => {
-      expect(ws.rowCount).toBeGreaterThan(1);
-      const encabezados = ws.getRow(1).values as unknown[];
+      expect(ws.rowCount).toBeGreaterThan(2);
+      expect(ws.getCell(1, 1).value).toBe(
+        "Respuestas evaluacion Evaluación primer semestre 2026 del Colegio San José - Grupo A"
+      );
+      const encabezados = ws.getRow(2).values as unknown[];
       expect(encabezados[1]).toBe("Estudiante");
       expect(encabezados[2]).toMatch(/^1\. /);
-      expect(ws.getCell(1, 2).fill).toMatchObject({
+      expect(ws.getCell(2, 2).fill).toMatchObject({
         fgColor: { argb: expect.any(String) },
       });
     });
 
-    expect(emociones.getCell(1, 2).fill).toMatchObject({ fgColor: { argb: "FF8D54FF" } });
-    expect(bienestar.getCell(1, 2).fill).toMatchObject({ fgColor: { argb: "FF7FD858" } });
-    expect(aprendizaje.getCell(1, 2).fill).toMatchObject({ fgColor: { argb: "FF37B7FF" } });
+    expect(emociones.getCell(2, 2).fill).toMatchObject({ fgColor: { argb: "FF8D54FF" } });
+    expect(bienestar.getCell(2, 2).fill).toMatchObject({ fgColor: { argb: "FF7FD858" } });
+    expect(aprendizaje.getCell(2, 2).fill).toMatchObject({ fgColor: { argb: "FF37B7FF" } });
 
     const emocionRows = [] as unknown[][];
     emociones.eachRow((row, idx) => {
-      if (idx === 1) return;
+      if (idx <= 2) return;
       emocionRows.push(row.values as unknown[]);
     });
     expect(emocionRows.some(row => row[1] === "Ana López García" && row.includes("Bien"))).toBe(true);
@@ -75,14 +78,14 @@ describe("GET /api/admin/evaluaciones/:id/exportar", () => {
 
     const bienestarRows = [] as unknown[][];
     bienestar.eachRow((row, idx) => {
-      if (idx === 1) return;
+      if (idx <= 2) return;
       bienestarRows.push(row.values as unknown[]);
     });
     expect(bienestarRows.some(row => row.includes("Bien"))).toBe(false);
 
     const aprendizajeRows = [] as unknown[][];
     aprendizaje.eachRow((row, idx) => {
-      if (idx === 1) return;
+      if (idx <= 2) return;
       aprendizajeRows.push(row.values as unknown[]);
     });
     expect(aprendizajeRows.some(row => row[1] === "Ana López García")).toBe(true);
