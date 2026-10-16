@@ -9,12 +9,18 @@ export default function DetalleAnalisisDatos({
   preguntas,
   estudiantes,
   loading,
+  grupos,
+  grupoSeleccionadoId,
+  onSeleccionarGrupo,
   onExportar,
   onClose,
 }: {
   preguntas: GrupoRespuestas["preguntas"];
   estudiantes: FilaDatos[];
   loading?: boolean;
+  grupos: Array<{ id: string; nombre: string }>;
+  grupoSeleccionadoId: string;
+  onSeleccionarGrupo: (grupoId: string) => void;
   onExportar: () => void;
   onClose: () => void;
 }) {
@@ -25,8 +31,20 @@ export default function DetalleAnalisisDatos({
           <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: COLORS.neutro900 }}>Respuestas por estudiante</h3>
           <div style={{ fontSize: 12, color: COLORS.neutro500, marginTop: 2 }}>{estudiantes.length} registros disponibles</div>
         </div>
-        <div style={{ display: "flex", gap: 8 }}>
-          <ActionButton label="Exportar a Excel" onClick={onExportar} />
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <label htmlFor="grupo-resultados" style={{ fontSize: 13, color: COLORS.neutro700 }}>Grupo</label>
+          <select
+            id="grupo-resultados"
+            value={grupoSeleccionadoId}
+            onChange={event => onSeleccionarGrupo(event.target.value)}
+            disabled={grupos.length === 0}
+            style={{ padding: "8px 10px", border: `1px solid ${COLORS.neutro100}`, borderRadius: 8, fontSize: 13, color: COLORS.neutro900, background: "#fff" }}
+          >
+            {grupos.length === 0
+              ? <option value="">Sin grupos</option>
+              : grupos.map(grupo => <option key={grupo.id} value={grupo.id}>{grupo.nombre}</option>)}
+          </select>
+          <ActionButton label="Exportar a Excel" onClick={onExportar} disabled={!grupoSeleccionadoId || loading} />
         </div>
       </div>
 
@@ -57,7 +75,7 @@ export default function DetalleAnalisisDatos({
           ]}
           data={estudiantes}
           getRowKey={estudiante => estudiante.estudianteId}
-          emptyState={loading ? "Cargando respuestas..." : "No hay respuestas registradas aún."}
+          emptyState={loading ? "Cargando respuestas..." : grupos.length === 0 ? "No hay grupos en esta evaluación." : "No hay respuestas registradas aún."}
           rowStyle={() => ({ borderTop: `1px solid ${COLORS.neutro50}` })}
         />
       </div>

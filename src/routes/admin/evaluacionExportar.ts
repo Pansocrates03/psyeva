@@ -9,11 +9,12 @@ const CATEGORIA_COLORES: Record<CategoriaFormulario, string> = {
 };
 
 // GET /api/admin/evaluaciones/:id/exportar
-// Genera y devuelve un archivo Excel (.xlsx) con todas las
-// respuestas de la evaluación, listo para descargar.
+// Genera y devuelve un archivo Excel (.xlsx) con las respuestas
+// del grupo seleccionado, separado por categoría.
 //
-// Query param opcional:
-//   ?categoria=emociones|bienestar_psicologico|aprendizaje
+// Query params:
+//   ?grupoId=<id> (requerido)
+//   &categoria=emociones|bienestar_psicologico|aprendizaje (opcional)
 export const evaluacionExportarRoutes = {
 
   async GET(req: Request) {
@@ -22,6 +23,7 @@ export const evaluacionExportarRoutes = {
       const partes    = url.pathname.split("/");
       // /api/admin/evaluaciones/:id/exportar → id en índice -2
       const id        = partes.at(-2)!;
+      const grupoId   = url.searchParams.get("grupoId");
       const categoria = url.searchParams.get("categoria") ?? null;
 
       // Verifica que la evaluación exista usando la view
@@ -33,6 +35,20 @@ export const evaluacionExportarRoutes = {
 
       if (!evaluacion) {
         return Response.json({ error: "Evaluación no encontrada" }, { status: 404 });
+      }
+
+      if (!grupoId) {
+        return Response.json({ error: "Se requiere seleccionar un grupo" }, { status: 400 });
+      }
+
+      const [grupo] = await sql`
+        SELECT id, nombre
+        FROM grupo
+        WHERE id = ${grupoId} AND evaluacion_id = ${id}
+      `;
+
+      if (!grupo) {
+        return Response.json({ error: "Grupo no encontrado en esta evaluación" }, { status: 404 });
       }
 
       const preguntas = await sql`
@@ -48,6 +64,7 @@ export const evaluacionExportarRoutes = {
         JOIN seccion sec ON sec.formulario_id = f.id
         JOIN pregunta p ON p.seccion_id = sec.id
         WHERE ev.id = ${id}
+          AND g.id = ${grupoId}
           AND (
             ${categoria}::categoria_formulario IS NULL
             OR f.categoria = ${categoria}::categoria_formulario
@@ -72,6 +89,7 @@ export const evaluacionExportarRoutes = {
         LEFT JOIN pregunta p ON p.id = r.pregunta_id
         LEFT JOIN formulario f ON f.id = s.formulario_id
         WHERE ev.id = ${id}
+          AND g.id = ${grupoId}
           AND (
             ${categoria}::categoria_formulario IS NULL
             OR f.categoria = ${categoria}::categoria_formulario
@@ -146,7 +164,7 @@ export const evaluacionExportarRoutes = {
       });
 
       const buffer = await wb.xlsx.writeBuffer();
-      const nombreArchivo = `${evaluacion.colegioNombre}_${evaluacion.nombre}_respuestas.xlsx`
+      const nombreArchivo = `${evaluacion.colegioNombre}_${evaluacion.nombre}_${grupo.nombre}_respuestas.xlsx`
         .replace(/\s+/g, "_")
         .normalize("NFD")
         .replace(/[\u0300-\u036f]/g, "");

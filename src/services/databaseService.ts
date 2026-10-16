@@ -333,8 +333,8 @@ class DatabaseService {
     },
 
     // Descarga el .xlsx de respuestas; el caller decide cómo ofrecerlo (link, guardar, etc.)
-    exportarEvaluacion: async (id: string, categoria?: CategoriaFormulario): Promise<{ blob: Blob; filename: string }> => {
-      const res = await fetch(`/api/admin/evaluaciones/${id}/exportar${buildQuery({ categoria })}`);
+    exportarEvaluacion: async (id: string, grupoId: string, categoria?: CategoriaFormulario): Promise<{ blob: Blob; filename: string }> => {
+      const res = await fetch(`/api/admin/evaluaciones/${id}/exportar${buildQuery({ grupoId, categoria })}`);
       if (!res.ok) {
         const body = await res.json().catch(() => null);
         const message = body && typeof body === "object" && "error" in body ? String(body.error) : `Error ${res.status}`;

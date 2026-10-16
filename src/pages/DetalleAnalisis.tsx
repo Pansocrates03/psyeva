@@ -151,6 +151,7 @@ export default function DetalleAnalisis() {
     preguntas: GrupoRespuestas["preguntas"];
     estudiantes: Array<GrupoRespuestas["estudiantes"][number] & { grupoNombre: string }>;
   } | null>(null);
+  const [grupoResultadosId, setGrupoResultadosId] = useState("");
   const [loadingDatos, setLoadingDatos] = useState(false);
 
   const [showCrearGrupo, setShowCrearGrupo] = useState(false);
@@ -178,6 +179,11 @@ export default function DetalleAnalisis() {
       .then(data => {
         setEvaluacion(data);
         setGrupos(data.grupos);
+        setGrupoResultadosId(current =>
+          data.grupos.some(grupo => grupo.grupoId === current)
+            ? current
+            : data.grupos[0]?.grupoId ?? ""
+        );
       })
       .catch(err => setError(err instanceof ApiError ? err.message : "No se pudo cargar la evaluación"))
       .finally(() => setLoadingEvaluacion(false));
@@ -220,34 +226,36 @@ export default function DetalleAnalisis() {
     }
   };
 
-  const cargarDatos = async () => {
-    setLoadingDatos(true);
-    try {
-      const porGrupo = await Promise.all(grupos.map(g => databaseService.admin.obtenerRespuestasGrupo(g.grupoId)));
-
-      const preguntasPorId = new Map<string, GrupoRespuestas["preguntas"][number]>();
-      const estudiantes: Array<GrupoRespuestas["estudiantes"][number] & { grupoNombre: string }> = [];
-
-      porGrupo.forEach((data, index) => {
-        data.preguntas.forEach(p => preguntasPorId.set(p.id, p));
-        const grupoNombre = grupos[index]?.grupoNombre ?? "";
-        estudiantes.push(...data.estudiantes.map(e => ({ ...e, grupoNombre })));
-      });
-
-      setDatosRespuestas({ preguntas: Array.from(preguntasPorId.values()), estudiantes });
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "No se pudieron cargar las respuestas");
-    } finally {
-      setLoadingDatos(false);
-    }
-  };
-
   useEffect(() => {
     if (!evaluacion) return;
     if (layout === "estudiantes" && estudiantesTabla === null && !loadingEstudiantes) cargarEstudiantesTabla();
-    if (layout === "datos" && datosRespuestas === null && !loadingDatos) cargarDatos();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [layout, evaluacion]);
+
+  useEffect(() => {
+    if (layout !== "datos" || !grupoResultadosId || datosRespuestas !== null) return;
+
+    let vigente = true;
+    const grupoNombre = grupos.find(grupo => grupo.grupoId === grupoResultadosId)?.grupoNombre ?? "";
+    setLoadingDatos(true);
+    databaseService.admin.obtenerRespuestasGrupo(grupoResultadosId)
+      .then(data => {
+        if (vigente) {
+          setDatosRespuestas({
+            preguntas: data.preguntas,
+            estudiantes: data.estudiantes.map(estudiante => ({ ...estudiante, grupoNombre })),
+          });
+        }
+      })
+      .catch(err => {
+        if (vigente) setError(err instanceof ApiError ? err.message : "No se pudieron cargar las respuestas");
+      })
+      .finally(() => {
+        if (vigente) setLoadingDatos(false);
+      });
+
+    return () => { vigente = false; };
+  }, [layout, grupoResultadosId, grupos, datosRespuestas]);
 
   const totalAlumnos = grupos.reduce((s, g) => s + Number(g.totalAlumnos), 0);
   const totalReportes = grupos.reduce((s, g) => s + Number(g.reportesIndividuales), 0);
@@ -503,9 +511,9 @@ export default function DetalleAnalisis() {
   };
 
   const handleExportar = async () => {
-    if (!evaluacionId) return;
+    if (!evaluacionId || !grupoResultadosId) return;
     try {
-      const { blob, filename } = await databaseService.admin.exportarEvaluacion(evaluacionId);
+      const { blob, filename } = await databaseService.admin.exportarEvaluacion(evaluacionId, grupoResultadosId);
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -612,6 +620,12 @@ export default function DetalleAnalisis() {
             preguntas={datosRespuestas?.preguntas ?? []}
             estudiantes={datosRespuestas?.estudiantes ?? []}
             loading={loadingDatos}
+            grupos={grupos.map(grupo => ({ id: grupo.grupoId, nombre: grupo.grupoNombre }))}
+            grupoSeleccionadoId={grupoResultadosId}
+            onSeleccionarGrupo={grupoId => {
+              setGrupoResultadosId(grupoId);
+              setDatosRespuestas(null);
+            }}
             onExportar={handleExportar}
             onClose={() => setLayout("grupos")}
           />

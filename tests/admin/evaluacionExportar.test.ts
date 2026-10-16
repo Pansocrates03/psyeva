@@ -1,8 +1,8 @@
 import { describe, test, expect, beforeAll, afterAll, beforeEach } from "bun:test";
 import ExcelJS from "exceljs";
-import { createTestServer, resetDb } from "../setup";
+import { createTestServer, resetDb, sql } from "../setup";
 import { evaluacionExportarRoutes } from "../../src/routes";
-import { mock, createEvaluacion } from "../factories";
+import { mock, createEvaluacion, createGrupo, createSesion } from "../factories";
 
 let server: ReturnType<typeof createTestServer>;
 
@@ -19,13 +19,19 @@ describe("GET /api/admin/evaluaciones/:id/exportar", () => {
   });
 
   test("404 si la evaluación existe pero no tiene respuestas registradas", async () => {
-    const evaluacion = await createEvaluacion();
-    const res = await fetch(`${server.url}/api/admin/evaluaciones/${evaluacion.id}/exportar`);
+    const evaluacion = (await createEvaluacion())!;
+    const grupo = (await createGrupo({ evaluacionId: evaluacion.id }))!;
+    const res = await fetch(`${server.url}/api/admin/evaluaciones/${evaluacion.id}/exportar?grupoId=${grupo.id}`);
     expect(res.status).toBe(404);
   });
 
-  test("200 y genera una hoja por categoría con numeración independiente por formulario", async () => {
+  test("400 si no se indica el grupo", async () => {
     const res = await fetch(`${server.url}/api/admin/evaluaciones/${mock.evaluacionSanJose}/exportar`);
+    expect(res.status).toBe(400);
+  });
+
+  test("200 y genera una hoja por categoría con numeración independiente por formulario", async () => {
+    const res = await fetch(`${server.url}/api/admin/evaluaciones/${mock.evaluacionSanJose}/exportar?grupoId=${mock.grupoA}`);
     expect(res.status).toBe(200);
     expect(res.headers.get("Content-Type")).toBe(
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
@@ -65,6 +71,7 @@ describe("GET /api/admin/evaluaciones/:id/exportar", () => {
       emocionRows.push(row.values as unknown[]);
     });
     expect(emocionRows.some(row => row[1] === "Ana López García" && row.includes("Bien"))).toBe(true);
+    expect(emocionRows.some(row => row[1] === "Carmen Ruiz Sol")).toBe(false);
 
     const bienestarRows = [] as unknown[][];
     bienestar.eachRow((row, idx) => {
@@ -78,12 +85,38 @@ describe("GET /api/admin/evaluaciones/:id/exportar", () => {
       if (idx === 1) return;
       aprendizajeRows.push(row.values as unknown[]);
     });
-    expect(aprendizajeRows.some(row => row[1] === "Carmen Ruiz Sol")).toBe(true);
+    expect(aprendizajeRows.some(row => row[1] === "Ana López García")).toBe(true);
+  });
+
+  test("el Excel contiene únicamente estudiantes del grupo seleccionado", async () => {
+    const sesion = (await createSesion({
+      estudianteId: mock.estudianteCarmen,
+      formularioId: mock.formEmociones,
+      evaluacionId: mock.evaluacionSanJose,
+      estado: "completada",
+    }))!;
+    await sql`
+      INSERT INTO respuesta (sesion_id, pregunta_id, texto_libre)
+      VALUES (${sesion.id}, ${mock.preguntaEmocion1}, 'Muy bien')
+    `;
+
+    const res = await fetch(
+      `${server.url}/api/admin/evaluaciones/${mock.evaluacionSanJose}/exportar?grupoId=${mock.grupoB}`
+    );
+    expect(res.status).toBe(200);
+
+    const wb = new ExcelJS.Workbook();
+    await wb.xlsx.load(await res.arrayBuffer() as never);
+    const emociones = wb.getWorksheet("Emociones")!;
+    const estudiantes = emociones.getColumn(1).values as unknown[];
+
+    expect(estudiantes).toContain("Carmen Ruiz Sol");
+    expect(estudiantes).not.toContain("Ana López García");
   });
 
   test("filtra por categoría cuando se pasa ?categoria=", async () => {
     const res = await fetch(
-      `${server.url}/api/admin/evaluaciones/${mock.evaluacionSanJose}/exportar?categoria=bienestar_psicologico`
+      `${server.url}/api/admin/evaluaciones/${mock.evaluacionSanJose}/exportar?grupoId=${mock.grupoA}&categoria=bienestar_psicologico`
     );
     // Ninguna respuesta registrada para bienestar_psicologico en el mock data
     expect(res.status).toBe(404);
