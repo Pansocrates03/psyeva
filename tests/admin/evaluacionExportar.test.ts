@@ -24,7 +24,7 @@ describe("GET /api/admin/evaluaciones/:id/exportar", () => {
     expect(res.status).toBe(404);
   });
 
-  test("200 y genera un .xlsx con una fila por estudiante y una columna por pregunta", async () => {
+  test("200 y genera una hoja por categoría con numeración independiente por formulario", async () => {
     const res = await fetch(`${server.url}/api/admin/evaluaciones/${mock.evaluacionSanJose}/exportar`);
     expect(res.status).toBe(200);
     expect(res.headers.get("Content-Type")).toBe(
@@ -36,23 +36,49 @@ describe("GET /api/admin/evaluaciones/:id/exportar", () => {
     const wb = new ExcelJS.Workbook();
     await wb.xlsx.load(buffer as never);
 
-    const ws = wb.getWorksheet("Respuestas")!;
-    expect(ws).toBeTruthy();
+    expect(wb.worksheets.map(ws => ws.name)).toEqual([
+      "Emociones",
+      "Bienestar Psicológico",
+      "Aprendizaje",
+    ]);
 
-    // El exportador pivotea las respuestas: una fila por alumno + encabezado.
-    expect(ws.rowCount).toBeGreaterThan(1);
-
-    const headerValues = ws.getRow(1).values as unknown[];
-    expect(headerValues[1]).toBe("Estudiante");
-    expect(headerValues.filter(value => /^\d+\. /.test(String(value))).length).toBeGreaterThan(0);
-
-    const bodyRows = [] as unknown[][];
-    ws.eachRow((row, idx) => {
-      if (idx === 1) return;
-      bodyRows.push(row.values as unknown[]);
+    const emociones = wb.getWorksheet("Emociones")!;
+    const bienestar = wb.getWorksheet("Bienestar Psicológico")!;
+    const aprendizaje = wb.getWorksheet("Aprendizaje")!;
+    [emociones, bienestar, aprendizaje].forEach(ws => {
+      expect(ws.rowCount).toBeGreaterThan(1);
+      const encabezados = ws.getRow(1).values as unknown[];
+      expect(encabezados[1]).toBe("Estudiante");
+      expect(encabezados[2]).toMatch(/^1\. /);
+      expect(ws.getCell(1, 2).fill).toMatchObject({
+        fgColor: { argb: expect.any(String) },
+      });
     });
-    expect(bodyRows.some(row => row[1] === "Ana López García" && row.includes("Bien"))).toBe(true);
-    expect(bodyRows.some(row => row[1] === "Carmen Ruiz Sol")).toBe(true);
+
+    expect(emociones.getCell(1, 2).fill).toMatchObject({ fgColor: { argb: "FF8D54FF" } });
+    expect(bienestar.getCell(1, 2).fill).toMatchObject({ fgColor: { argb: "FF7FD858" } });
+    expect(aprendizaje.getCell(1, 2).fill).toMatchObject({ fgColor: { argb: "FF37B7FF" } });
+
+    const emocionRows = [] as unknown[][];
+    emociones.eachRow((row, idx) => {
+      if (idx === 1) return;
+      emocionRows.push(row.values as unknown[]);
+    });
+    expect(emocionRows.some(row => row[1] === "Ana López García" && row.includes("Bien"))).toBe(true);
+
+    const bienestarRows = [] as unknown[][];
+    bienestar.eachRow((row, idx) => {
+      if (idx === 1) return;
+      bienestarRows.push(row.values as unknown[]);
+    });
+    expect(bienestarRows.some(row => row.includes("Bien"))).toBe(false);
+
+    const aprendizajeRows = [] as unknown[][];
+    aprendizaje.eachRow((row, idx) => {
+      if (idx === 1) return;
+      aprendizajeRows.push(row.values as unknown[]);
+    });
+    expect(aprendizajeRows.some(row => row[1] === "Carmen Ruiz Sol")).toBe(true);
   });
 
   test("filtra por categoría cuando se pasa ?categoria=", async () => {

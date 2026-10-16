@@ -1,4 +1,12 @@
 import sql from "../../db";
+import { CATEGORIAS, CATEGORIA_LABELS } from "../../utils/categorias";
+import type { CategoriaFormulario } from "../../utils/types";
+
+const CATEGORIA_COLORES: Record<CategoriaFormulario, string> = {
+  emociones: "FF8D54FF",
+  bienestar_psicologico: "FF7FD858",
+  aprendizaje: "FF37B7FF",
+};
 
 // GET /api/admin/evaluaciones/:id/exportar
 // Genera y devuelve un archivo Excel (.xlsx) con todas las
@@ -52,7 +60,8 @@ export const evaluacionExportarRoutes = {
           e.id              AS estudiante_id,
           e.nombre_completo AS alumno,
           p.id              AS pregunta_id,
-          r.texto_libre    AS respuesta
+          r.texto_libre    AS respuesta,
+          f.categoria
         FROM estudiante e
         JOIN grupo g ON g.id = e.grupo_id
         JOIN evaluacion ev ON ev.id = g.evaluacion_id
@@ -79,52 +88,60 @@ export const evaluacionExportarRoutes = {
         );
       }
 
-      // Genera el Excel con ExcelJS (bun add exceljs)
+      // Genera una hoja independiente para cada categoría.
       const ExcelJS = await import("exceljs");
       const wb      = new ExcelJS.default.Workbook();
-      const ws      = wb.addWorksheet("Respuestas");
-
-      const encabezados = ["Estudiante", ...preguntas.map((pregunta, index) => `${index + 1}. ${pregunta.texto}`)];
-      ws.columns = encabezados.map((header, index) => ({
-        header,
-        key: index === 0 ? "estudiante" : `pregunta${index}`,
-        width: index === 0 ? 30 : 44,
-      }));
-
-      // Estilo de encabezado con color PSYEVA
-      ws.getRow(1).eachCell(cell => {
-        cell.font      = { bold: true, color: { argb: "FFFFFFFF" } };
-        cell.fill      = { type: "pattern", pattern: "solid", fgColor: { argb: "FF8D54FF" } };
-        cell.alignment = { vertical: "middle", horizontal: "center" };
-      });
-      ws.getRow(1).height = 22;
-
-      const respuestasPorEstudiante = new Map<string, Map<string, string>>();
-      filas.forEach(fila => {
-        if (!fila.preguntaId) return;
-        const respuestas = respuestasPorEstudiante.get(fila.estudianteId) ?? new Map<string, string>();
-        respuestas.set(fila.preguntaId, fila.respuesta ?? "");
-        respuestasPorEstudiante.set(fila.estudianteId, respuestas);
-      });
-
       const estudiantes = new Map<string, string>();
       filas.forEach(fila => estudiantes.set(fila.estudianteId, fila.alumno));
-      estudiantes.forEach((nombre, estudianteId) => {
-        const respuestas = respuestasPorEstudiante.get(estudianteId);
-        ws.addRow([
-          nombre,
-          ...preguntas.map(pregunta => respuestas?.get(pregunta.id) ?? ""),
-        ]);
-      });
 
-      // Filas alternas con color suave
-      ws.eachRow((row, idx) => {
-        if (idx === 1) return;
-        row.eachCell(cell => {
-          cell.fill = {
-            type: "pattern", pattern: "solid",
-            fgColor: { argb: idx % 2 === 0 ? "FFF7F6F3" : "FFFFFFFF" },
-          };
+      const categorias = categoria
+        ? [categoria as CategoriaFormulario]
+        : CATEGORIAS;
+
+      categorias.forEach(categoriaHoja => {
+        const preguntasCategoria = preguntas.filter(pregunta => pregunta.categoria === categoriaHoja);
+        const ws = wb.addWorksheet(CATEGORIA_LABELS[categoriaHoja]);
+        const encabezados = [
+          "Estudiante",
+          ...preguntasCategoria.map((pregunta, index) => `${index + 1}. ${pregunta.texto}`),
+        ];
+        ws.columns = encabezados.map((header, index) => ({
+          header,
+          key: index === 0 ? "estudiante" : `pregunta${index}`,
+          width: index === 0 ? 30 : 44,
+        }));
+
+        ws.getRow(1).eachCell(cell => {
+          cell.font      = { bold: true, color: { argb: "FFFFFFFF" } };
+          cell.fill      = { type: "pattern", pattern: "solid", fgColor: { argb: CATEGORIA_COLORES[categoriaHoja] } };
+          cell.alignment = { vertical: "middle", horizontal: "center", wrapText: true };
+        });
+        ws.getRow(1).height = 30;
+
+        const respuestasPorEstudiante = new Map<string, Map<string, string>>();
+        filas.forEach(fila => {
+          if (!fila.preguntaId || fila.categoria !== categoriaHoja) return;
+          const respuestas = respuestasPorEstudiante.get(fila.estudianteId) ?? new Map<string, string>();
+          respuestas.set(fila.preguntaId, fila.respuesta ?? "");
+          respuestasPorEstudiante.set(fila.estudianteId, respuestas);
+        });
+
+        estudiantes.forEach((nombre, estudianteId) => {
+          const respuestas = respuestasPorEstudiante.get(estudianteId);
+          ws.addRow([
+            nombre,
+            ...preguntasCategoria.map(pregunta => respuestas?.get(pregunta.id) ?? ""),
+          ]);
+        });
+
+        ws.eachRow((row, idx) => {
+          if (idx === 1) return;
+          row.eachCell(cell => {
+            cell.fill = {
+              type: "pattern", pattern: "solid",
+              fgColor: { argb: idx % 2 === 0 ? "FFF7F6F3" : "FFFFFFFF" },
+            };
+          });
         });
       });
 

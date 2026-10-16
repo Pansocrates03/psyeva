@@ -176,10 +176,45 @@ export default function Reactivo({
             textTransform: "uppercase",
             letterSpacing: "0.08em",
             color: COLORS.violeta400,
-            margin: "0 0 16px",
+            margin: "0 0 2px",
           }}>
             Pregunta {numeroPregunta}
           </p>
+
+          {(instruccionTexto || instruccionImagenUrl) && (
+            <div style={{
+              width: "100%",
+              marginBottom: 24,
+              color: COLORS.neutro700,
+            }}>
+              {instruccionTexto && (
+                <p style={{
+                  fontSize: 16,
+                  lineHeight: 1.6,
+                  margin: "0 0 16px",
+                  whiteSpace: "pre-wrap",
+                }}>
+                  {instruccionTexto}
+                </p>
+              )}
+              {instruccionImagenUrl && (
+                <div style={{
+                  width: "100%",
+                  borderRadius: 12,
+                  border: `1px solid ${COLORS.neutro100}`,
+                  background: "#fff",
+                  display: "flex",
+                  justifyContent: "center",
+                }}>
+                  <img
+                    src={instruccionImagenUrl}
+                    alt="Imagen con instrucciones de la sección"
+                    style={{ maxWidth: "100%", maxHeight: 300, width: "auto", height: "auto", objectFit: "contain", display: "block" }}
+                  />
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Texto de la pregunta */}
           <h2 style={{
