@@ -197,22 +197,7 @@ export default function Reactivo({
                   {instruccionTexto}
                 </p>
               )}
-              {instruccionImagenUrl && (
-                <div style={{
-                  width: "100%",
-                  borderRadius: 12,
-                  border: `1px solid ${COLORS.neutro100}`,
-                  background: "#fff",
-                  display: "flex",
-                  justifyContent: "center",
-                }}>
-                  <img
-                    src={instruccionImagenUrl}
-                    alt="Imagen con instrucciones de la sección"
-                    style={{ maxWidth: "100%", maxHeight: 300, width: "auto", height: "auto", objectFit: "contain", display: "block" }}
-                  />
-                </div>
-              )}
+             
             </div>
           )}
 
