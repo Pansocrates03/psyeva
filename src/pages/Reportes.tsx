@@ -4,6 +4,7 @@ import COLORS from "@/utils/Colors";
 import { databaseService, ApiError } from "@/services/databaseService";
 import type { EvaluacionParaFacilitador } from "@/utils/types";
 import DetalleAnalisisReportes from "@/components/layouts/DetalleAnalisisReportes";
+import imagenMensaje from "@/assets/mensaje.png";
 
 // ─────────────────────────────────────────────
 // Estilos compartidos (mismo lenguaje visual que Encuesta.tsx)
@@ -68,7 +69,7 @@ function BtnPrimario({ label, onClick, disabled = false }: {
   );
 }
 
-function LogoHeader({ escuela, sub }: { escuela?: string; sub?: string }) {
+function LogoHeader({ escuela }: { escuela?: string }) {
   return (
     <div style={cardHeaderStyle}>
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -80,7 +81,6 @@ function LogoHeader({ escuela, sub }: { escuela?: string; sub?: string }) {
         </div>
         <div>
           <div style={{ fontSize: 13, fontWeight: 600, color: COLORS.neutro900 }}>{escuela ?? "PSYEVA"}</div>
-          {sub && <div style={{ fontSize: 11, color: COLORS.neutro500 }}>{sub}</div>}
         </div>
       </div>
     </div>
@@ -92,7 +92,7 @@ function CentroPagina({ children }: { children: React.ReactNode }) {
     <div style={{
       display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
       minHeight: "100vh", padding: "24px",
-      background: `linear-gradient(135deg, ${COLORS.violeta50} 0%, ${COLORS.neutro50} 60%, ${COLORS.azul50} 100%)`,
+      background: COLORS.violeta50,
       fontFamily: "system-ui, -apple-system, sans-serif",
     }}>
       {children}
@@ -173,7 +173,7 @@ export default function Reportes() {
     return (
       <CentroPagina>
         <div style={cardStyle}>
-          <LogoHeader escuela={info.colegioNombre} sub={info.nombre} />
+          <LogoHeader escuela={info.colegioNombre} />
           <div style={{ ...cardBodyStyle, textAlign: "center", padding: "36px 24px" }}>
             <div style={{ fontSize: 40, marginBottom: 12 }}>⏳</div>
             <p style={{ margin: 0, fontSize: 14, color: COLORS.neutro500 }}>
@@ -189,7 +189,7 @@ export default function Reportes() {
     return (
       <CentroPagina>
         <div style={cardStyle}>
-          <LogoHeader escuela={info.colegioNombre} sub={info.nombre} />
+          <LogoHeader escuela={info.colegioNombre} />
           <div style={cardBodyStyle}>
             <h2 style={{ margin: "0 0 4px", fontSize: 17, fontWeight: 600, color: COLORS.neutro900 }}>
               Ingresa el código de tu escuela
@@ -217,8 +217,13 @@ export default function Reportes() {
   return (
     <CentroPagina>
       <div style={{ ...cardStyle, width: "min(760px, 100%)" }}>
-        <LogoHeader escuela={verificado.colegioNombre} sub={info.nombre} />
+        <LogoHeader escuela={verificado.colegioNombre} />
         <div style={cardBodyStyle}>
+          <img
+            src={imagenMensaje}
+            alt="Gracias por aplicar el programa PSYEVA. Aquí están los resultados y cuentas con nuestro apoyo."
+            style={{ display: "block", width: "100%", height: "auto", marginBottom: 20, borderRadius: 8 }}
+          />
           <DetalleAnalisisReportes evaluacionId={info.evaluacionId} modo="facilitador" />
         </div>
       </div>

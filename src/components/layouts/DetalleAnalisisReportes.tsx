@@ -6,7 +6,7 @@ import type { ArchivoBucket } from "../../utils/types";
 function IconoCarpeta({ className }: { className?: string }) {
     return (
         <svg className={className} width="22" height="20" viewBox="0 0 22 20" fill="none" aria-hidden="true">
-            <path d="M1.5 4.5A2.5 2.5 0 0 1 4 2h5l2 2h7A2.5 2.5 0 0 1 20.5 6.5v9A2.5 2.5 0 0 1 18 18H4a2.5 2.5 0 0 1-2.5-2.5v-11Z" fill={COLORS.ambar400} />
+            <path d="M1.5 4.5A2.5 2.5 0 0 1 4 2h5l2 2h7A2.5 2.5 0 0 1 20.5 6.5v9A2.5 2.5 0 0 1 18 18H4a2.5 2.5 0 0 1-2.5-2.5v-11Z" fill={COLORS.violeta400} />
             <path d="M1.5 7h19" stroke="#fff" strokeOpacity=".55" strokeWidth="1.5" />
         </svg>
     );
@@ -191,12 +191,9 @@ export default function DetalleAnalisisReportes({ evaluacionId, modo = "admin" }
     return (
         <div style={{ marginTop: 24, background: "#fff", border: `1px solid ${COLORS.neutro100}`, borderRadius: 14, overflow: "hidden" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 20px", borderBottom: `1px solid ${COLORS.neutro100}` }}>
-                <div>
-                    <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: COLORS.neutro900 }}>Archivos en storage</h3>
-                    <div style={{ fontSize: 12, color: COLORS.neutro500, marginTop: 2 }}>
-                        {loading ? "Cargando carpeta..." : `${archivos.length} archivos · ${carpetas.length} carpetas`}
-                    </div>
-                </div>
+
+                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: COLORS.neutro900 }}>Mis archivos</h3>
+
                 <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
                     <button
                         type="button"
