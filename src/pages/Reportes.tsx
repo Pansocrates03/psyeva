@@ -92,7 +92,7 @@ function CentroPagina({ children }: { children: React.ReactNode }) {
     <div style={{
       display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
       minHeight: "100vh", padding: "24px",
-      background: COLORS.violeta50,
+      background: COLORS.violeta100,
       fontFamily: "system-ui, -apple-system, sans-serif",
     }}>
       {children}
