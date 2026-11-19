@@ -91,6 +91,22 @@ describe("GET /api/admin/evaluaciones/:id/exportar", () => {
     expect(aprendizajeRows.some(row => row[1] === "Ana López García")).toBe(true);
   });
 
+  test("genera encabezados válidos para nombres con caracteres no ASCII", async () => {
+    await sql`UPDATE evaluacion SET nombre = 'Eva. West Heights' WHERE id = ${mock.evaluacionSanJose}`;
+    await sql`UPDATE grupo SET nombre = 'West Heights 1°B PRIMARIA' WHERE id = ${mock.grupoA}`;
+
+    const res = await fetch(
+      `${server.url}/api/admin/evaluaciones/${mock.evaluacionSanJose}/exportar?grupoId=${mock.grupoA}`
+    );
+
+    expect(res.status).toBe(200);
+    const disposition = res.headers.get("Content-Disposition")!;
+    expect(disposition).toContain('filename="Colegio_San_Jose_Eva._West_Heights_West_Heights_1_B_PRIMARIA_respuestas.xlsx"');
+    expect(disposition).toContain("filename*=UTF-8''");
+    expect(disposition).toContain("1%C2%B0B");
+    expect([...disposition].every(char => char.charCodeAt(0) <= 0x7f)).toBe(true);
+  });
+
   test("el Excel contiene únicamente estudiantes del grupo seleccionado", async () => {
     const sesion = (await createSesion({
       estudianteId: mock.estudianteCarmen,

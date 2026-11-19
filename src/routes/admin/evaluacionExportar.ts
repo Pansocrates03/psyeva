@@ -172,14 +172,19 @@ export const evaluacionExportarRoutes = {
 
       const buffer = await wb.xlsx.writeBuffer();
       const nombreArchivo = `${evaluacion.colegioNombre}_${evaluacion.nombre}_${grupo.nombre}_respuestas.xlsx`
-        .replace(/\s+/g, "_")
+        .replace(/\s+/g, "_");
+      const nombreArchivoFallback = nombreArchivo
         .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "");
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^\x20-\x7E]/g, "_")
+        .replace(/["\\/]/g, "_");
+      const nombreArchivoCodificado = encodeURIComponent(nombreArchivo)
+        .replace(/[!'()*]/g, char => `%${char.charCodeAt(0).toString(16).toUpperCase()}`);
 
       return new Response(buffer, {
         headers: {
           "Content-Type":        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-          "Content-Disposition": `attachment; filename="${nombreArchivo}"`,
+          "Content-Disposition": `attachment; filename="${nombreArchivoFallback}"; filename*=UTF-8''${nombreArchivoCodificado}`,
         },
       });
     } catch (err) {

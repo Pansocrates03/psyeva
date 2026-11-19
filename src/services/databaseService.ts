@@ -341,7 +341,10 @@ class DatabaseService {
         throw new ApiError(res.status, message, body);
       }
       const disposition = res.headers.get("Content-Disposition") ?? "";
-      const filename = /filename="([^"]+)"/.exec(disposition)?.[1] ?? `evaluacion-${id}.xlsx`;
+      const filenameEncoded = /filename\*=UTF-8''([^;]+)/i.exec(disposition)?.[1];
+      const filename = filenameEncoded
+        ? decodeURIComponent(filenameEncoded)
+        : /filename="([^"]+)"/.exec(disposition)?.[1] ?? `evaluacion-${id}.xlsx`;
       return { blob: await res.blob(), filename };
     },
 
